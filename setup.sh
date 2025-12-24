@@ -74,7 +74,35 @@ pip install -r requirements.txt
 # Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then
     print_status "Creating .env file..."
-    cp .env.example .env
+    cat > .env <<'ENV'
+SECRET_KEY=django-insecure-change-this-in-production-$(openssl rand -base64 32)
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+DB_NAME=university_erp_db
+DB_USER=postgres
+DB_PASSWORD=clintonac237
+DB_HOST=localhost
+DB_PORT=5432
+
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
+
+JWT_ACCESS_TOKEN_LIFETIME=60
+JWT_REFRESH_TOKEN_LIFETIME=1440
+
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+
+ZOOM_API_KEY=
+ZOOM_API_SECRET=
+ZOOM_ACCOUNT_ID=
+
+QR_ENCRYPTION_KEY=change-this-to-32-characters-key
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_PROJECT_ID=
+ENV
     print_warning "Please edit .env file with your configuration"
 else
     print_status ".env file already exists"
@@ -104,15 +132,21 @@ python manage.py migrate
 
 # Create superuser if it doesn't exist
 print_status "Creating superuser..."
-python manage.py shell -c "
+python manage.py shell <<PYTHON
 from django.contrib.auth import get_user_model
 User = get_user_model()
-if not User.objects.filter(email='admin@university.edu').exists():
-    User.objects.create_superuser('admin@university.edu', 'Admin', 'User', 'adminpassword123', role='super_admin')
+if not User.objects.filter(email='yxng@university.cm').exists():
+    User.objects.create_superuser(
+        email='yxng@university.cm',
+        first_name='Admin',
+        last_name='User',
+        password='clintonac237',
+        role='super_admin'
+    )
     print('Superuser created successfully')
 else:
     print('Superuser already exists')
-"
+PYTHON
 
 # Collect static files
 print_status "Collecting static files..."
@@ -460,7 +494,7 @@ print_status() {
 }
 
 print_status "Backing up database..."
-pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME > "$BACKUP_DIR/database.sql"
+PGPASSWORD=$DB_PASSWORD pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME > "$BACKUP_DIR/database.sql"
 
 # Backup media files
 print_status "Backing up media files..."
@@ -528,7 +562,7 @@ fi
 
 # Restore database
 print_status "Restoring database..."
-psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME < "$BACKUP_DIR/database.sql"
+PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME < "$BACKUP_DIR/database.sql"
 
 # Restore media files
 print_status "Restoring media files..."
@@ -623,7 +657,7 @@ df -h
 # Check database size
 print_status "Checking database size..."
 source .env
-psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT pg_database_size('$DB_NAME') as size;"
+PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT pg_size_pretty(pg_database_size('$DB_NAME')) as size;"
 
 print_status "Monitoring completed"
 EOF
@@ -774,7 +808,9 @@ coverage html
 ### Accessing Django Admin
 1. Start the server: `bash start.sh`
 2. Open browser: http://localhost:8000/admin/
-3. Login with superuser credentials
+3. Login with superuser credentials:
+   - Email: yxng@university.cm
+   - Password: clintonac237
 
 ### API Documentation
 - Swagger UI: http://localhost:8000/swagger/
@@ -783,10 +819,10 @@ coverage html
 ### Database Management
 ```bash
 # Create database backup
-pg_dump -h localhost -p 5432 -U postgres -d university_erp_db > backup.sql
+PGPASSWORD=clintonac237 pg_dump -h localhost -p 5432 -U postgres -d university_erp_db > backup.sql
 
 # Restore database
-psql -h localhost -p 5432 -U postgres -d university_erp_db < backup.sql
+PGPASSWORD=clintonac237 psql -h localhost -p 5432 -U postgres -d university_erp_db < backup.sql
 
 # Reset database
 python manage.py flush
@@ -850,7 +886,7 @@ pkill -f "celery -A university_erp"
 Edit `.env` file to configure:
 - Database settings
 - Redis settings
-- API keys (Zoom, Google, Twilio)
+- API keys (Zoom, Google, Telegram)
 - Security settings
 - Logging settings
 
@@ -863,7 +899,7 @@ Edit `.env` file to configure:
 Configure external services:
 - Zoom API: https://marketplace.zoom.us/
 - Google Calendar API: https://console.cloud.google.com/
-- Twilio: https://www.twilio.com/
+- Telegram Bot API: https://core.telegram.org/bots/api
 
 ## Security
 
@@ -918,16 +954,20 @@ EOF
 print_status "Setup completed successfully!"
 print_status ""
 print_status "Next steps:"
-print_status "1. Edit .env file with your configuration"
+print_status "1. Edit .env file with your Telegram Bot Token"
 print_status "2. Start PostgreSQL and Redis"
 print_status "3. Run: bash start.sh"
 print_status "4. Access the application at: http://localhost:8000"
+print_status ""
+print_status "Default superuser credentials:"
+print_status "Email: yxng@university.cm"
+print_status "Password: clintonac237"
 print_status ""
 print_status "For more information, see HELP.md"
 print_status ""
 print_status "To get started quickly:"
 print_status "1. bash setup.sh"
-print_status "2. Edit .env file"
+print_status "2. Edit .env file with your Telegram token"
 print_status "3. bash start.sh"
 print_status ""
 print_status "Happy coding! 🚀"

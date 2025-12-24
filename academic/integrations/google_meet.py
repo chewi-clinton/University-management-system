@@ -16,13 +16,31 @@ class GoogleMeetAPIClient:
         self.credentials_file = getattr(settings, 'GOOGLE_CREDENTIALS_FILE', None)
         self.delegated_email = getattr(settings, 'GOOGLE_DELEGATED_EMAIL', None)
         self.service = None
-        self._authenticate()
+        # Authentication is deferred until a method requiring it is called
     
     def _authenticate(self):
-        """Authenticate with Google Calendar API"""
+        """Authenticate with Google Calendar API - called lazily when needed"""
+        if self.service is not None:
+            return self.service
+        
         try:
-            if not self.credentials_file:
-                # Use service account credentials from settings
+            if self.credentials_file:
+                # Use credentials file if provided
+                credentials = service_account.Credentials.from_service_account_file(
+                    self.credentials_file,
+                    scopes=['https://www.googleapis.com/auth/calendar']
+                )
+            else:
+                # Use individual settings from environment
+                if not all([
+                    hasattr(settings, 'GOOGLE_PROJECT_ID') and settings.GOOGLE_PROJECT_ID,
+                    hasattr(settings, 'GOOGLE_PRIVATE_KEY_ID') and settings.GOOGLE_PRIVATE_KEY_ID,
+                    hasattr(settings, 'GOOGLE_PRIVATE_KEY') and settings.GOOGLE_PRIVATE_KEY,
+                    hasattr(settings, 'GOOGLE_CLIENT_EMAIL') and settings.GOOGLE_CLIENT_EMAIL,
+                    hasattr(settings, 'GOOGLE_CLIENT_ID') and settings.GOOGLE_CLIENT_ID
+                ]):
+                    raise ValueError("Missing required Google service account settings in Django settings")
+                
                 credentials_dict = {
                     "type": "service_account",
                     "project_id": settings.GOOGLE_PROJECT_ID,
@@ -33,21 +51,15 @@ class GoogleMeetAPIClient:
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
                     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                    "client_x509_cert_url": settings.GOOGLE_CLIENT_X509_CERT_URL
+                    "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{settings.GOOGLE_CLIENT_EMAIL}"
                 }
                 
                 credentials = service_account.Credentials.from_service_account_info(
                     credentials_dict,
                     scopes=['https://www.googleapis.com/auth/calendar']
                 )
-            else:
-                # Use credentials file
-                credentials = service_account.Credentials.from_service_account_file(
-                    self.credentials_file,
-                    scopes=['https://www.googleapis.com/auth/calendar']
-                )
             
-            # Delegate credentials if needed
+            # Delegate credentials if needed (domain-wide delegation)
             if self.delegated_email:
                 credentials = credentials.with_subject(self.delegated_email)
             
@@ -56,10 +68,13 @@ class GoogleMeetAPIClient:
             
         except Exception as e:
             logger.error(f"Error authenticating with Google Calendar API: {e}")
+            self.service = None
             raise
     
     def create_meeting(self, topic, start_time, duration, **kwargs):
         """Create a Google Meet meeting"""
+        self._authenticate()
+        
         try:
             # Calculate end time
             end_time = start_time + timedelta(minutes=duration)
@@ -131,6 +146,8 @@ class GoogleMeetAPIClient:
     
     def get_meeting(self, event_id):
         """Get meeting details"""
+        self._authenticate()
+        
         try:
             event = self.service.events().get(
                 calendarId='primary',
@@ -148,6 +165,8 @@ class GoogleMeetAPIClient:
     
     def update_meeting(self, event_id, **kwargs):
         """Update meeting details"""
+        self._authenticate()
+        
         try:
             # Get existing event
             event = self.get_meeting(event_id)
@@ -185,6 +204,8 @@ class GoogleMeetAPIClient:
     
     def delete_meeting(self, event_id):
         """Delete a meeting"""
+        self._authenticate()
+        
         try:
             self.service.events().delete(
                 calendarId='primary',
@@ -202,6 +223,8 @@ class GoogleMeetAPIClient:
     
     def list_upcoming_meetings(self, max_results=10):
         """List upcoming meetings"""
+        self._authenticate()
+        
         try:
             now = datetime.utcnow()
             time_max = now + timedelta(days=30)
@@ -243,13 +266,12 @@ class GoogleMeetAPIClient:
             raise
 
 
-# Global Google Meet client instance
-meet_client = GoogleMeetAPIClient()
-
-
 def create_google_meet_class(class_data):
     """Create a Google Meet class"""
     try:
+        # Create a new client instance only when needed
+        meet_client = GoogleMeetAPIClient()
+        
         # Parse date and time
         schedule_date = class_data['schedule_date']
         start_time = class_data['start_time']
@@ -284,6 +306,7 @@ def create_google_meet_class(class_data):
 def delete_google_meet(event_id):
     """Delete a Google Meet"""
     try:
+        meet_client = GoogleMeetAPIClient()
         meet_client.delete_meeting(event_id)
         return {'success': True}
     except Exception as e:
@@ -294,6 +317,7 @@ def delete_google_meet(event_id):
 def get_meeting_link(event_id):
     """Get meeting link for a Google Meet"""
     try:
+        meet_client = GoogleMeetAPIClient()
         event = meet_client.get_meeting(event_id)
         
         meet_link = None

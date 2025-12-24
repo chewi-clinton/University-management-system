@@ -149,10 +149,18 @@ ZOOM_ACCOUNT_ID = os.getenv('ZOOM_ACCOUNT_ID', '')
 # QR Code Encryption
 QR_ENCRYPTION_KEY = os.getenv('QR_ENCRYPTION_KEY', 'default-qr-encryption-key-32-chars-long')
 
-# Google Calendar API
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-GOOGLE_PROJECT_ID = os.getenv('GOOGLE_PROJECT_ID', '')
+# Google Calendar / Meet Service Account Configuration
+GOOGLE_PROJECT_ID = os.getenv('GOOGLE_PROJECT_ID')
+GOOGLE_PRIVATE_KEY_ID = os.getenv('GOOGLE_PRIVATE_KEY_ID')
+GOOGLE_PRIVATE_KEY = os.getenv('GOOGLE_PRIVATE_KEY')  # Must include newlines escaped as \\n
+GOOGLE_CLIENT_EMAIL = os.getenv('GOOGLE_CLIENT_EMAIL')
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+
+# Optional: Path to service account JSON file (alternative to individual keys above)
+GOOGLE_CREDENTIALS_FILE = os.getenv('GOOGLE_CREDENTIALS_FILE')
+
+# Optional: Email of user to impersonate (requires domain-wide delegation setup)
+GOOGLE_DELEGATED_EMAIL = os.getenv('GOOGLE_DELEGATED_EMAIL')
 
 # Logging Configuration
 LOGGING = {

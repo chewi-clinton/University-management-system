@@ -6,7 +6,6 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 import uuid
 
-
 class User(AbstractUser):
     """Base user model (polymorphic)"""
     ROLE_CHOICES = [
@@ -30,12 +29,11 @@ class User(AbstractUser):
     class Meta:
         db_table = 'users'
 
-
 class Faculty(models.Model):
     """Faculties (e.g., Faculty of Engineering)"""
     faculty_id = models.AutoField(primary_key=True)
     faculty_name = models.CharField(max_length=200)
-    dean = models.ForeignKey('Faculty', on_delete=models.SET_NULL, null=True, blank=True, related_name='dean_faculty')
+    dean = models.ForeignKey('FacultyMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='dean_faculty')
     faculty_code = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
     
@@ -46,13 +44,12 @@ class Faculty(models.Model):
     def __str__(self):
         return self.faculty_name
 
-
 class Department(models.Model):
     """Departments (e.g., Computer Science)"""
     department_id = models.AutoField(primary_key=True)
     department_name = models.CharField(max_length=200)
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='departments')
-    head = models.ForeignKey('Faculty', on_delete=models.SET_NULL, null=True, blank=True, related_name='head_department')
+    head = models.ForeignKey('FacultyMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='head_department')
     department_code = models.CharField(max_length=20, unique=True)
     office_location = models.CharField(max_length=100, blank=True)
     
@@ -61,7 +58,6 @@ class Department(models.Model):
     
     def __str__(self):
         return self.department_name
-
 
 class Program(models.Model):
     """Academic Programs (e.g., BSc Computer Science)"""
@@ -87,7 +83,6 @@ class Program(models.Model):
     def __str__(self):
         return self.program_name
 
-
 class Course(models.Model):
     """Courses (e.g., CS101 - Introduction to Programming)"""
     course_id = models.AutoField(primary_key=True)
@@ -106,7 +101,6 @@ class Course(models.Model):
     def __str__(self):
         return f"{self.course_code} - {self.course_name}"
 
-
 class CoursePrerequisite(models.Model):
     """Course prerequisites (many-to-many self-join)"""
     prerequisite_id = models.AutoField(primary_key=True)
@@ -121,7 +115,6 @@ class CoursePrerequisite(models.Model):
     def clean(self):
         if self.course == self.prerequisite_course:
             raise ValidationError("A course cannot be a prerequisite for itself")
-
 
 class AcademicSession(models.Model):
     """Academic Sessions (e.g., Fall 2025)"""
@@ -138,7 +131,6 @@ class AcademicSession(models.Model):
     
     def __str__(self):
         return self.session_name
-
 
 class Semester(models.Model):
     """Semesters within sessions"""
@@ -170,7 +162,6 @@ class Semester(models.Model):
     
     def __str__(self):
         return f"{self.semester_name} {self.session.academic_year}"
-
 
 class Student(models.Model):
     """Student-specific data"""
@@ -207,9 +198,8 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.university_reg_number} - {self.first_name} {self.last_name}"
 
-
-class Faculty(models.Model):
-    """Faculty-specific data (renamed to avoid conflict with Faculty model)"""
+class FacultyMember(models.Model):
+    """Faculty-specific data (renamed from Faculty to avoid conflict with Faculty organization model)"""
     faculty_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='faculty_profile')
     employee_id = models.CharField(max_length=50, unique=True)
@@ -227,7 +217,6 @@ class Faculty(models.Model):
     def __str__(self):
         return f"{self.employee_id} - {self.user.get_full_name()}"
 
-
 class AcademicAdmin(models.Model):
     """Academic Admin data"""
     admin_id = models.AutoField(primary_key=True)
@@ -241,7 +230,6 @@ class AcademicAdmin(models.Model):
     
     def __str__(self):
         return f"{self.user.get_full_name()} - Admin"
-
 
 class Enrollment(models.Model):
     """Student enrollments per semester"""
@@ -271,13 +259,12 @@ class Enrollment(models.Model):
     def __str__(self):
         return f"{self.enrollment_number} - {self.student}"
 
-
 class CourseOffering(models.Model):
     """Course offerings per semester"""
     offering_id = models.AutoField(primary_key=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='offerings')
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='course_offerings')
-    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='course_offerings')
+    faculty = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='course_offerings')
     section = models.CharField(max_length=10)
     schedule = models.JSONField(default=dict)  # {days: ["Mon", "Wed"], time: "10:00-11:30", room: "CS-101"}
     max_students = models.IntegerField(default=50)
@@ -289,7 +276,6 @@ class CourseOffering(models.Model):
     
     def __str__(self):
         return f"{self.course.course_code} - {self.section} ({self.semester})"
-
 
 class StudentCourseRegistration(models.Model):
     """Student course registrations"""
@@ -318,7 +304,6 @@ class StudentCourseRegistration(models.Model):
     def __str__(self):
         return f"{self.student} - {self.offering}"
 
-
 class Attendance(models.Model):
     """Daily attendance records"""
     STATUS_CHOICES = [
@@ -333,7 +318,7 @@ class Attendance(models.Model):
     offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='attendance_records')
     attendance_date = models.DateField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
-    marked_by_faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='marked_attendance')
+    marked_by_faculty = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='marked_attendance')
     marked_at = models.DateTimeField(default=timezone.now)
     remarks = models.TextField(blank=True)
     qr_token = models.CharField(max_length=255, blank=True)
@@ -348,7 +333,6 @@ class Attendance(models.Model):
     
     def __str__(self):
         return f"{self.student} - {self.attendance_date} - {self.status}"
-
 
 class AttendanceSummary(models.Model):
     """Attendance summaries (materialized view or regularly updated)"""
@@ -368,7 +352,6 @@ class AttendanceSummary(models.Model):
     def __str__(self):
         return f"{self.student} - {self.offering} - {self.attendance_percentage}%"
 
-
 class Grade(models.Model):
     """Grades for assignments/exams"""
     grade_id = models.AutoField(primary_key=True)
@@ -379,7 +362,7 @@ class Grade(models.Model):
     marks_obtained = models.DecimalField(max_digits=6, decimal_places=2)
     max_marks = models.DecimalField(max_digits=6, decimal_places=2)
     weightage = models.DecimalField(max_digits=5, decimal_places=2)  # percentage of final grade
-    graded_by_faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='graded_assessments')
+    graded_by_faculty = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='graded_assessments')
     graded_at = models.DateTimeField(default=timezone.now)
     is_finalized = models.BooleanField(default=False)
     
@@ -391,7 +374,6 @@ class Grade(models.Model):
     
     def __str__(self):
         return f"{self.student} - {self.assessment_name} - {self.marks_obtained}/{self.max_marks}"
-
 
 class Examination(models.Model):
     """Exams"""
@@ -417,7 +399,6 @@ class Examination(models.Model):
     def __str__(self):
         return f"{self.exam_name} - {self.offering}"
 
-
 class ExamRoom(models.Model):
     """Exam rooms"""
     room_id = models.AutoField(primary_key=True)
@@ -432,7 +413,6 @@ class ExamRoom(models.Model):
     def __str__(self):
         return f"{self.building} - {self.room_number}"
 
-
 class ExamSchedule(models.Model):
     """Exam schedules"""
     schedule_id = models.AutoField(primary_key=True)
@@ -442,14 +422,13 @@ class ExamSchedule(models.Model):
     end_time = models.TimeField()
     room = models.ForeignKey(ExamRoom, on_delete=models.CASCADE, related_name='exam_schedules')
     seating_plan = models.JSONField(default=dict)  # {seat_assignments: {student_id: seat_number}}
-    invigilator = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='invigilated_exams')
+    invigilator = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='invigilated_exams')
     
     class Meta:
         db_table = 'exam_schedules'
     
     def __str__(self):
         return f"{self.exam} - {self.exam_date} - {self.start_time}"
-
 
 class AdmitCard(models.Model):
     """Admit cards"""
@@ -471,7 +450,6 @@ class AdmitCard(models.Model):
     def __str__(self):
         return f"{self.student} - {self.exam}"
 
-
 class ZoomClass(models.Model):
     """Zoom/virtual classes"""
     PLATFORM_CHOICES = [
@@ -489,7 +467,7 @@ class ZoomClass(models.Model):
     join_link = models.TextField()
     recording_link = models.URLField(blank=True)
     is_active = models.BooleanField(default=True)
-    created_by_faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='created_zoom_classes')
+    created_by_faculty = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='created_zoom_classes')
     created_at = models.DateTimeField(default=timezone.now)
     platform = models.CharField(max_length=50, choices=PLATFORM_CHOICES, default='zoom')
     start_url = models.TextField(blank=True)  # Host start link for faculty
@@ -499,7 +477,6 @@ class ZoomClass(models.Model):
     
     def __str__(self):
         return f"{self.topic} - {self.offering} - {self.schedule_date}"
-
 
 class StudyMaterial(models.Model):
     """Study materials"""
@@ -514,7 +491,7 @@ class StudyMaterial(models.Model):
     description = models.TextField(blank=True)
     file_url = models.URLField(max_length=500)
     file_type = models.CharField(max_length=50)  # pdf, ppt, video, link
-    uploaded_by_faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='uploaded_materials')
+    uploaded_by_faculty = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='uploaded_materials')
     upload_date = models.DateTimeField(default=timezone.now)
     is_visible = models.BooleanField(default=True)
     access_level = models.CharField(max_length=50, choices=ACCESS_LEVEL_CHOICES, default='enrolled_students')
@@ -524,7 +501,6 @@ class StudyMaterial(models.Model):
     
     def __str__(self):
         return f"{self.title} - {self.offering}"
-
 
 class ResultPublication(models.Model):
     """Result publications"""
@@ -547,7 +523,6 @@ class ResultPublication(models.Model):
     def __str__(self):
         return f"Results - {self.semester} - {self.status}"
 
-
 class Transcript(models.Model):
     """Transcripts"""
     transcript_id = models.AutoField(primary_key=True)
@@ -564,7 +539,6 @@ class Transcript(models.Model):
     
     def __str__(self):
         return f"Transcript - {self.student} - {self.generated_date}"
-
 
 class TranscriptDetail(models.Model):
     """Transcript details (line items)"""
@@ -583,7 +557,6 @@ class TranscriptDetail(models.Model):
     
     def __str__(self):
         return f"{self.course_code} - {self.grade}"
-
 
 class Notice(models.Model):
     """Noticeboard/announcements"""
@@ -621,7 +594,6 @@ class Notice(models.Model):
     def __str__(self):
         return self.title
 
-
 class AdmissionInquiry(models.Model):
     """Admission inquiries (from website form)"""
     SOURCE_CHOICES = [
@@ -654,7 +626,6 @@ class AdmissionInquiry(models.Model):
     
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.program_interest}"
-
 
 class Applicant(models.Model):
     """Formal applicants"""
