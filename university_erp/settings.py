@@ -4,6 +4,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -144,10 +145,6 @@ CELERY_TIMEZONE = TIME_ZONE
 ZOOM_API_KEY = os.getenv('ZOOM_API_KEY', '')
 ZOOM_API_SECRET = os.getenv('ZOOM_API_SECRET', '')
 ZOOM_ACCOUNT_ID = os.getenv('ZOOM_ACCOUNT_ID', '')
-
-TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID', '')
-TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN', '')
-TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
 
 # QR Code Encryption
 QR_ENCRYPTION_KEY = os.getenv('QR_ENCRYPTION_KEY', 'default-qr-encryption-key-32-chars-long')

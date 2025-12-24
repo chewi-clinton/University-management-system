@@ -2,29 +2,25 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-import vonage
+import requests
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """Service for sending notifications via email and SMS"""
+    """Service for sending notifications via email and Telegram"""
     
     def __init__(self):
-        # Initialize Vonage client for SMS
-        self.vonage_client = None
-        if hasattr(settings, 'VONAGE_API_KEY') and hasattr(settings, 'VONAGE_API_SECRET'):
+        # Initialize Telegram Bot for messaging
+        self.telegram_bot = None
+        if hasattr(settings, 'TELEGRAM_BOT_TOKEN'):
             try:
-                self.vonage_client = vonage.Client(
-                    key=settings.VONAGE_API_KEY,
-                    secret=settings.VONAGE_API_SECRET
-                )
-                self.sms = vonage.Sms(self.vonage_client)
-                self.vonage_phone = settings.VONAGE_PHONE_NUMBER
-                logger.info("Vonage client initialized successfully")
+                self.telegram_token = settings.TELEGRAM_BOT_TOKEN
+                self.telegram_bot = True
+                logger.info("Telegram bot initialized successfully")
             except Exception as e:
-                logger.error(f"Error initializing Vonage client: {e}")
+                logger.error(f"Error initializing Telegram bot: {e}")
     
     def send_email(self, recipient_email, subject, message, html_message=None, template_name=None, context=None):
         """Send email notification"""
@@ -59,61 +55,48 @@ class NotificationService:
             logger.error(f"Error sending email to {recipient_email}: {e}")
             return False
     
-    def send_sms(self, recipient_phone, message):
-        """Send SMS notification"""
-        if not self.vonage_client:
-            logger.error("Vonage client not initialized")
+    def send_telegram_message(self, chat_id, message):
+        """Send message via Telegram Bot"""
+        if not self.telegram_bot:
+            logger.error("Telegram bot not configured")
             return False
         
         try:
-            # Clean phone number
-            recipient_phone = self._clean_phone_number(recipient_phone)
+            url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+            data = {
+                'chat_id': chat_id,
+                'text': message,
+                'parse_mode': 'HTML'
+            }
             
-            response = self.sms.send_message({
-                'from': self.vonage_phone,
-                'to': recipient_phone,
-                'text': message
-            })
+            response = requests.post(url, data=data, timeout=10)
             
-            if response['messages'][0]['status'] == '0':
-                logger.info(f"SMS sent successfully to {recipient_phone}")
+            if response.status_code == 200:
+                logger.info(f"Telegram message sent successfully to {chat_id}")
                 return True
             else:
-                logger.error(f"SMS failed: {response['messages'][0]['error-text']}")
+                logger.error(f"Telegram API error: {response.text}")
                 return False
-            
+                
         except Exception as e:
-            logger.error(f"Error sending SMS to {recipient_phone}: {e}")
+            logger.error(f"Error sending Telegram message: {e}")
             return False
     
-    def send_bulk_sms(self, recipient_phones, message):
-        """Send bulk SMS to multiple recipients"""
-        if not self.vonage_client:
-            logger.error("Vonage client not initialized")
-            return False
+    def send_bulk_telegram(self, chat_ids, message):
+        """Send bulk messages via Telegram"""
+        if not self.telegram_bot:
+            logger.error("Telegram bot not configured")
+            return []
         
         results = []
-        for phone in recipient_phones:
-            success = self.send_sms(phone, message)
+        for chat_id in chat_ids:
+            success = self.send_telegram_message(chat_id, message)
             results.append({
-                'phone': phone,
+                'chat_id': chat_id,
                 'success': success
             })
         
         return results
-    
-    def _clean_phone_number(self, phone):
-        """Clean and format phone number for international format"""
-        # Remove all non-digit characters
-        import re
-        digits = re.sub(r'\D', '', phone)
-        
-        # Add country code if not present (assuming US/Canada)
-        if len(digits) == 10:
-            digits = '1' + digits
-        
-        # Add plus sign
-        return '+' + digits
     
     def send_notification(self, recipient, subject, message, notification_type='email', 
                          template_name=None, context=None):
@@ -126,9 +109,10 @@ class NotificationService:
                 template_name=template_name,
                 context=context
             )
-        elif notification_type == 'sms':
-            return self.send_sms(
-                recipient_phone=recipient,
+        elif notification_type in ('sms', 'telegram'):
+            # recipient must be the telegram_chat_id
+            return self.send_telegram_message(
+                chat_id=recipient,
                 message=message
             )
         else:
@@ -161,17 +145,16 @@ def send_student_admission_confirmation(student):
             context=email_context
         )
         
-        # SMS notification
-        if student.phone:
-            sms_message = f"Welcome {student.first_name}! Your admission to {student.program.program_name} is confirmed. Reg No: {student.university_reg_number}"
-            sms_sent = notification_service.send_sms(student.phone, sms_message)
-        else:
-            sms_sent = False
+        # Telegram notification
+        telegram_sent = False
+        if getattr(student, 'telegram_chat_id', None):
+            telegram_message = f"Welcome {student.first_name}! Your admission to {student.program.program_name} is confirmed. Reg No: {student.university_reg_number}"
+            telegram_sent = notification_service.send_telegram_message(student.telegram_chat_id, telegram_message)
         
         return {
             'success': True,
             'email_sent': email_sent,
-            'sms_sent': sms_sent
+            'telegram_sent': telegram_sent  # Updated key name for clarity
         }
         
     except Exception as e:
@@ -193,16 +176,15 @@ def send_attendance_warning(student, course, attendance_percentage):
             message=message
         )
         
-        # SMS notification
-        if student.phone:
-            sms_sent = notification_service.send_sms(student.phone, message)
-        else:
-            sms_sent = False
+        # Telegram notification
+        telegram_sent = False
+        if getattr(student, 'telegram_chat_id', None):
+            telegram_sent = notification_service.send_telegram_message(student.telegram_chat_id, message)
         
         return {
             'success': True,
             'email_sent': email_sent,
-            'sms_sent': sms_sent
+            'telegram_sent': telegram_sent  # Updated key name for clarity
         }
         
     except Exception as e:
@@ -224,16 +206,15 @@ def send_result_notification(student, semester, gpa):
             message=message
         )
         
-        # SMS notification
-        if student.phone:
-            sms_sent = notification_service.send_sms(student.phone, message)
-        else:
-            sms_sent = False
+        # Telegram notification
+        telegram_sent = False
+        if getattr(student, 'telegram_chat_id', None):
+            telegram_sent = notification_service.send_telegram_message(student.telegram_chat_id, message)
         
         return {
             'success': True,
             'email_sent': email_sent,
-            'sms_sent': sms_sent
+            'telegram_sent': telegram_sent  # Updated key name for clarity
         }
         
     except Exception as e:
@@ -249,25 +230,26 @@ def send_class_reminder(students, zoom_class, reminder_time='1 hour'):
         message = f"Reminder: {zoom_class.topic} starts in {reminder_time}. Join link: {zoom_class.join_link}"
         
         email_recipients = []
-        phone_numbers = []
+        telegram_chat_ids = []
         
         for student in students:
             email_recipients.append(student.user.email)
-            if student.phone:
-                phone_numbers.append(student.phone)
+            if getattr(student, 'telegram_chat_id', None):
+                telegram_chat_ids.append(student.telegram_chat_id)
         
-        # Send bulk email
+        # Send individual emails (bulk email via Django not used to preserve HTML/templates if needed)
         for email in email_recipients:
             notification_service.send_email(email, subject, message)
         
-        # Send bulk SMS
-        if phone_numbers:
-            notification_service.send_bulk_sms(phone_numbers, message)
+        # Send bulk Telegram
+        telegram_results = []
+        if telegram_chat_ids:
+            telegram_results = notification_service.send_bulk_telegram(telegram_chat_ids, message)
         
         return {
             'success': True,
             'emails_sent': len(email_recipients),
-            'sms_sent': len(phone_numbers)
+            'telegram_sent': len([r for r in telegram_results if r['success']])
         }
         
     except Exception as e:
@@ -284,11 +266,12 @@ def send_faculty_notification(faculty, subject, message, notification_type='emai
                 subject=subject,
                 message=message
             )
-        elif notification_type == 'sms' and faculty.user.faculty_profile.phone:
-            return notification_service.send_sms(
-                recipient_phone=faculty.user.faculty_profile.phone,
-                message=message
-            )
+        elif notification_type in ('sms', 'telegram'):
+            if getattr(faculty, 'telegram_chat_id', None):
+                return notification_service.send_telegram_message(
+                    chat_id=faculty.telegram_chat_id,
+                    message=message
+                )
         return False
         
     except Exception as e:
@@ -305,6 +288,7 @@ def send_admin_notification(admin_user, subject, message, notification_type='ema
                 subject=subject,
                 message=message
             )
+        # No Telegram support for admins in current implementation
         return False
         
     except Exception as e:

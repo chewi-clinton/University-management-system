@@ -195,6 +195,7 @@ class Student(models.Model):
     current_gpa = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     emergency_contact_name = models.CharField(max_length=200, blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
+    telegram_chat_id = models.CharField(max_length=255, blank=True, null=True)
     
     class Meta:
         db_table = 'students'
@@ -218,6 +219,7 @@ class Faculty(models.Model):
     office_hours = models.TextField(blank=True)
     hire_date = models.DateField()
     qualification = models.TextField(blank=True)
+    telegram_chat_id = models.CharField(max_length=255, blank=True, null=True)
     
     class Meta:
         db_table = 'faculty'
