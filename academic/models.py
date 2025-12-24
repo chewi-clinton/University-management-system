@@ -473,7 +473,7 @@ class AdmitCard(models.Model):
 
 
 class ZoomClass(models.Model):
-    """Zoom/virtual classes""""
+    """Zoom/virtual classes"""
     PLATFORM_CHOICES = [
         ('zoom', 'Zoom'),
         ('google_meet', 'Google Meet'),
