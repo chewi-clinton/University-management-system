@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from twilio.rest import Client
+import vonage
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,18 +12,19 @@ class NotificationService:
     """Service for sending notifications via email and SMS"""
     
     def __init__(self):
-        # Initialize Twilio client for SMS
-        self.twilio_client = None
-        if hasattr(settings, 'TWILIO_ACCOUNT_SID') and hasattr(settings, 'TWILIO_AUTH_TOKEN'):
+        # Initialize Vonage client for SMS
+        self.vonage_client = None
+        if hasattr(settings, 'VONAGE_API_KEY') and hasattr(settings, 'VONAGE_API_SECRET'):
             try:
-                self.twilio_client = Client(
-                    settings.TWILIO_ACCOUNT_SID,
-                    settings.TWILIO_AUTH_TOKEN
+                self.vonage_client = vonage.Client(
+                    key=settings.VONAGE_API_KEY,
+                    secret=settings.VONAGE_API_SECRET
                 )
-                self.twilio_phone = settings.TWILIO_PHONE_NUMBER
-                logger.info("Twilio client initialized successfully")
+                self.sms = vonage.Sms(self.vonage_client)
+                self.vonage_phone = settings.VONAGE_PHONE_NUMBER
+                logger.info("Vonage client initialized successfully")
             except Exception as e:
-                logger.error(f"Error initializing Twilio client: {e}")
+                logger.error(f"Error initializing Vonage client: {e}")
     
     def send_email(self, recipient_email, subject, message, html_message=None, template_name=None, context=None):
         """Send email notification"""
@@ -60,22 +61,26 @@ class NotificationService:
     
     def send_sms(self, recipient_phone, message):
         """Send SMS notification"""
-        if not self.twilio_client:
-            logger.error("Twilio client not initialized")
+        if not self.vonage_client:
+            logger.error("Vonage client not initialized")
             return False
         
         try:
             # Clean phone number
             recipient_phone = self._clean_phone_number(recipient_phone)
             
-            message = self.twilio_client.messages.create(
-                body=message,
-                from_=self.twilio_phone,
-                to=recipient_phone
-            )
+            response = self.sms.send_message({
+                'from': self.vonage_phone,
+                'to': recipient_phone,
+                'text': message
+            })
             
-            logger.info(f"SMS sent successfully to {recipient_phone}, SID: {message.sid}")
-            return True
+            if response['messages'][0]['status'] == '0':
+                logger.info(f"SMS sent successfully to {recipient_phone}")
+                return True
+            else:
+                logger.error(f"SMS failed: {response['messages'][0]['error-text']}")
+                return False
             
         except Exception as e:
             logger.error(f"Error sending SMS to {recipient_phone}: {e}")
@@ -83,8 +88,8 @@ class NotificationService:
     
     def send_bulk_sms(self, recipient_phones, message):
         """Send bulk SMS to multiple recipients"""
-        if not self.twilio_client:
-            logger.error("Twilio client not initialized")
+        if not self.vonage_client:
+            logger.error("Vonage client not initialized")
             return False
         
         results = []
