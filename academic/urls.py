@@ -1,9 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    UserViewSet, FacultyViewSet, DepartmentViewSet, ProgramViewSet,
+    UserViewSet, FacultyMemberViewSet, DepartmentViewSet, ProgramViewSet,
     CourseViewSet, CoursePrerequisiteViewSet, AcademicSessionViewSet,
-    SemesterViewSet, StudentViewSet, FacultyViewSet, AcademicAdminViewSet,
+    SemesterViewSet, StudentViewSet, AcademicAdminViewSet,
     EnrollmentViewSet, CourseOfferingViewSet, StudentCourseRegistrationViewSet,
     AttendanceViewSet, AttendanceSummaryViewSet, GradeViewSet,
     ExaminationViewSet, ExamRoomViewSet, ExamScheduleViewSet,
@@ -18,7 +18,9 @@ router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 
 # Academic structure
-router.register(r'faculties', FacultyViewSet, basename='faculty')
+# Note: Faculties refer to academic units (e.g., Faculty of Engineering)
+# Faculty members (teachers/professors) are registered under 'faculty-members'
+router.register(r'faculties', FacultyMemberViewSet, basename='faculty')  # Keep URL as 'faculty' for backward compatibility if needed, or change to 'faculty-members'
 router.register(r'departments', DepartmentViewSet, basename='department')
 router.register(r'programs', ProgramViewSet, basename='program')
 router.register(r'courses', CourseViewSet, basename='course')
@@ -30,7 +32,7 @@ router.register(r'semesters', SemesterViewSet, basename='semester')
 
 # User profiles
 router.register(r'students', StudentViewSet, basename='student')
-router.register(r'faculty', FacultyViewSet, basename='faculty')
+router.register(r'faculty-members', FacultyMemberViewSet, basename='facultymember')  # Recommended URL
 router.register(r'admins', AcademicAdminViewSet, basename='academicadmin')
 
 # Enrollment and registration

@@ -15,9 +15,11 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
+    'django.contrib.contenttypes',  # Must be first
+    'django.contrib.auth',          # Then auth (for auth_group, auth_permission tables)
+    'academic',                      # Then your custom User model
+    
     'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -27,9 +29,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'django_filters',
     'drf_yasg',
-    
-    # Local apps
-    'academic',
 ]
 
 MIDDLEWARE = [
@@ -65,8 +64,8 @@ WSGI_APPLICATION = 'university_erp.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'university_erp_db'),
-        'USER': os.getenv('DB_USER', 'postgres'),
+        'NAME': os.getenv('DB_NAME', 'university_db'),
+        'USER': os.getenv('DB_USER', 'yxngac'),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),

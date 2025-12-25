@@ -14,7 +14,7 @@ import base64
 
 from .models import (
     User, Faculty, Department, Program, Course, CoursePrerequisite,
-    AcademicSession, Semester, Student, Faculty, AcademicAdmin,
+    AcademicSession, Semester, Student, FacultyMember, AcademicAdmin,
     Enrollment, CourseOffering, StudentCourseRegistration,
     Attendance, AttendanceSummary, Grade, Examination,
     ExamRoom, ExamSchedule, AdmitCard, ZoomClass, StudyMaterial,
@@ -22,10 +22,10 @@ from .models import (
     AdmissionInquiry, Applicant
 )
 from .serializers import (
-    UserSerializer, FacultySerializer, DepartmentSerializer, ProgramSerializer,
+    UserSerializer, FacultyMemberSerializer, DepartmentSerializer, ProgramSerializer,
     CourseSerializer, CoursePrerequisiteSerializer, AcademicSessionSerializer,
     SemesterSerializer, StudentSerializer, StudentSummarySerializer,
-    FacultySerializer, AcademicAdminSerializer, EnrollmentSerializer,
+    AcademicAdminSerializer, EnrollmentSerializer,
     CourseOfferingSerializer, StudentCourseRegistrationSerializer,
     AttendanceSerializer, AttendanceSummarySerializer, GradeSerializer,
     ExaminationSerializer, ExamRoomSerializer, ExamScheduleSerializer,
@@ -54,6 +54,27 @@ from .integrations.notifications import (
 )
 
 
+# Custom permission for viewing notices
+class CanViewNotices(IsAuthenticated):
+    """
+    Allows authenticated users to view notices.
+    Super admins and academic admins can view all notices.
+    Faculty and students can view notices (further filtered in get_queryset).
+    """
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        
+        user = request.user
+        if user.role in ['super_admin', 'academic_admin']:
+            return True
+        
+        if user.role in ['faculty', 'student']:
+            return True
+        
+        return False
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """User management viewset"""
     queryset = User.objects.all()
@@ -66,10 +87,10 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
 
-class FacultyViewSet(viewsets.ModelViewSet):
-    """Faculty management viewset"""
-    queryset = Faculty.objects.select_related('user', 'department').all()
-    serializer_class = FacultySerializer
+class FacultyMemberViewSet(viewsets.ModelViewSet):
+    """Faculty member (professor/teacher) management viewset"""
+    queryset = FacultyMember.objects.select_related('user', 'department').all()
+    serializer_class = FacultyMemberSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['department', 'designation']
@@ -188,17 +209,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         attendance_summaries = AttendanceSummary.objects.filter(student=student)
         serializer = AttendanceSummarySerializer(attendance_summaries, many=True)
         return Response(serializer.data)
-
-
-class FacultyViewSet(viewsets.ModelViewSet):
-    """Faculty management viewset"""
-    queryset = Faculty.objects.select_related('user', 'department').all()
-    serializer_class = FacultySerializer
-    permission_classes = [IsAuthenticated, IsAcademicAdmin]
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['department', 'designation']
-    search_fields = ['employee_id', 'user__email', 'user__first_name', 'user__last_name']
-    ordering_fields = ['hire_date', 'user__first_name']
 
 
 class AcademicAdminViewSet(viewsets.ModelViewSet):

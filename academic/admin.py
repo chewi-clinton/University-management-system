@@ -124,10 +124,10 @@ class AttendanceSummaryAdmin(admin.ModelAdmin):
 
 @admin.register(Grade)
 class GradeAdmin(admin.ModelAdmin):
-    list_display = ['grade_id', 'student', 'offering', 'assessment_name', 'marks_obtained', 'max_marks', 'grade']
-    list_filter = ['assessment_type', 'grade', 'is_finalized']
-    search_fields = ['student__university_reg_number', 'student__first_name', 'offering__course__course_code']
-
+    list_display = ['grade_id', 'student', 'offering', 'assessment_name', 'marks_obtained', 'max_marks', 'weightage', 'is_finalized']
+    list_filter = ['assessment_type', 'is_finalized', 'graded_at']
+    search_fields = ['student__university_reg_number', 'student__first_name', 'offering__course__course_code', 'assessment_name']
+    readonly_fields = ['graded_at']
 @admin.register(Examination)
 class ExaminationAdmin(admin.ModelAdmin):
     list_display = ['exam_id', 'exam_name', 'offering', 'exam_type', 'total_marks', 'weightage']

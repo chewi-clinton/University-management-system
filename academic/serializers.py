@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import (
     User, Faculty, Department, Program, Course, CoursePrerequisite,
-    AcademicSession, Semester, Student, Faculty, AcademicAdmin,
+    AcademicSession, Semester, Student, FacultyMember, AcademicAdmin,
     Enrollment, CourseOffering, StudentCourseRegistration,
     Attendance, AttendanceSummary, Grade, Examination,
     ExamRoom, ExamSchedule, AdmitCard, ZoomClass, StudyMaterial,
@@ -40,14 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class FacultySerializer(serializers.ModelSerializer):
-    """Faculty serializer"""
-    user = UserSerializer(read_only=True)
-    user_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role='faculty'),
-        source='user',
-        write_only=True
-    )
-    
+    """Academic Faculty (organization) serializer"""
     class Meta:
         model = Faculty
         fields = '__all__'
@@ -67,6 +60,30 @@ class DepartmentSerializer(serializers.ModelSerializer):
         if obj.head:
             return f"{obj.head.user.first_name} {obj.head.user.last_name}"
         return None
+
+
+class FacultyMemberSerializer(serializers.ModelSerializer):
+    """Faculty Member (professor/teacher) serializer"""
+    user = UserSerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role='faculty'),
+        source='user',
+        write_only=True
+    )
+    department = DepartmentSerializer(read_only=True)
+    department_id = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        source='department',
+        write_only=True
+    )
+    full_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = FacultyMember
+        fields = '__all__'
+    
+    def get_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
 
 
 class ProgramSerializer(serializers.ModelSerializer):
@@ -175,30 +192,6 @@ class StudentSummarySerializer(serializers.ModelSerializer):
         return f"{obj.first_name} {obj.last_name}"
 
 
-class FacultySerializer(serializers.ModelSerializer):
-    """Faculty serializer with nested relationships"""
-    user = UserSerializer(read_only=True)
-    user_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(role='faculty'),
-        source='user',
-        write_only=True
-    )
-    department = DepartmentSerializer(read_only=True)
-    department_id = serializers.PrimaryKeyRelatedField(
-        queryset=Department.objects.all(),
-        source='department',
-        write_only=True
-    )
-    full_name = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Faculty
-        fields = '__all__'
-    
-    def get_full_name(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}"
-
-
 class AcademicAdminSerializer(serializers.ModelSerializer):
     """Academic admin serializer"""
     user = UserSerializer(read_only=True)
@@ -265,9 +258,9 @@ class CourseOfferingSerializer(serializers.ModelSerializer):
         source='semester',
         write_only=True
     )
-    faculty = FacultySerializer(read_only=True)
+    faculty = FacultyMemberSerializer(read_only=True)
     faculty_id = serializers.PrimaryKeyRelatedField(
-        queryset=Faculty.objects.all(),
+        queryset=FacultyMember.objects.all(),
         source='faculty',
         write_only=True
     )
@@ -322,9 +315,9 @@ class AttendanceSerializer(serializers.ModelSerializer):
         source='offering',
         write_only=True
     )
-    marked_by_faculty = FacultySerializer(read_only=True)
+    marked_by_faculty = FacultyMemberSerializer(read_only=True)
     marked_by_faculty_id = serializers.PrimaryKeyRelatedField(
-        queryset=Faculty.objects.all(),
+        queryset=FacultyMember.objects.all(),
         source='marked_by_faculty',
         write_only=True
     )
@@ -358,9 +351,9 @@ class GradeSerializer(serializers.ModelSerializer):
         source='offering',
         write_only=True
     )
-    graded_by_faculty = FacultySerializer(read_only=True)
+    graded_by_faculty = FacultyMemberSerializer(read_only=True)
     graded_by_faculty_id = serializers.PrimaryKeyRelatedField(
-        queryset=Faculty.objects.all(),
+        queryset=FacultyMember.objects.all(),
         source='graded_by_faculty',
         write_only=True
     )
@@ -405,9 +398,9 @@ class ExamScheduleSerializer(serializers.ModelSerializer):
         source='room',
         write_only=True
     )
-    invigilator = FacultySerializer(read_only=True)
+    invigilator = FacultyMemberSerializer(read_only=True)
     invigilator_id = serializers.PrimaryKeyRelatedField(
-        queryset=Faculty.objects.all(),
+        queryset=FacultyMember.objects.all(),
         source='invigilator',
         write_only=True
     )
@@ -445,9 +438,9 @@ class ZoomClassSerializer(serializers.ModelSerializer):
         source='offering',
         write_only=True
     )
-    created_by_faculty = FacultySerializer(read_only=True)
+    created_by_faculty = FacultyMemberSerializer(read_only=True)
     created_by_faculty_id = serializers.PrimaryKeyRelatedField(
-        queryset=Faculty.objects.all(),
+        queryset=FacultyMember.objects.all(),
         source='created_by_faculty',
         write_only=True
     )
@@ -465,9 +458,9 @@ class StudyMaterialSerializer(serializers.ModelSerializer):
         source='offering',
         write_only=True
     )
-    uploaded_by_faculty = FacultySerializer(read_only=True)
+    uploaded_by_faculty = FacultyMemberSerializer(read_only=True)
     uploaded_by_faculty_id = serializers.PrimaryKeyRelatedField(
-        queryset=Faculty.objects.all(),
+        queryset=FacultyMember.objects.all(),
         source='uploaded_by_faculty',
         write_only=True
     )
