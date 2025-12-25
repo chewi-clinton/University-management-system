@@ -3,18 +3,18 @@ import StatCard from '../components/StatCard'
 
 export default function Dashboard(){
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-white overflow-x-hidden min-h-screen pb-20">
+    <div className="bg-background-light dark:bg-background-dark font-display text-primary dark:text-white overflow-x-hidden min-h-screen pb-20">
       {/* Top App Bar */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-[#1a2632] shadow-sm">
+      <div className="sticky top-0 z-50 bg-surface-light dark:bg-surface-dark shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
-          <button className="text-[#111418] dark:text-white flex items-center justify-center rounded-full p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+          <button className="text-primary dark:text-white flex items-center justify-center rounded-full p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
             <span className="material-symbols-outlined text-2xl">menu</span>
           </button>
-          <h1 className="text-lg font-bold tracking-tight text-[#111418] dark:text-white">Dashboard</h1>
+          <h1 className="text-lg font-bold tracking-tight text-primary dark:text-white">Dashboard</h1>
           <div className="flex items-center gap-3">
-            <button className="relative text-[#111418] dark:text-white p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+            <button className="relative text-primary dark:text-white p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
               <span className="material-symbols-outlined text-2xl">notifications</span>
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border border-white dark:border-[#1a2632]"></span>
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border border-white dark:border-surface-dark"></span>
             </button>
             <div className="h-9 w-9 overflow-hidden rounded-full bg-gray-200 border border-gray-100 dark:border-gray-700">
               <img alt="Profile Avatar" className="h-full w-full object-cover" data-alt="User profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCI2xi31WeX4K8M1Ih3onZqczy-Gr6TRLqEgCeOnHFK55HozF-JI-L1VFajwHVw313oOrcOkIv8c_NMViGMQ9EROpqWdFZPlkRoZ73U4yoQMgrmaGMbHQAKycrotRjT0ELtnQUX3yVZDCP9Rm0WWs1qoFY6OTVGG5fOaVAHdj2IjzNOqwUsfM5gGPjQvB0O61d86xA4UexQSntggEo1jLj88hpV2NEUueM-wchS7rgDvS6fQg3DqIRU7KPLEu2eYIoC9YgMQjpd4_Q"/>
@@ -26,7 +26,7 @@ export default function Dashboard(){
       {/* Greeting Section */}
       <div className="px-4 pt-6 pb-2">
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Oct 24, 2023</p>
-        <h2 className="text-2xl font-bold tracking-tight text-[#111418] dark:text-white mt-1">Good Morning, Sarah</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-primary dark:text-white mt-1">Good Morning, Sarah</h2>
         <div className="mt-4 flex items-center justify-between rounded-xl bg-primary p-4 text-white shadow-lg shadow-blue-500/20">
           <div>
             <p className="text-sm font-medium text-blue-100">Current Term</p>
@@ -40,7 +40,7 @@ export default function Dashboard(){
 
       {/* Quick Stats Carousel */}
         <div className="mt-6 pl-4">
-        <h3 className="mb-3 text-base font-bold text-[#111418] dark:text-white">Overview</h3>
+        <h3 className="mb-3 text-base font-bold text-primary dark:text-white">Overview</h3>
         <div className="flex gap-4 overflow-x-auto pb-4 pr-4 scrollbar-hide">
           <StatCard icon="attach_money" label="Total Tuition" value="$4.2M" note="+12% vs last sem" className="min-w-[160px]" />
           <StatCard icon="pending_actions" label="Pending Inv." value="124" note="Action needed" className="min-w-[160px]" />
@@ -50,9 +50,9 @@ export default function Dashboard(){
 
       {/* Financial Chart Section */}
       <div className="px-4 mt-2">
-        <div className="rounded-xl bg-white dark:bg-[#1a2632] p-5 shadow-sm border border-gray-100 dark:border-gray-800">
+        <div className="rounded-xl bg-surface-light dark:bg-surface-dark p-5 shadow-sm border border-muted dark:border-border-dark">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold text-[#111418] dark:text-white">Revenue vs Expenses</h3>
+            <h3 className="text-primary dark:text-text-main-dark text-base font-bold">Revenue vs Expenses</h3>
             <button className="text-xs font-medium text-primary hover:text-primary/80">View Report</button>
           </div>
           <div className="flex items-end justify-between h-32 gap-2 mt-2">
@@ -94,40 +94,40 @@ export default function Dashboard(){
 
       {/* Recent Invoices List */}
       <div className="px-4 mt-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-bold text-[#111418] dark:text-white">Recent Invoices</h3>
+          <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold text-primary dark:text-white">Recent Invoices</h3>
           <button className="text-sm font-medium text-primary hover:text-primary/80">See All</button>
         </div>
         <div className="flex flex-col gap-3">
           {/* Item 1 */}
           <div className="flex items-center justify-between rounded-xl bg-white dark:bg-[#1a2632] p-4 shadow-sm border border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">
                 <span className="material-symbols-outlined text-xl">description</span>
               </div>
               <div>
-                <p className="text-sm font-bold text-[#111418] dark:text-white">Liam Thompson</p>
+                  <p className="text-sm font-bold text-primary dark:text-white">Liam Thompson</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">ID: #INV-2094 • Engineering</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-[#111418] dark:text-white">$12,450</p>
+                <p className="text-sm font-bold text-primary dark:text-white">$12,450</p>
               <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20">Paid</span>
             </div>
           </div>
           {/* Item 2 */}
           <div className="flex items-center justify-between rounded-xl bg-white dark:bg-[#1a2632] p-4 shadow-sm border border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg_gray-700 text-gray-500 dark:text-gray-300">
                 <span className="material-symbols-outlined text-xl">description</span>
               </div>
               <div>
-                <p className="text-sm font-bold text-[#111418] dark:text-white">Olivia Martinez</p>
+                  <p className="text-sm font-bold text-primary dark:text-white">Olivia Martinez</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">ID: #INV-2095 • Arts</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-[#111418] dark:text-white">$8,200</p>
+                <p className="text-sm font-bold text-primary dark:text-white">$8,200</p>
               <span className="inline-flex items-center rounded-full bg-yellow-50 dark:bg-yellow-900/20 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20">Pending</span>
             </div>
           </div>

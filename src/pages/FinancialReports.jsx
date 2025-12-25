@@ -5,7 +5,7 @@ import BottomAction from '../components/BottomAction'
 
 export default function FinancialReports(){
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-text-main-light dark:text-text-main-dark overflow-x-hidden transition-colors duration-200">
+    <div className="bg-background-light dark:bg-background-dark font-display text-primary dark:text-white overflow-x-hidden transition-colors duration-200">
       <div className="relative flex h-auto min-h-screen w-full flex-col group/design-root">
         <TopBar
           title="Financial Reports"
@@ -19,19 +19,19 @@ export default function FinancialReports(){
         />
 
         {/* Filters Section */}
-        <section className="bg-surface-light dark:bg-surface-dark pb-4 rounded-b-xl shadow-sm mb-4">
+        <section className="bg-surface dark:bg-surface-dark pb-4 rounded-b-xl shadow-sm mb-4">
           {/* Chips */}
           <div className="flex gap-3 px-4 py-3 overflow-x-auto no-scrollbar">
             <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-primary pl-4 pr-4 transition-colors">
               <p className="text-white text-sm font-medium leading-normal">All</p>
             </button>
-            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f0f2f4] dark:bg-gray-700 pl-4 pr-4 transition-colors hover:bg-gray-200 dark:hover:bg-gray-600">
-              <p className="text-text-main-light dark:text-text-main-dark text-sm font-medium leading-normal">Income</p>
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark pl-4 pr-4 transition-colors hover:bg-hover-light dark:hover:bg-hover-dark">
+              <p className="text-primary dark:text-text-main-dark text-sm font-medium leading-normal">Income</p>
             </button>
-            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f0f2f4] dark:bg-gray-700 pl-4 pr-4 transition-colors hover:bg-gray-200 dark:hover:bg-gray-600">
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark pl-4 pr-4 transition-colors hover:bg-hover-light dark:hover:bg-hover-dark">
               <p className="text-text-main-light dark:text-text-main-dark text-sm font-medium leading-normal">Expenses</p>
             </button>
-            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f0f2f4] dark:bg-gray-700 pl-4 pr-4 transition-colors hover:bg-gray-200 dark:hover:bg-gray-600">
+            <button className="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-surface-light dark:bg-surface-dark pl-4 pr-4 transition-colors hover:bg-hover-light dark:hover:bg-hover-dark">
               <p className="text-text-main-light dark:text-text-main-dark text-sm font-medium leading-normal">Payroll</p>
             </button>
           </div>
@@ -39,15 +39,15 @@ export default function FinancialReports(){
           {/* Date Range Inputs */}
           <div className="flex flex-wrap items-end gap-4 px-4 pb-3">
             <label className="flex flex-col min-w-0 flex-1">
-              <p className="text-text-main-light dark:text-text-sub-dark text-sm font-medium leading-normal pb-1.5">Start Date</p>
+                <p className="text-primary dark:text-text-sub-dark text-sm font-medium leading-normal pb-1.5">Start Date</p>
               <div className="relative">
-                <input className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-main-light dark:text-text-main-dark focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-border-light dark:border-border-dark bg-white dark:bg-[#101922] h-12 p-[15px] text-base font-normal leading-normal appearance-none" type="date" defaultValue="2023-10-01" />
+                <input className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-primary dark:text-text-main-dark focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-muted dark:border-border-dark bg-surface dark:bg-surface-dark h-12 p-[15px] text-base font-normal leading-normal appearance-none" type="date" defaultValue="2023-10-01" />
               </div>
             </label>
             <label className="flex flex-col min-w-0 flex-1">
-              <p className="text-text-main-light dark:text-text-sub-dark text-sm font-medium leading-normal pb-1.5">End Date</p>
+                <p className="text-primary dark:text-text-sub-dark text-sm font-medium leading-normal pb-1.5">End Date</p>
               <div className="relative">
-                <input className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-main-light dark:text-text-main-dark focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-border-light dark:border-border-dark bg-white dark:bg-[#101922] h-12 p-[15px] text-base font-normal leading-normal appearance-none" type="date" defaultValue="2023-10-31" />
+                <input className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-primary dark:text-text-main-dark focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-muted dark:border-border-dark bg-surface dark:bg-surface-dark h-12 p-[15px] text-base font-normal leading-normal appearance-none" type="date" defaultValue="2023-10-31" />
               </div>
             </label>
           </div>
@@ -55,9 +55,9 @@ export default function FinancialReports(){
           {/* Department Select */}
           <div className="px-4">
             <label className="flex flex-col w-full">
-              <p className="text-text-main-light dark:text-text-sub-dark text-sm font-medium leading-normal pb-1.5">Department</p>
+              <p className="text-primary dark:text-text-sub-dark text-sm font-medium leading-normal pb-1.5">Department</p>
               <div className="relative">
-                <select defaultValue="all" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-text-main-light dark:text-text-main-dark focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-border-light dark:border-border-dark bg-white dark:bg-[#101922] h-12 px-[15px] text-base font-normal leading-normal appearance-none pr-10">
+                <select defaultValue="all" className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-primary dark:text-text-main-dark focus:outline-0 focus:ring-2 focus:ring-primary/20 border border-muted dark:border-border-dark bg-surface dark:bg-surface-dark h-12 px-[15px] text-base font-normal leading-normal appearance-none pr-10">
                   <option value="all">All Departments</option>
                   <option value="eng">Engineering</option>
                   <option value="arts">Arts &amp; Humanities</option>
