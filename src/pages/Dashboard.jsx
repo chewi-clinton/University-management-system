@@ -1,6 +1,7 @@
 import React from 'react'
 import StatCard from '../components/StatCard'
 
+
 export default function Dashboard(){
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-primary dark:text-white overflow-x-hidden min-h-screen pb-20">

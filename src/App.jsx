@@ -9,22 +9,28 @@ import FinancialReports from './pages/FinancialReports'
 import Notifications from './pages/Notifications'
 import BusRegistration from './pages/BusRegistration'
 import LeaveManagement from './pages/LeaveManagement'
+import LoginPage from './pages/LoginPage'
+import StudentDashboard from './pages/StudentDashboard'
+import FinanceDashboard from './pages/FinanceDashboard'
 
-export default function App(){
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/finance-dashboard" element={<FinanceDashboard />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="tuition" element={<TuitionManagement />} />
-          <Route path="bus" element={<BusRegistration />} />
+          <Route path="bus-registration" element={<BusRegistration />} />
           <Route path="payroll" element={<PayrollProcessing />} />
-          <Route path="payments" element={<PaymentHistory />} />
-          <Route path="reports" element={<FinancialReports />} />
+          <Route path="payment-history" element={<PaymentHistory />} />
+          <Route path="financial-reports" element={<FinancialReports />} />
           <Route path="notifications" element={<Notifications />} />
-          <Route path="leave" element={<LeaveManagement />} />
+          <Route path="leave-management" element={<LeaveManagement />} />
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
