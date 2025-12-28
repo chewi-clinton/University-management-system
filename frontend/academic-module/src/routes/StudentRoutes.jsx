@@ -9,7 +9,7 @@ const CourseDetails = lazy(() =>
 );
 const Attendance = lazy(() => import("../modules/student/pages/Attendance"));
 const Grades = lazy(() => import("../modules/student/pages/Grades"));
-const Exams = lazy(() => import("../modules/student/pages/Exams"));
+const Exams = lazy(() => import("../modules/student/pages/Exams.jsx"));
 const VirtualClasses = lazy(() =>
   import("../modules/student/pages/VirtualClasses")
 );
