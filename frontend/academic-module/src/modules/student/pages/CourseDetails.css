@@ -1,0 +1,208 @@
+.details-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.course-hero {
+  position: relative;
+  height: 280px;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  background: linear-gradient(
+    135deg,
+    var(--accent-500) 0%,
+    var(--primary-600) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-10);
+  color: white;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: url("https://www.transparenttextures.com/patterns/cubes.png");
+  opacity: 0.1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.hero-content h1 {
+  color: white;
+  font-size: var(--text-4xl);
+  margin: var(--space-2) 0;
+}
+
+.back-btn {
+  color: rgba(255, 255, 255, 0.8) !important;
+  margin-left: -12px;
+  margin-bottom: var(--space-4);
+}
+
+.hero-meta {
+  display: flex;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  opacity: 0.9;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Layout Grid */
+.details-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-8);
+}
+
+@media (max-width: 1024px) {
+  .details-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tab-content {
+  margin-top: var(--space-6);
+  min-height: 400px;
+}
+
+/* Materials */
+.file-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  background: white;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--gray-100);
+  transition: all 0.2s;
+}
+
+.file-row:hover {
+  border-color: var(--primary-500);
+  transform: translateX(4px);
+}
+
+.file-info {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.file-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-icon.pdf {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.file-icon.ppt {
+  background: #ffedd5;
+  color: #f97316;
+}
+.file-icon.doc {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+
+.file-name {
+  font-weight: var(--font-semibold);
+  margin: 0;
+}
+.file-meta {
+  font-size: var(--text-xs);
+  color: var(--gray-400);
+}
+
+/* Grades */
+.grade-summary-card {
+  background: var(--accent-500);
+  color: white;
+  padding: var(--space-8);
+  border-radius: var(--radius-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.current-grade .label {
+  opacity: 0.7;
+  font-size: var(--text-sm);
+}
+.current-grade .value {
+  color: white;
+  margin-top: 4px;
+}
+
+.assessment-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.assessment-table th {
+  text-align: left;
+  padding: var(--space-4);
+  color: var(--gray-500);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--gray-100);
+}
+
+.assessment-table td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--gray-50);
+}
+
+/* Sidebar */
+.instructor-card {
+  position: sticky;
+  top: var(--space-6);
+}
+
+.instructor-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+}
+
+.avatar-placeholder {
+  width: 56px;
+  height: 56px;
+  background: var(--primary-500);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-bold);
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.full-width {
+  width: 100%;
+  justify-content: flex-start !important;
+}
