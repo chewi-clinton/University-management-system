@@ -1,0 +1,198 @@
+/* Main App Styles */
+@import './variables.css';
+@import './global.css';
+@import './animations.css';
+
+/* Import component styles */
+@import '../styles/components/sidebar.css';
+@import '../styles/components/header.css';
+@import '../styles/components/container.css';
+@import '../styles/components/card.css';
+@import '../styles/components/button.css';
+@import '../styles/components/input.css';
+@import '../styles/components/avatar.css';
+@import '../styles/components/badge.css';
+@import '../styles/components/progress-bar.css';
+@import '../styles/components/spinner.css';
+@import '../styles/components/nav-link.css';
+@import '../styles/components/tabs.css';
+@import '../styles/components/toast.css';
+@import '../styles/components/stat-card.css';
+
+/* Import page styles */
+@import '../styles/pages/dashboard.css';
+@import '../styles/pages/courses.css';
+
+/* App Layout */
+.app {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--neutral-50);
+}
+
+.app__sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: var(--sidebar-width);
+  background-color: var(--accent-500);
+  z-index: var(--z-fixed);
+  transition: width var(--duration-base) var(--ease-smooth);
+}
+
+.app__sidebar--collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.app__main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--duration-base) var(--ease-smooth);
+}
+
+.app__main--expanded {
+  margin-left: var(--sidebar-collapsed);
+}
+
+.app__content {
+  padding-top: var(--header-height);
+  min-height: 100vh;
+}
+
+.app__page {
+  padding: var(--space-6);
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+/* Header */
+.header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: var(--sidebar-width);
+  height: var(--header-height);
+  background-color: white;
+  border-bottom: 1px solid var(--neutral-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  z-index: var(--z-sticky);
+  transition: left var(--duration-base) var(--ease-smooth);
+}
+
+.header--expanded {
+  left: var(--sidebar-collapsed);
+}
+
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.header__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  color: var(--neutral-600);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.header__toggle:hover {
+  background-color: var(--neutral-100);
+  color: var(--primary-500);
+}
+
+.header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Content Container */
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+.container--narrow {
+  max-width: 800px;
+}
+
+.container--wide {
+  max-width: 1600px;
+}
+
+/* Loading States */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--neutral-200);
+  border-top-color: var(--primary-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-300) 50%, var(--neutral-200) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+  border-radius: var(--radius-md);
+}
+
+.skeleton-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* Responsive breakpoints */
+@media (min-width: 640px) {
+  .sm\:block { display: block; }
+  .sm\:hidden { display: none; }
+}
+
+@media (min-width: 768px) {
+  .md\:block { display: block; }
+  .md\:hidden { display: none; }
+  .md\:flex { display: flex; }
+  .md\:grid { display: grid; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:block { display: block; }
+  .lg\:hidden { display: none; }
+  .lg\:flex { display: flex; }
+}
+
+/* Dark mode */
+[data-theme='dark'] .app {
+  background-color: var(--neutral-900);
+}
+
+[data-theme='dark'] .header {
+  background-color: var(--neutral-800);
+  border-bottom-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .header__toggle:hover {
+  background-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .skeleton {
+  background: linear-gradient(90deg, var(--neutral-700) 25%, var(--neutral-600) 50%, var(--neutral-700) 75%);
+}

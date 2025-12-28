@@ -1,0 +1,47 @@
+/* Attendance Page Styles */
+.attendance {
+  padding: var(--space-6) 0;
+}
+
+.attendance__header {
+  margin-bottom: var(--space-6);
+}
+
+.attendance__title {
+  font-size: var(--font-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-2);
+}
+
+.attendance__subtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-600);
+}
+
+.attendance__card {
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attendance__content {
+  text-align: center;
+  color: var(--neutral-500);
+}
+
+.attendance__content h2 {
+  font-size: var(--font-xl);
+  margin-bottom: var(--space-2);
+  color: var(--neutral-700);
+}
+
+/* Dark mode */
+[data-theme='dark'] .attendance__title {
+  color: var(--neutral-100);
+}
+
+[data-theme='dark'] .attendance__subtitle {
+  color: var(--neutral-400);
+}

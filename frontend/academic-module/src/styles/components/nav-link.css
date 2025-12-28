@@ -1,0 +1,104 @@
+/* NavLink Styles */
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--neutral-700);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  border-radius: var(--radius-md);
+}
+
+.nav-link:hover {
+  color: var(--primary-500);
+  background-color: var(--neutral-50);
+}
+
+.nav-link--active {
+  color: var(--primary-500);
+  background-color: rgba(232, 125, 38, 0.1);
+}
+
+/* Variant styles */
+.nav-link--pill {
+  border-radius: var(--radius-full);
+}
+
+.nav-link--underline {
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+}
+
+.nav-link--underline:hover {
+  background: none;
+  border-bottom-color: var(--neutral-300);
+}
+
+.nav-link--underline.nav-link--active {
+  background: none;
+  border-bottom-color: var(--primary-500);
+}
+
+/* Icon */
+.nav-link__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-link__text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Active indicator */
+.nav-link__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(232, 125, 38, 0.1);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.nav-link--pill .nav-link__indicator {
+  border: 2px solid var(--primary-500);
+}
+
+.nav-link--underline .nav-link__indicator {
+  border-bottom: 2px solid var(--primary-500);
+  border-radius: 0;
+}
+
+/* Dark mode */
+[data-theme='dark'] .nav-link {
+  color: var(--neutral-300);
+}
+
+[data-theme='dark'] .nav-link:hover {
+  color: var(--primary-400);
+  background-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .nav-link--active {
+  color: var(--primary-400);
+  background-color: rgba(232, 125, 38, 0.2);
+}
+
+[data-theme='dark'] .nav-link--underline:hover {
+  background: none;
+  border-bottom-color: var(--neutral-600);
+}

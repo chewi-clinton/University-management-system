@@ -1,0 +1,407 @@
+/* Dashboard Page Styles */
+.dashboard {
+  padding: var(--space-6) 0;
+}
+
+.dashboard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+  padding: var(--space-4);
+  background-color: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard__title {
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-2);
+}
+
+.dashboard__subtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-600);
+}
+
+.dashboard__date {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-500);
+}
+
+/* Stats Grid */
+.dashboard__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.dashboard__stat-card {
+  min-height: 140px;
+}
+
+/* Dashboard Grid */
+.dashboard__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+/* Schedule Card */
+.dashboard__schedule {
+  grid-row: span 2;
+}
+
+.schedule__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.schedule__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--neutral-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--neutral-200);
+}
+
+.schedule__time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--primary-500);
+  font-weight: var(--font-weight-medium);
+  min-width: 120px;
+}
+
+.schedule__details {
+  flex: 1;
+}
+
+.schedule__course {
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-1);
+}
+
+.schedule__meta {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+.schedule__action {
+  flex-shrink: 0;
+}
+
+/* Actions Grid */
+.actions__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.action__btn {
+  justify-content: flex-start;
+  padding: var(--space-4);
+  min-height: 80px;
+  text-align: left;
+}
+
+/* Deadlines Card */
+.deadlines__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.deadline__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background-color: var(--neutral-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-200);
+}
+
+.deadline__icon {
+  color: var(--warning-500);
+}
+
+.deadline__content {
+  flex: 1;
+}
+
+.deadline__title {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-1);
+}
+
+.deadline__course {
+  font-size: var(--font-xs);
+  color: var(--neutral-600);
+}
+
+.deadline__date {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--primary-500);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* Notices Card */
+.notices__view-all {
+  color: var(--primary-500);
+}
+
+.notices__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.notice__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background-color: var(--neutral-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-200);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.notice__item:hover {
+  background-color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.notice__item--read {
+  opacity: 0.7;
+}
+
+.notice__icon {
+  color: var(--primary-500);
+  margin-top: 2px;
+}
+
+.notice__content {
+  flex: 1;
+}
+
+.notice__title {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-1);
+}
+
+.notice__preview {
+  font-size: var(--font-xs);
+  color: var(--neutral-600);
+  line-height: 1.4;
+}
+
+.notice__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--font-xs);
+  color: var(--neutral-500);
+}
+
+.notice__by {
+  font-weight: var(--font-weight-medium);
+}
+
+.notice__badge {
+  flex-shrink: 0;
+}
+
+/* Performance Card */
+.performance__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.performance__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+.legend__color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legend__color--primary {
+  background-color: var(--primary-500);
+}
+
+.legend__color--success {
+  background-color: var(--success-500);
+}
+
+.performance__chart {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--neutral-50);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--neutral-300);
+}
+
+.chart__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--neutral-400);
+  text-align: center;
+}
+
+.chart__placeholder svg {
+  color: var(--neutral-300);
+}
+
+.chart__placeholder p {
+  font-size: var(--font-sm);
+  color: var(--neutral-500);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .dashboard__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  
+  .dashboard__stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .actions__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .schedule__item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .schedule__time {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: var(--space-4) 0;
+  }
+  
+  .dashboard__header {
+    padding: var(--space-3);
+  }
+  
+  .dashboard__title {
+    font-size: var(--font-xl);
+  }
+}
+
+/* Dark mode */
+[data-theme='dark'] .dashboard__header {
+  background-color: var(--neutral-800);
+  border-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .dashboard__title {
+  color: var(--neutral-100);
+}
+
+[data-theme='dark'] .dashboard__subtitle {
+  color: var(--neutral-400);
+}
+
+[data-theme='dark'] .schedule__item {
+  background-color: var(--neutral-800);
+  border-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .schedule__course {
+  color: var(--neutral-100);
+}
+
+[data-theme='dark'] .schedule__meta {
+  color: var(--neutral-400);
+}
+
+[data-theme='dark'] .deadline__item {
+  background-color: var(--neutral-800);
+  border-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .deadline__title {
+  color: var(--neutral-100);
+}
+
+[data-theme='dark'] .deadline__course {
+  color: var(--neutral-400);
+}
+
+[data-theme='dark'] .notice__item {
+  background-color: var(--neutral-800);
+  border-color: var(--neutral-700);
+}
+
+[data-theme='dark'] .notice__title {
+  color: var(--neutral-100);
+}
+
+[data-theme='dark'] .notice__preview {
+  color: var(--neutral-400);
+}
+
+[data-theme='dark'] .performance__chart {
+  background-color: var(--neutral-800);
+  border-color: var(--neutral-700);
+}

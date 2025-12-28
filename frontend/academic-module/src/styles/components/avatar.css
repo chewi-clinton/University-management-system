@@ -1,0 +1,131 @@
+/* Avatar Styles */
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--neutral-200);
+  color: var(--neutral-700);
+}
+
+.avatar--circle {
+  border-radius: 50%;
+}
+
+.avatar--square {
+  border-radius: 0;
+}
+
+.avatar--rounded {
+  border-radius: var(--radius-md);
+}
+
+/* Size variants */
+.avatar--xs {
+  width: 24px;
+  height: 24px;
+  font-size: var(--font-xs);
+}
+
+.avatar--sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--font-sm);
+}
+
+.avatar--md {
+  width: 40px;
+  height: 40px;
+  font-size: var(--font-base);
+}
+
+.avatar--lg {
+  width: 56px;
+  height: 56px;
+  font-size: var(--font-lg);
+}
+
+.avatar--xl {
+  width: 72px;
+  height: 72px;
+  font-size: var(--font-xl);
+}
+
+/* Image */
+.avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Initials */
+.avatar__initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--primary-500);
+  color: white;
+}
+
+/* Fallback */
+.avatar__fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Status indicator */
+.avatar__status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.avatar__status-indicator {
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+.avatar--xs .avatar__status-indicator,
+.avatar--sm .avatar__status-indicator {
+  width: 8px;
+  height: 8px;
+}
+
+.avatar__status-indicator--online {
+  background-color: var(--success-500);
+}
+
+.avatar__status-indicator--offline {
+  background-color: var(--neutral-400);
+}
+
+.avatar__status-indicator--away {
+  background-color: var(--warning-500);
+}
+
+.avatar__status-indicator--busy {
+  background-color: var(--error-500);
+}
+
+/* Dark mode */
+[data-theme='dark'] .avatar {
+  background-color: var(--neutral-700);
+  color: var(--neutral-300);
+}
+
+[data-theme='dark'] .avatar__initials {
+  background-color: var(--primary-400);
+}
+
+[data-theme='dark'] .avatar__status-indicator {
+  border-color: var(--neutral-800);
+}

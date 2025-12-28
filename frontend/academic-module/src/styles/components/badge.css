@@ -1,0 +1,129 @@
+/* Badge Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  vertical-align: middle;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+/* Size variants */
+.badge--xs {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-xs);
+  min-height: 16px;
+}
+
+.badge--sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-xs);
+  min-height: 20px;
+}
+
+.badge--md {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-sm);
+  min-height: 24px;
+}
+
+.badge--lg {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--font-base);
+  min-height: 28px;
+}
+
+/* Variant styles */
+.badge--primary {
+  background-color: var(--primary-500);
+  color: white;
+}
+
+.badge--secondary {
+  background-color: var(--neutral-600);
+  color: white;
+}
+
+.badge--success {
+  background-color: var(--success-500);
+  color: white;
+}
+
+.badge--warning {
+  background-color: var(--warning-500);
+  color: white;
+}
+
+.badge--error {
+  background-color: var(--error-500);
+  color: white;
+}
+
+.badge--info {
+  background-color: var(--info-500);
+  color: white;
+}
+
+.badge--neutral {
+  background-color: var(--neutral-200);
+  color: var(--neutral-800);
+}
+
+/* Dot variant */
+.badge--dot {
+  padding: 0;
+  background-color: transparent;
+  color: inherit;
+}
+
+.badge__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+.badge__content {
+  margin-left: var(--space-2);
+}
+
+/* Outline variants */
+.badge--outline-primary {
+  background-color: transparent;
+  color: var(--primary-500);
+  border: 1px solid var(--primary-500);
+}
+
+.badge--outline-secondary {
+  background-color: transparent;
+  color: var(--neutral-600);
+  border: 1px solid var(--neutral-600);
+}
+
+.badge--outline-success {
+  background-color: transparent;
+  color: var(--success-500);
+  border: 1px solid var(--success-500);
+}
+
+.badge--outline-warning {
+  background-color: transparent;
+  color: var(--warning-500);
+  border: 1px solid var(--warning-500);
+}
+
+.badge--outline-error {
+  background-color: transparent;
+  color: var(--error-500);
+  border: 1px solid var(--error-500);
+}
+
+/* Dark mode */
+[data-theme='dark'] .badge--neutral {
+  background-color: var(--neutral-700);
+  color: var(--neutral-200);
+}
