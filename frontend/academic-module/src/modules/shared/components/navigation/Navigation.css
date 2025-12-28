@@ -1,0 +1,21 @@
+.tabs-list {
+  display: flex;
+  position: relative;
+  border-bottom: 1px solid var(--gray-200);
+}
+.tab-item {
+  padding: var(--space-4) var(--space-6);
+  font-weight: var(--font-medium);
+  color: var(--gray-500);
+  transition: color 0.3s;
+}
+.tab-item.active {
+  color: var(--primary-500);
+}
+.tab-underline {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--primary-500);
+  transition: all 0.3s var(--ease-smooth);
+}
