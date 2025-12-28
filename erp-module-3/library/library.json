@@ -1,0 +1,10 @@
+{
+  "books": [
+    {
+      "isbn": "978-0001",
+      "title": "Software Engineering",
+      "status": "Issued",
+      "fine": 0
+    }
+  ]
+}

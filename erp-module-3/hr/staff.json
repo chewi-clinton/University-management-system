@@ -1,0 +1,10 @@
+[
+  {
+    "id": 1,
+    "name": "Jane Smith",
+    "role": "Administrator",
+    "attendance": "95%",
+    "leave": "None",
+    "performance": "Excellent"
+  }
+]

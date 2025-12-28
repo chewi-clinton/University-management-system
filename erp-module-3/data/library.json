@@ -1,0 +1,16 @@
+{
+  "books": [
+    {
+      "isbn": "978-123456",
+      "title": "Software Engineering",
+      "status": "Issued",
+      "fine": 0
+    }
+  ],
+  "cards": [
+    {
+      "student": "student1",
+      "cardId": "LIB-1001"
+    }
+  ]
+}

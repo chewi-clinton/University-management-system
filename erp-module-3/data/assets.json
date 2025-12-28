@@ -1,0 +1,9 @@
+[
+  {
+    "assetId": "BUS-01",
+    "type": "Bus",
+    "route": "Campus – City Center",
+    "status": "Operational",
+    "coordinator": "BusCoordinator"
+  }
+]

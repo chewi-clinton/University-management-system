@@ -1,0 +1,10 @@
+[
+  {
+    "channel": "Email",
+    "message": "Your tuition fee is due soon."
+  },
+  {
+    "channel": "SMS",
+    "message": "Attendance below required threshold."
+  }
+]

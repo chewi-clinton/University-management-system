@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HR Module</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<h2>Human Resource Management</h2>
+
+<div class="card">
+  <input id="name" placeholder="Staff Name">
+  <input id="role" placeholder="Role">
+  <button onclick="addStaff()">Add Staff</button>
+</div>
+
+<div class="card">
+  <table border="1" width="100%">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Attendance</th>
+        <th>Leave</th>
+        <th>Performance</th>
+      </tr>
+    </thead>
+    <tbody id="staffTable"></tbody>
+  </table>
+</div>
+
+<script src="../js/hr.js"></script>
+</body>
+</html>
