@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Sidebar from './Sidebar.jsx';
-import Header from './Header.jsx';
-import { useAuth } from '../../../context/AuthContext.jsx';
+import React, { useState } from "react";
+import { Outlet } from "react-router-dom";
+import { motion } from "framer-motion";
+import StudentSidebar from "./StudentSidebar.jsx";
+import FacultySidebar from "./FacultySidebar.jsx";
+import Header from "./Header.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
 
 const AppShell = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -13,20 +14,29 @@ const AppShell = () => {
     setSidebarCollapsed(!isSidebarCollapsed);
   };
 
+  // Render appropriate sidebar based on user role
+  const renderSidebar = () => {
+    if (user?.role === "faculty") {
+      return <FacultySidebar isCollapsed={isSidebarCollapsed} />;
+    }
+    return <StudentSidebar isCollapsed={isSidebarCollapsed} />;
+  };
+
   return (
     <>
-      <Sidebar 
-        isCollapsed={isSidebarCollapsed} 
-        user={user}
-      />
-      
-      <div className={`app__main ${isSidebarCollapsed ? 'app__main--expanded' : ''}`}>
-        <Header 
+      {renderSidebar()}
+
+      <div
+        className={`app__main ${
+          isSidebarCollapsed ? "app__main--expanded" : ""
+        }`}
+      >
+        <Header
           onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={isSidebarCollapsed}
           user={user}
         />
-        
+
         <main className="app__content">
           <motion.div
             initial={{ opacity: 0 }}
