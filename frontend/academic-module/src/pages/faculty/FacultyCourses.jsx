@@ -15,7 +15,7 @@ import Select from "../../components/shared/ui/Select";
 import Badge from "../../components/shared/ui/Badge";
 import ProgressBar from "../../components/shared/ui/ProgressBar";
 import Button from "../../components/shared/ui/Button";
-import "../../../styles/pages/FacultyCourses.css";
+import "../../styles/pages/FacultyCourses.css";
 
 // Mock data
 const mockFacultyCourses = [

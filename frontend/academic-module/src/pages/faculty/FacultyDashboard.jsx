@@ -1,385 +1,521 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { 
-  BookOpen, 
-  Users, 
-  Clock, 
-  Calendar, 
-  CheckSquare, 
-  Award, 
-  FileText,
-  Video,
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  BookOpen,
+  Users,
+  CalendarCheck,
+  AlertCircle,
+  Clock,
+  Bell,
+  ChevronRight,
   TrendingUp,
-  ArrowRight
-} from 'lucide-react';
-import StatCard from '../../components/shared/ui/StatCard';
-import Card from '../../components/shared/ui/Card';
-import Button from '../../components/shared/ui/Button';
-import Badge from '../../components/shared/ui/Badge';
-import PerformanceWidget from '../../components/ui/PerformanceWidget';
-import { useAuth } from '../../context/AuthContext';
-import '../../../styles/pages/FacultyDashboard.css';
-
-// Mock data
-const mockFacultyCourses = [
-  { 
-    id: 1, 
-    code: 'CS301', 
-    name: 'Data Structures', 
-    section: 'A', 
-    enrolled: 45, 
-    capacity: 50, 
-    avgGrade: 78, 
-    avgAttendance: 85, 
-    schedule: 'Mon, Wed, Fri 9:00-10:30 AM', 
-    room: 'A-101',
-    color: '#3b82f6',
-    semester: 'Fall 2024',
-    credits: 3,
-    pendingGrades: 12
-  },
-  { 
-    id: 2, 
-    code: 'CS201', 
-    name: 'Programming Fundamentals', 
-    section: 'B', 
-    enrolled: 38, 
-    capacity: 40, 
-    avgGrade: 82, 
-    avgAttendance: 90, 
-    schedule: 'Tue, Thu 2:00-3:30 PM', 
-    room: 'B-205',
-    color: '#8b5cf6',
-    semester: 'Fall 2024',
-    credits: 4,
-    pendingGrades: 5
-  },
-  { 
-    id: 3, 
-    code: 'CS401', 
-    name: 'Advanced Algorithms', 
-    section: 'A', 
-    enrolled: 32, 
-    capacity: 35, 
-    avgGrade: 75, 
-    avgAttendance: 88, 
-    schedule: 'Mon, Wed 11:00-12:30 PM', 
-    room: 'A-203',
-    color: '#10b981',
-    semester: 'Fall 2024',
-    credits: 3,
-    pendingGrades: 8
-  }
-];
+  FileText,
+  Award,
+  Video,
+  ClipboardCheck,
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext.jsx";
+import Container from "../../components/shared/layout/Container.jsx";
+import Card from "../../components/shared/layout/Card.jsx";
+import StatCard from "../../components/shared/ui/StatCard.jsx";
+import Button from "../../components/shared/ui/Button.jsx";
+import Badge from "../../components/shared/ui/Badge.jsx";
 
 const FacultyDashboard = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    courses: 0,
-    students: 0,
-    pending: 0,
-    today: 0
-  });
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Calculate stats
-    const totalCourses = mockFacultyCourses.length;
-    const totalStudents = mockFacultyCourses.reduce((sum, course) => sum + course.enrolled, 0);
-    const totalPending = mockFacultyCourses.reduce((sum, course) => sum + course.pendingGrades, 0);
-    
-    // Mock today's classes (would be calculated based on current day)
-    const todayClasses = mockFacultyCourses.filter(course => 
-      course.schedule.includes(new Date().toLocaleDateString('en-US', { weekday: 'short' }))
-    ).length;
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    setStats({
-      courses: totalCourses,
-      students: totalStudents,
-      pending: totalPending,
-      today: todayClasses
-    });
+        // Mock data
+        setDashboardData({
+          stats: {
+            totalCourses: 5,
+            totalStudents: 142,
+            attendanceRate: 87.5,
+            pendingGrading: 23,
+          },
+          todaySchedule: [
+            {
+              time: "09:00 AM - 10:30 AM",
+              courseName: "Data Structures & Algorithms",
+              courseCode: "CS301",
+              room: "Room 204",
+              studentCount: 45,
+            },
+            {
+              time: "11:00 AM - 12:30 PM",
+              courseName: "Database Management Systems",
+              courseCode: "CS402",
+              room: "Lab 3",
+              studentCount: 38,
+            },
+            {
+              time: "02:00 PM - 03:30 PM",
+              courseName: "Software Engineering",
+              courseCode: "CS501",
+              room: "Room 305",
+              studentCount: 32,
+            },
+          ],
+          upcomingDeadlines: [
+            {
+              id: 1,
+              title: "Midterm Exam Grading",
+              course: "Data Structures & Algorithms",
+              date: "2024-12-30",
+              priority: "urgent",
+            },
+            {
+              id: 2,
+              title: "Assignment 3 Review",
+              course: "Database Management Systems",
+              date: "2024-12-31",
+              priority: "important",
+            },
+            {
+              id: 3,
+              title: "Project Proposal Evaluation",
+              course: "Software Engineering",
+              date: "2025-01-02",
+              priority: "normal",
+            },
+          ],
+          recentNotices: [
+            {
+              id: 1,
+              title: "Faculty Meeting - End of Semester Review",
+              content:
+                "All faculty members are requested to attend the end of semester review meeting scheduled for next week.",
+              postedBy: "Dean Office",
+              postedDate: "2024-12-28",
+              priority: "important",
+              isRead: false,
+            },
+            {
+              id: 2,
+              title: "Exam Schedule Released",
+              content:
+                "The final examination schedule for Fall 2024 has been published. Please review and confirm your exam slots.",
+              postedBy: "Academic Affairs",
+              postedDate: "2024-12-27",
+              priority: "urgent",
+              isRead: false,
+            },
+            {
+              id: 3,
+              title: "New LMS Features Available",
+              content:
+                "Check out the new automated grading features now available in the Learning Management System.",
+              postedBy: "IT Department",
+              postedDate: "2024-12-26",
+              priority: "normal",
+              isRead: true,
+            },
+          ],
+          recentActivities: [
+            {
+              id: 1,
+              type: "submission",
+              student: "John Smith",
+              course: "CS301",
+              action: "submitted Assignment 5",
+              time: "2 hours ago",
+            },
+            {
+              id: 2,
+              type: "attendance",
+              student: "Emma Wilson",
+              course: "CS402",
+              action: "marked present",
+              time: "4 hours ago",
+            },
+            {
+              id: 3,
+              type: "query",
+              student: "Michael Brown",
+              course: "CS501",
+              action: "posted a question in forum",
+              time: "5 hours ago",
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Update time every minute
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
-    return () => clearInterval(timer);
+    fetchDashboardData();
   }, []);
 
-  const getUpcomingClasses = () => {
-    const now = currentTime;
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    return mockFacultyCourses
-      .map(course => {
-        const timeMatch = course.schedule.match(/(\d+):(\d+)/);
-        if (timeMatch) {
-          const classHour = parseInt(timeMatch[1]);
-          const classMinute = parseInt(timeMatch[2]);
-          const isPM = course.schedule.includes('PM');
-          const classTime = classHour + (isPM && classHour !== 12 ? 12 : 0);
-          
-          return {
-            ...course,
-            classTime,
-            classMinute,
-            isUpcoming: classTime > currentHour || (classTime === currentHour && classMinute > currentMinute)
-          };
-        }
-        return { ...course, isUpcoming: false };
-      })
-      .filter(course => course.isUpcoming)
-      .slice(0, 3);
+  const containerVariants = {
+    initial: { opacity: 0 },
+    animate: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
   };
 
-  const upcomingClasses = getUpcomingClasses();
+  const itemVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: { type: "spring", stiffness: 100 },
+    },
+  };
 
-  const statCards = [
-    {
-      title: 'Active Courses',
-      value: stats.courses,
-      icon: BookOpen,
-      color: 'blue',
-      trend: 12
-    },
-    {
-      title: 'Total Students',
-      value: stats.students,
-      icon: Users,
-      color: 'purple',
-      trend: 8
-    },
-    {
-      title: 'Pending Grades',
-      value: stats.pending,
-      icon: Award,
-      color: 'orange',
-      trend: -5
-    },
-    {
-      title: 'Classes Today',
-      value: stats.today,
-      icon: Calendar,
-      color: 'green',
-      trend: 0
-    }
-  ];
+  if (loading) {
+    return (
+      <Container>
+        <div className="dashboard__skeleton">
+          <div className="skeleton dashboard__skeleton-header" />
+          <div className="skeleton-grid">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton stat-card__skeleton" />
+            ))}
+          </div>
+        </div>
+      </Container>
+    );
+  }
 
-  const quickActions = [
-    {
-      title: 'Mark Attendance',
-      icon: CheckSquare,
-      path: '/faculty/attendance-marking',
-      color: 'blue'
-    },
-    {
-      title: 'Enter Grades',
-      icon: Award,
-      path: '/faculty/grading',
-      color: 'green'
-    },
-    {
-      title: 'Upload Material',
-      icon: FileText,
-      path: '/faculty/courses',
-      color: 'purple'
-    },
-    {
-      title: 'Schedule Class',
-      icon: Video,
-      path: '/faculty/virtual-class-setup',
-      color: 'orange'
-    }
-  ];
-
-  const pendingTasks = [
-    {
-      course: 'CS301 - Data Structures',
-      task: 'Grade Assignment 3',
-      count: 12,
-      due: '2 days',
-      priority: 'high'
-    },
-    {
-      course: 'CS201 - Programming Fundamentals',
-      task: 'Grade Assignment 2',
-      count: 5,
-      due: '5 days',
-      priority: 'medium'
-    }
-  ];
-
-  const coursePerformance = mockFacultyCourses.map(course => ({
-    title: course.code,
-    value: `${course.avgGrade}%`,
-    change: course.avgGrade > 75 ? 3 : -2,
-    chartData: [
-      { value: course.avgGrade - 10 },
-      { value: course.avgGrade - 5 },
-      { value: course.avgGrade },
-      { value: course.avgGrade + 3 },
-      { value: course.avgGrade + 1 }
-    ],
-    color: course.color
-  }));
+  const {
+    stats,
+    todaySchedule,
+    upcomingDeadlines,
+    recentNotices,
+    recentActivities,
+  } = dashboardData || {};
 
   return (
-    <div className="faculty-dashboard">
-      <div className="faculty-dashboard__header">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1>Welcome back, {user?.name || 'Professor'}</h1>
-          <p>Here's what's happening with your courses today.</p>
+    <Container>
+      <motion.div
+        className="dashboard"
+        variants={containerVariants}
+        initial="initial"
+        animate="animate"
+      >
+        {/* Welcome Header */}
+        <motion.div className="dashboard__header" variants={itemVariants}>
+          <div>
+            <h1 className="dashboard__title">
+              Welcome back, Prof. {user?.name?.split(" ")[0]}! 👋
+            </h1>
+            <p className="dashboard__subtitle">
+              Here's an overview of your teaching activities today.
+            </p>
+          </div>
+          <div className="dashboard__date">
+            <Clock size={16} />
+            <span>
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+          </div>
         </motion.div>
-      </div>
 
-      <div className="faculty-dashboard__stats">
-        {statCards.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1, duration: 0.5 }}
-          >
-            <StatCard {...stat} />
+        {/* Stats Cards */}
+        <motion.div className="dashboard__stats" variants={itemVariants}>
+          <StatCard
+            title="Total Courses"
+            value={stats?.totalCourses || 0}
+            icon={BookOpen}
+            color="primary"
+            trend={{ value: 1, direction: "up" }}
+            className="dashboard__stat-card"
+          />
+          <StatCard
+            title="Total Students"
+            value={stats?.totalStudents || 0}
+            icon={Users}
+            color="success"
+            trend={{ value: 12, direction: "up" }}
+            className="dashboard__stat-card"
+          />
+          <StatCard
+            title="Attendance Rate"
+            value={stats?.attendanceRate || 0}
+            icon={CalendarCheck}
+            color="info"
+            suffix="%"
+            decimal={1}
+            trend={{ value: 3.2, direction: "up" }}
+            className="dashboard__stat-card"
+          />
+          <StatCard
+            title="Pending Grading"
+            value={stats?.pendingGrading || 0}
+            icon={Award}
+            color="warning"
+            trend={{ value: 5, direction: "down" }}
+            className="dashboard__stat-card"
+          />
+        </motion.div>
+
+        <div className="dashboard__grid">
+          {/* Today's Schedule */}
+          <motion.div variants={itemVariants}>
+            <Card className="dashboard__schedule">
+              <Card.Header>
+                <h2 className="card__title">Today's Classes</h2>
+                <Badge variant="primary" size="sm">
+                  {todaySchedule?.length || 0} classes
+                </Badge>
+              </Card.Header>
+              <Card.Body>
+                <div className="schedule__list">
+                  {todaySchedule?.map((schedule, index) => (
+                    <div key={index} className="schedule__item">
+                      <div className="schedule__time">
+                        <Clock size={16} />
+                        <span>{schedule.time}</span>
+                      </div>
+                      <div className="schedule__details">
+                        <h3 className="schedule__course">
+                          {schedule.courseName}
+                          <Badge variant="neutral" size="xs" className="ml-2">
+                            {schedule.courseCode}
+                          </Badge>
+                        </h3>
+                        <p className="schedule__meta">
+                          {schedule.room} • {schedule.studentCount} students
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="schedule__action"
+                      >
+                        Start Class
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card.Body>
+            </Card>
           </motion.div>
-        ))}
-      </div>
 
-      <div className="faculty-dashboard__grid">
-        <div className="faculty-dashboard__section">
-          <Card>
-            <div className="faculty-dashboard__section-header">
-              <h3>Today's Schedule</h3>
-              <span className="faculty-dashboard__time">
-                {currentTime.toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit',
-                  hour12: true 
-                })}
-              </span>
-            </div>
-            <div className="faculty-dashboard__schedule">
-              {upcomingClasses.length > 0 ? (
-                upcomingClasses.map((course, index) => (
-                  <motion.div
-                    key={course.id}
-                    className={`schedule-item ${course.isUpcoming ? 'schedule-item--upcoming' : ''}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <div className="schedule-item__time">
-                      {course.schedule.match(/\d+:\d+ [AP]M/)?.[0] || 'TBD'}
-                    </div>
-                    <div className="schedule-item__details">
-                      <h4>{course.code} - {course.name}</h4>
-                      <p>Room: {course.room} • {course.enrolled} students</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => navigate('/faculty/attendance-marking')}
-                      className="schedule-item__action"
-                    >
-                      Take Attendance
-                    </Button>
-                  </motion.div>
-                ))
-              ) : (
-                <p className="faculty-dashboard__no-classes">No classes scheduled for today</p>
-              )}
-            </div>
-          </Card>
-
-          <Card>
-            <div className="faculty-dashboard__section-header">
-              <h3>Quick Actions</h3>
-            </div>
-            <div className="faculty-dashboard__actions">
-              {quickActions.map((action, index) => (
-                <motion.div
-                  key={action.title}
-                  className="action-card"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate(action.path)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div className={`action-card__icon action-card__icon--${action.color}`}>
-                    <action.icon size={24} />
-                  </div>
-                  <h4>{action.title}</h4>
-                  <ArrowRight size={16} />
-                </motion.div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="faculty-dashboard__section">
-          <Card>
-            <div className="faculty-dashboard__section-header">
-              <h3>Pending Tasks</h3>
-              <Badge variant="warning">{stats.pending} pending</Badge>
-            </div>
-            <div className="faculty-dashboard__pending">
-              {pendingTasks.map((task, index) => (
-                <motion.div
-                  key={task.course}
-                  className="pending-item"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div className="pending-item__info">
-                    <h4>{task.course}</h4>
-                    <p>{task.task} ({task.count} students)</p>
-                    <span className={`pending-item__due ${task.priority === 'high' ? 'pending-item__due--urgent' : ''}`}>
-                      Due: {task.due}
-                    </span>
-                  </div>
+          {/* Quick Actions */}
+          <motion.div variants={itemVariants}>
+            <Card className="dashboard__actions">
+              <Card.Header>
+                <h2 className="card__title">Quick Actions</h2>
+              </Card.Header>
+              <Card.Body>
+                <div className="actions__grid">
                   <Button
-                    size="sm"
-                    variant={task.priority === 'high' ? 'primary' : 'secondary'}
-                    onClick={() => navigate('/faculty/grading')}
+                    variant="elevated"
+                    className="action__btn"
+                    leftIcon={<ClipboardCheck size={20} />}
                   >
-                    Submit Grades
+                    Mark Attendance
                   </Button>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
+                  <Button
+                    variant="elevated"
+                    className="action__btn"
+                    leftIcon={<Award size={20} />}
+                  >
+                    Grade Submissions
+                  </Button>
+                  <Button
+                    variant="elevated"
+                    className="action__btn"
+                    leftIcon={<Video size={20} />}
+                  >
+                    Start Virtual Class
+                  </Button>
+                  <Button
+                    variant="elevated"
+                    className="action__btn"
+                    leftIcon={<FileText size={20} />}
+                  >
+                    Create Assignment
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          </motion.div>
 
-          <Card>
-            <div className="faculty-dashboard__section-header">
-              <h3>Course Performance</h3>
-            </div>
-            <div className="faculty-dashboard__performance">
-              {coursePerformance.map((performance, index) => (
-                <motion.div
-                  key={performance.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+          {/* Upcoming Deadlines */}
+          <motion.div variants={itemVariants}>
+            <Card className="dashboard__deadlines">
+              <Card.Header>
+                <h2 className="card__title">Upcoming Tasks</h2>
+                <Badge variant="error" size="sm">
+                  {upcomingDeadlines?.length || 0} pending
+                </Badge>
+              </Card.Header>
+              <Card.Body>
+                <div className="deadlines__list">
+                  {upcomingDeadlines?.map((deadline) => (
+                    <div key={deadline.id} className="deadline__item">
+                      <div className="deadline__icon">
+                        <AlertCircle size={16} />
+                      </div>
+                      <div className="deadline__content">
+                        <h3 className="deadline__title">{deadline.title}</h3>
+                        <p className="deadline__course">{deadline.course}</p>
+                      </div>
+                      <div className="deadline__date">
+                        {new Date(deadline.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card.Body>
+            </Card>
+          </motion.div>
+
+          {/* Recent Activity */}
+          <motion.div variants={itemVariants}>
+            <Card className="dashboard__activity">
+              <Card.Header>
+                <h2 className="card__title">Recent Activity</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="activity__view-all"
                 >
-                  <PerformanceWidget {...performance} />
-                </motion.div>
-              ))}
-            </div>
-          </Card>
+                  View All
+                  <ChevronRight size={16} />
+                </Button>
+              </Card.Header>
+              <Card.Body>
+                <div className="activity__list">
+                  {recentActivities?.map((activity) => (
+                    <div key={activity.id} className="activity__item">
+                      <div className="activity__icon">
+                        {activity.type === "submission" && (
+                          <FileText size={16} />
+                        )}
+                        {activity.type === "attendance" && (
+                          <CalendarCheck size={16} />
+                        )}
+                        {activity.type === "query" && <Bell size={16} />}
+                      </div>
+                      <div className="activity__content">
+                        <p className="activity__text">
+                          <strong>{activity.student}</strong> {activity.action}
+                        </p>
+                        <div className="activity__meta">
+                          <span className="activity__course">
+                            {activity.course}
+                          </span>
+                          <span className="activity__time">
+                            {activity.time}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card.Body>
+            </Card>
+          </motion.div>
         </div>
-      </div>
-    </div>
+
+        {/* Recent Notices */}
+        <motion.div variants={itemVariants}>
+          <Card className="dashboard__notices">
+            <Card.Header>
+              <h2 className="card__title">Important Notices</h2>
+              <Button variant="ghost" size="sm" className="notices__view-all">
+                View All
+                <ChevronRight size={16} />
+              </Button>
+            </Card.Header>
+            <Card.Body>
+              <div className="notices__list notices__list--horizontal">
+                {recentNotices?.map((notice) => (
+                  <div
+                    key={notice.id}
+                    className={`notice__item ${
+                      notice.isRead ? "notice__item--read" : ""
+                    }`}
+                  >
+                    <div className="notice__icon">
+                      <Bell size={16} />
+                    </div>
+                    <div className="notice__content">
+                      <h3 className="notice__title">{notice.title}</h3>
+                      <p className="notice__preview">
+                        {notice.content.substring(0, 120)}...
+                      </p>
+                      <div className="notice__meta">
+                        <span className="notice__by">{notice.postedBy}</span>
+                        <span className="notice__time">
+                          {new Date(notice.postedDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="notice__badge">
+                      <Badge
+                        variant={
+                          notice.priority === "urgent"
+                            ? "error"
+                            : notice.priority === "important"
+                            ? "warning"
+                            : "neutral"
+                        }
+                        size="xs"
+                      >
+                        {notice.priority}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card.Body>
+          </Card>
+        </motion.div>
+
+        {/* Performance Overview */}
+        <motion.div variants={itemVariants}>
+          <Card className="dashboard__performance">
+            <Card.Header>
+              <h2 className="card__title">Course Performance Overview</h2>
+              <div className="performance__legend">
+                <div className="legend__item">
+                  <div className="legend__color legend__color--primary" />
+                  <span>Average Score</span>
+                </div>
+                <div className="legend__item">
+                  <div className="legend__color legend__color--success" />
+                  <span>Attendance Rate</span>
+                </div>
+              </div>
+            </Card.Header>
+            <Card.Body>
+              <div className="performance__chart">
+                <div className="chart__placeholder">
+                  <TrendingUp size={48} />
+                  <p>Course performance analytics will be displayed here</p>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        </motion.div>
+      </motion.div>
+    </Container>
   );
 };
 
