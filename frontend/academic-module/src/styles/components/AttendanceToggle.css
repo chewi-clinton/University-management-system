@@ -1,0 +1,73 @@
+.attendance-toggle {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+
+.attendance-toggle__button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.attendance-toggle__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.attendance-toggle__button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+}
+
+.attendance-toggle__button--present {
+  --active-color: var(--success-500);
+  --active-bg: rgba(34, 197, 94, 0.1);
+}
+
+.attendance-toggle__button--absent {
+  --active-color: var(--error-500);
+  --active-bg: rgba(239, 68, 68, 0.1);
+}
+
+.attendance-toggle__button--late {
+  --active-color: var(--warning-500);
+  --active-bg: rgba(245, 158, 11, 0.1);
+}
+
+.attendance-toggle__button--excused {
+  --active-color: var(--info-500);
+  --active-bg: rgba(59, 130, 246, 0.1);
+}
+
+.attendance-toggle__button--active {
+  background: var(--active-bg);
+  color: var(--active-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.attendance-toggle__button--active:hover {
+  background: var(--active-bg);
+}
+
+.attendance-toggle__button svg {
+  transition: color var(--duration-fast);
+}
+
+.attendance-toggle__button--active svg {
+  color: var(--active-color);
+}

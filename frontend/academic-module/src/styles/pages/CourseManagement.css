@@ -1,0 +1,55 @@
+.course-management {
+  padding: var(--space-6);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.course-management__hero {
+  background: linear-gradient(135deg, var(--primary-500), var(--accent-500));
+  color: white;
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.course-management__hero h1 {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+
+.course-management__hero p {
+  font-size: var(--font-lg);
+  opacity: 0.9;
+  margin-bottom: 0.5rem;
+}
+
+.course-management__tabs {
+  margin-bottom: var(--space-6);
+}
+
+.course-management__content {
+  min-height: 500px;
+}
+
+.students-tab,
+.attendance-tab,
+.grades-tab,
+.materials-tab,
+.virtual-tab,
+.syllabus-tab {
+  padding: var(--space-4);
+}
+
+.students-tab h2,
+.attendance-tab h2,
+.grades-tab h2,
+.materials-tab h2,
+.virtual-tab h2,
+.syllabus-tab h2 {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}

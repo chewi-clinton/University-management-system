@@ -1,0 +1,64 @@
+.performance-widget {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  transition: all var(--duration-normal);
+}
+
+.performance-widget:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-200);
+}
+
+.performance-widget__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.performance-widget__title {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.performance-widget__value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.performance-widget__value > span:first-child {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.performance-widget__trend {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.performance-widget__trend--up {
+  color: var(--success-500);
+}
+
+.performance-widget__trend--down {
+  color: var(--error-500);
+}
+
+.performance-widget__chart {
+  margin-top: var(--space-2);
+}
+
+.performance-widget__chart .recharts-line-curve {
+  transition: all var(--duration-normal);
+}

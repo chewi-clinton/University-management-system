@@ -1,0 +1,53 @@
+.notfound {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-secondary);
+}
+
+.notfound__card {
+  max-width: 400px;
+  text-align: center;
+  padding: 3rem;
+}
+
+.notfound__icon {
+  color: var(--warning-500);
+  margin-bottom: 1.5rem;
+}
+
+.notfound__card h1 {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.notfound__card p {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.notfound__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .notfound {
+    padding: var(--space-2);
+  }
+  
+  .notfound__card {
+    padding: 2rem;
+  }
+  
+  .notfound__actions {
+    flex-direction: column;
+  }
+}

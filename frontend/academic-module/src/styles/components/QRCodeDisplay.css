@@ -1,0 +1,59 @@
+.qr-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.qr-display__container {
+  text-align: center;
+  max-width: 400px;
+}
+
+.qr-display__code {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+
+.qr-display__progress-ring {
+  position: relative;
+  display: inline-block;
+}
+
+.qr-display__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.qr-display__code-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+}
+
+.qr-display__timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}
+
+.qr-display__timer svg {
+  color: var(--primary-500);
+}
+
+.qr-display__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}

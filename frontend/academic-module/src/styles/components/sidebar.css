@@ -137,7 +137,7 @@
 }
 
 .sidebar__nav-link--active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 50%;
@@ -206,11 +206,11 @@
     transform: translateX(-100%);
     transition: transform var(--duration-base) var(--ease-smooth);
   }
-  
+
   .sidebar--mobile-open {
     transform: translateX(0);
   }
-  
+
   .sidebar__overlay {
     position: fixed;
     top: 0;
@@ -220,4 +220,78 @@
     background-color: rgba(0, 0, 0, 0.5);
     z-index: var(--z-modal);
   }
+}
+.sidebar__footer {
+  margin-top: auto;
+  padding: var(--space-4);
+  border-top: 1px solid var(--neutral-200);
+}
+
+/* Logout Button */
+.sidebar__logout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--error-500);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.sidebar__logout:hover {
+  background: var(--error-50);
+  color: var(--error-600);
+}
+
+.sidebar__logout:active {
+  transform: scale(0.98);
+}
+
+.sidebar__logout-icon {
+  flex-shrink: 0;
+}
+
+.sidebar__logout-text {
+  flex: 1;
+  text-align: left;
+}
+
+/* When sidebar is collapsed */
+.sidebar--collapsed .sidebar__logout {
+  justify-content: center;
+  padding: var(--space-3);
+}
+
+.sidebar--collapsed .sidebar__logout-text {
+  display: none;
+}
+
+/* Header Profile Menu - Danger Item */
+.header__profile-item--danger {
+  color: var(--error-500) !important;
+}
+
+.header__profile-item--danger:hover {
+  background: var(--error-50) !important;
+  color: var(--error-600) !important;
+}
+
+/* Profile Divider */
+.header__profile-divider {
+  height: 1px;
+  background: var(--neutral-200);
+  margin: var(--space-2) 0;
+}
+
+/* App Shell Container */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--neutral-50);
 }

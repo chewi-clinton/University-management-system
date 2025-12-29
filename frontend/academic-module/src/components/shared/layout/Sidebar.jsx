@@ -1,6 +1,5 @@
-// src/components/shared/layout/Sidebar.jsx
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -14,102 +13,124 @@ import {
   User,
   LogOut,
   ChevronLeft,
-  GraduationCap, // Use GraduationCap instead of University
+  GraduationCap,
+  Users,
+  ClipboardCheck,
+  BarChart3,
 } from "lucide-react";
 import Avatar from "../ui/Avatar.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
 
-const Sidebar = ({ isCollapsed = false, user }) => {
-  const navItems = [
-    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/courses", icon: BookOpen, label: "Courses" },
-    { path: "/attendance", icon: CalendarCheck, label: "Attendance" },
-    { path: "/grades", icon: Award, label: "Grades" },
-    { path: "/exams", icon: FileText, label: "Exams" },
-    { path: "/virtual-classes", icon: Video, label: "Virtual Classes" },
-    { path: "/materials", icon: FolderOpen, label: "Materials" },
-    { path: "/notices", icon: Bell, label: "Notices" },
-    { path: "/profile", icon: User, label: "Profile" },
+const Sidebar = ({ isCollapsed = false }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Student navigation items
+  const studentNavItems = [
+    { path: "/student/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/student/courses", icon: BookOpen, label: "Courses" },
+    { path: "/student/attendance", icon: CalendarCheck, label: "Attendance" },
+    { path: "/student/grades", icon: Award, label: "Grades" },
+    { path: "/student/exams", icon: FileText, label: "Exams" },
+    { path: "/student/virtual-classes", icon: Video, label: "Virtual Classes" },
+    { path: "/student/materials", icon: FolderOpen, label: "Materials" },
+    { path: "/student/notices", icon: Bell, label: "Notices" },
+    { path: "/student/profile", icon: User, label: "Profile" },
   ];
+
+  // Faculty navigation items
+  const facultyNavItems = [
+    { path: "/faculty/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/faculty/courses", icon: BookOpen, label: "My Courses" },
+    {
+      path: "/faculty/attendance-marking",
+      icon: ClipboardCheck,
+      label: "Attendance",
+    },
+    { path: "/faculty/grading", icon: Award, label: "Grading" },
+    { path: "/faculty/exam-management", icon: FileText, label: "Exams" },
+    { path: "/faculty/student-directory", icon: Users, label: "Students" },
+    {
+      path: "/faculty/virtual-class-setup",
+      icon: Video,
+      label: "Virtual Classes",
+    },
+    { path: "/faculty/reports", icon: BarChart3, label: "Reports" },
+  ];
+
+  // Get navigation items based on user role
+  const navItems = user?.role === "student" ? studentNavItems : facultyNavItems;
 
   const sidebarVariants = {
     expanded: { width: "280px" },
     collapsed: { width: "80px" },
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <motion.aside
-      className={`app__sidebar ${isCollapsed ? "app__sidebar--collapsed" : ""}`}
+      className={`sidebar ${isCollapsed ? "sidebar--collapsed" : ""}`}
       variants={sidebarVariants}
-      initial={isCollapsed ? "collapsed" : "expanded"}
       animate={isCollapsed ? "collapsed" : "expanded"}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      transition={{ duration: 0.3 }}
     >
       {/* Logo/Brand */}
-      <div className="sidebar__brand">
+      <div className="sidebar__header">
         <div className="sidebar__logo">
-          <GraduationCap size={32} />
+          <GraduationCap size={32} className="sidebar__logo-icon" />
           {!isCollapsed && (
-            <span className="sidebar__title">University ERP</span>
+            <span className="sidebar__logo-text">University ERP</span>
           )}
         </div>
-
-        <button className="sidebar__toggle">
-          <ChevronLeft
-            size={20}
-            className={`sidebar__toggle-icon ${
-              isCollapsed ? "sidebar__toggle-icon--collapsed" : ""
-            }`}
-          />
-        </button>
       </div>
 
       {/* User Profile */}
-      <div className="sidebar__profile">
+      <div className="sidebar__user">
         <Avatar
           src={user?.avatar}
           alt={user?.name}
           size={isCollapsed ? "sm" : "md"}
         />
         {!isCollapsed && (
-          <div className="sidebar__profile-info">
-            <h3 className="sidebar__profile-name">{user?.name}</h3>
-            <p className="sidebar__profile-reg">{user?.regNumber}</p>
+          <div className="sidebar__user-info">
+            <p className="sidebar__user-name">{user?.name}</p>
+            <p className="sidebar__user-meta">
+              {user?.role === "student" ? user?.regNumber : user?.employeeId}
+            </p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
       <nav className="sidebar__nav">
-        <ul className="sidebar__nav-list">
-          {navItems.map((item, index) => (
-            <motion.li
-              key={item.path}
-              className="sidebar__nav-item"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `sidebar__nav-link ${
-                    isActive ? "sidebar__nav-link--active" : ""
-                  }`
-                }
-              >
-                <item.icon size={20} className="sidebar__nav-icon" />
-                {!isCollapsed && (
-                  <span className="sidebar__nav-label">{item.label}</span>
-                )}
-              </NavLink>
-            </motion.li>
-          ))}
-        </ul>
+        {navItems.map((item, index) => (
+          <NavLink
+            key={index}
+            to={item.path}
+            className={({ isActive }) =>
+              `sidebar__nav-link ${isActive ? "sidebar__nav-link--active" : ""}`
+            }
+            title={isCollapsed ? item.label : ""}
+          >
+            <item.icon size={20} className="sidebar__nav-icon" />
+            {!isCollapsed && (
+              <span className="sidebar__nav-label">{item.label}</span>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
       {/* Logout */}
       <div className="sidebar__footer">
-        <button className="sidebar__logout">
+        <button
+          onClick={handleLogout}
+          className="sidebar__logout"
+          title={isCollapsed ? "Logout" : ""}
+        >
           <LogOut size={20} className="sidebar__logout-icon" />
           {!isCollapsed && <span className="sidebar__logout-text">Logout</span>}
         </button>

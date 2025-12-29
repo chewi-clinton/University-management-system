@@ -1,0 +1,53 @@
+.unauthorized {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-secondary);
+}
+
+.unauthorized__card {
+  max-width: 400px;
+  text-align: center;
+  padding: 3rem;
+}
+
+.unauthorized__icon {
+  color: var(--error-500);
+  margin-bottom: 1.5rem;
+}
+
+.unauthorized__card h1 {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.unauthorized__card p {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.unauthorized__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .unauthorized {
+    padding: var(--space-2);
+  }
+  
+  .unauthorized__card {
+    padding: 2rem;
+  }
+  
+  .unauthorized__actions {
+    flex-direction: column;
+  }
+}
