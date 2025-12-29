@@ -1,7 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import Card from '../../components/shared/ui/Card';
-import '../../../styles/pages/Reports.css';
+import React from "react";
+import { motion } from "framer-motion";
+import Card from "../../components/shared/layout/Card";
+import "../../styles/pages/Reports.css";
 
 const Reports = () => {
   return (
