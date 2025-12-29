@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Card from '../../components/shared/ui/Card';
-import Tabs from '../../components/shared/ui/Tabs';
-import '../../../styles/pages/CourseManagement.css';
+import React, { useState } from "react";
+import { useParams } from "react-router-dom";
+import { motion } from "framer-motion";
+import Card from "../../components/shared/layout/Card";
+import Tabs from "../../components/shared/navigation/Tabs";
+import "../../styles/pages/CourseManagement.css";
 
 const CourseManagement = () => {
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState('students');
+  const [activeTab, setActiveTab] = useState("students");
 
   const tabs = [
-    { id: 'students', label: 'Students' },
-    { id: 'attendance', label: 'Attendance' },
-    { id: 'grades', label: 'Grades' },
-    { id: 'materials', label: 'Materials' },
-    { id: 'virtual-classes', label: 'Virtual Classes' },
-    { id: 'syllabus', label: 'Syllabus' }
+    { id: "students", label: "Students" },
+    { id: "attendance", label: "Attendance" },
+    { id: "grades", label: "Grades" },
+    { id: "materials", label: "Materials" },
+    { id: "virtual-classes", label: "Virtual Classes" },
+    { id: "syllabus", label: "Syllabus" },
   ];
 
   return (
@@ -45,37 +45,37 @@ const CourseManagement = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'students' && (
+          {activeTab === "students" && (
             <div className="students-tab">
               <h2>Students Management</h2>
               <p>Course content for {id}</p>
             </div>
           )}
-          {activeTab === 'attendance' && (
+          {activeTab === "attendance" && (
             <div className="attendance-tab">
               <h2>Attendance Records</h2>
               <p>Course attendance for {id}</p>
             </div>
           )}
-          {activeTab === 'grades' && (
+          {activeTab === "grades" && (
             <div className="grades-tab">
               <h2>Grade Management</h2>
               <p>Student grades for {id}</p>
             </div>
           )}
-          {activeTab === 'materials' && (
+          {activeTab === "materials" && (
             <div className="materials-tab">
               <h2>Course Materials</h2>
               <p>Study materials for {id}</p>
             </div>
           )}
-          {activeTab === 'virtual-classes' && (
+          {activeTab === "virtual-classes" && (
             <div className="virtual-tab">
               <h2>Virtual Classes</h2>
               <p>Online sessions for {id}</p>
             </div>
           )}
-          {activeTab === 'syllabus' && (
+          {activeTab === "syllabus" && (
             <div className="syllabus-tab">
               <h2>Course Syllabus</h2>
               <p>Syllabus content for {id}</p>
