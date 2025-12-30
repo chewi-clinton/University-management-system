@@ -1,0 +1,38 @@
+/* src/styles/components/BarChart.css */
+.bar-chart {
+  width: 100%;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-md);
+}
+
+.bar-chart__title {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.bar-chart__container {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .bar-chart {
+    padding: var(--space-3);
+  }
+
+  .bar-chart__title {
+    font-size: var(--font-lg);
+  }
+}
+
+@media print {
+  .bar-chart {
+    box-shadow: none;
+    border: 1px solid var(--border);
+    break-inside: avoid;
+  }
+}
