@@ -1,10 +1,17 @@
 /* Attendance Page Styles */
 .attendance {
   padding: var(--space-6) 0;
+  max-width: var(--container-max-width, 1400px);
+  margin: 0 auto;
 }
 
+.attendance__container {
+  width: 100%;
+}
+
+/* Header */
 .attendance__header {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
 .attendance__title {
@@ -19,29 +26,487 @@
   color: var(--neutral-600);
 }
 
-.attendance__card {
-  min-height: 500px;
+/* Stats Grid */
+.attendance__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.attendance__stat-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-normal) var(--ease-smooth),
+    box-shadow var(--duration-normal) var(--ease-smooth);
+}
+
+.attendance__stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.attendance__stat-card--featured {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid var(--primary-500);
+}
+
+/* Circular Progress */
+.attendance__circular-progress {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: var(--space-4);
+}
+
+.attendance__circular-progress-svg {
+  transform: rotate(-90deg);
+}
+
+.attendance__circular-progress-bg {
+  fill: none;
+  stroke: var(--neutral-200);
+  stroke-width: 10;
+}
+
+.attendance__circular-progress-fill {
+  fill: none;
+  stroke: var(--primary-500);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s var(--ease-smooth);
+}
+
+.attendance__circular-progress-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.attendance__circular-progress-value {
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--primary-500);
+}
+
+.attendance__stat-card-title {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-1);
+  text-align: center;
+}
+
+.attendance__stat-card-subtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+  text-align: center;
+}
+
+/* Stat Card Content */
+.attendance__stat-card-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.attendance__stat-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.attendance__content {
-  text-align: center;
-  color: var(--neutral-500);
+.attendance__stat-card-icon--blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: var(--color-white);
 }
 
-.attendance__content h2 {
+.attendance__stat-card-icon--green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: var(--color-white);
+}
+
+.attendance__stat-card-icon--red {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: var(--color-white);
+}
+
+.attendance__stat-card-info {
+  flex: 1;
+}
+
+.attendance__stat-card-value {
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  line-height: 1;
+  margin-bottom: var(--space-1);
+}
+
+.attendance__stat-card-label {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+/* Calendar Card */
+.attendance__calendar-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-8);
+}
+
+.attendance__calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.attendance__calendar-title {
   font-size: var(--font-xl);
-  margin-bottom: var(--space-2);
-  color: var(--neutral-700);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+}
+
+.attendance__calendar-nav {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.attendance__calendar-nav-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-600);
+  transition: background-color var(--duration-fast) var(--ease-smooth),
+    color var(--duration-fast) var(--ease-smooth);
+}
+
+.attendance__calendar-nav-btn:hover {
+  background-color: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.attendance__calendar-month {
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  min-width: 150px;
+  text-align: center;
+}
+
+/* Calendar Grid */
+.attendance__calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.attendance__calendar-day-label {
+  text-align: center;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-600);
+  padding: var(--space-2);
+}
+
+.attendance__calendar-day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-smooth);
+}
+
+.attendance__calendar-day--empty {
+  visibility: hidden;
+}
+
+/* Calendar Legend */
+.attendance__calendar-legend {
+  display: flex;
+  gap: var(--space-6);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.attendance__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.attendance__legend-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.attendance__legend-dot--present {
+  background-color: var(--success-500);
+}
+
+.attendance__legend-dot--absent {
+  background-color: var(--error-500);
+}
+
+.attendance__legend-dot--late {
+  background-color: var(--warning-500);
+}
+
+.attendance__legend-dot--holiday {
+  background-color: var(--neutral-500);
+}
+
+.attendance__legend-label {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+/* Courses Section */
+.attendance__courses {
+  margin-bottom: var(--space-8);
+}
+
+.attendance__courses-title {
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-6);
+}
+
+.attendance__courses-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.attendance__course-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.attendance__course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.attendance__course-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.attendance__course-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.attendance__course-indicator {
+  width: 8px;
+  min-width: 8px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.attendance__course-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.attendance__course-title {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-1);
+}
+
+.attendance__course-subtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+.attendance__course-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.attendance__course-percentage {
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.attendance__course-chevron {
+  color: var(--neutral-600);
+  flex-shrink: 0;
+}
+
+/* Progress Bar */
+.attendance__course-progress-bg {
+  width: 100%;
+  height: 8px;
+  background-color: var(--neutral-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.attendance__course-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 1s var(--ease-smooth);
+}
+
+/* Expanded Course Details */
+.attendance__course-expanded {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--neutral-200);
+  overflow: hidden;
+}
+
+.attendance__course-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4);
+}
+
+.attendance__course-stat {
+  text-align: center;
+}
+
+.attendance__course-stat-value {
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-1);
+}
+
+.attendance__course-stat-value--green {
+  color: var(--success-500);
+}
+
+.attendance__course-stat-value--red {
+  color: var(--error-500);
+}
+
+.attendance__course-stat-value--blue {
+  color: #3b82f6;
+}
+
+.attendance__course-stat-label {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .attendance {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .attendance__stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance__calendar-grid {
+    gap: var(--space-1);
+  }
+
+  .attendance__calendar-day {
+    font-size: var(--font-xs);
+  }
+
+  .attendance__calendar-day-label {
+    font-size: var(--font-xs);
+    padding: var(--space-1);
+  }
+
+  .attendance__course-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .attendance__course-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 640px) {
+  .attendance__title {
+    font-size: var(--font-2xl);
+  }
+
+  .attendance__calendar-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance__calendar-nav {
+    justify-content: center;
+  }
 }
 
 /* Dark mode */
-[data-theme='dark'] .attendance__title {
+[data-theme="dark"] .attendance__title {
   color: var(--neutral-100);
 }
 
-[data-theme='dark'] .attendance__subtitle {
+[data-theme="dark"] .attendance__subtitle {
   color: var(--neutral-400);
+}
+
+[data-theme="dark"] .attendance__stat-card {
+  background: var(--neutral-800);
+}
+
+[data-theme="dark"] .attendance__stat-card-value,
+[data-theme="dark"] .attendance__stat-card-title,
+[data-theme="dark"] .attendance__course-title,
+[data-theme="dark"] .attendance__calendar-title,
+[data-theme="dark"] .attendance__courses-title,
+[data-theme="dark"] .attendance__calendar-month {
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .attendance__calendar-card,
+[data-theme="dark"] .attendance__course-card {
+  background: var(--neutral-800);
 }
