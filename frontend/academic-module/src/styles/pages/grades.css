@@ -1,10 +1,16 @@
-/* Grades Page Styles */
 .grades {
   padding: var(--space-6) 0;
+  max-width: var(--container-max-width, 1400px);
+  margin: 0 auto;
 }
 
+.grades__container {
+  width: 100%;
+}
+
+/* Header */
 .grades__header {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
 .grades__title {
@@ -19,29 +25,417 @@
   color: var(--neutral-600);
 }
 
-.grades__card {
-  min-height: 500px;
+/* GPA Card */
+.grades__gpa-card {
+  background: linear-gradient(
+    135deg,
+    var(--primary-500) 0%,
+    var(--primary-600) 100%
+  );
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  margin-bottom: var(--space-8);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-white);
+}
+
+.grades__gpa-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.grades__gpa-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.grades__gpa-info {
+  flex: 1;
+  min-width: 250px;
+}
+
+.grades__gpa-label {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-medium);
+  opacity: 0.9;
+  margin-bottom: var(--space-2);
+}
+
+.grades__gpa-value {
+  font-size: 4rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.grades__gpa-max {
+  font-size: var(--font-xl);
+  opacity: 0.7;
+  font-weight: var(--font-weight-normal);
+}
+
+.grades__gpa-stars {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.grades__gpa-stats {
+  display: flex;
+  gap: var(--space-8);
+  padding: var(--space-4);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
+}
+
+.grades__gpa-stat {
+  text-align: center;
+}
+
+.grades__gpa-stat-value {
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-1);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.grades__content {
-  text-align: center;
-  color: var(--neutral-500);
+.grades__gpa-stat-label {
+  font-size: var(--font-sm);
+  opacity: 0.9;
 }
 
-.grades__content h2 {
+.grades__download-btn {
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--color-white);
+  color: var(--primary-500);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.grades__download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Chart Card */
+.grades__chart-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-8);
+}
+
+.grades__chart-title {
   font-size: var(--font-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-6);
+}
+
+.grades__chart-container {
+  width: 100%;
+  height: 300px;
+}
+
+/* Controls */
+.grades__controls {
+  margin-bottom: var(--space-8);
+}
+
+.grades__semester-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.grades__semester-label {
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+}
+
+.grades__semester-select {
+  flex: 1;
+  min-width: 250px;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--neutral-300);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-base);
+  color: var(--neutral-900);
+  background: var(--color-white);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.grades__semester-select:hover {
+  border-color: var(--primary-500);
+}
+
+.grades__semester-select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(232, 125, 38, 0.1);
+}
+
+/* Courses Section */
+.grades__courses {
+  margin-bottom: var(--space-8);
+}
+
+.grades__courses-title {
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-6);
+}
+
+.grades__courses-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.grades__course-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.grades__course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.grades__course-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.grades__course-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.grades__course-indicator {
+  width: 8px;
+  min-width: 8px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.grades__course-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.grades__course-title {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-1);
+}
+
+.grades__course-meta {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+.grades__course-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.grades__course-grade {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-bold);
+  min-width: 50px;
+  text-align: center;
+}
+
+.grades__course-points {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-700);
+  min-width: 40px;
+  text-align: center;
+}
+
+.grades__course-chevron {
+  color: var(--neutral-600);
+  flex-shrink: 0;
+}
+
+/* Expanded Course Details */
+.grades__course-expanded {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--neutral-200);
+  overflow: hidden;
+}
+
+.grades__assessments-title {
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-4);
+}
+
+.grades__assessment {
+  margin-bottom: var(--space-4);
+}
+
+.grades__assessment:last-child {
+  margin-bottom: 0;
+}
+
+.grades__assessment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--space-2);
+  gap: var(--space-4);
+}
+
+.grades__assessment-name {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
   color: var(--neutral-700);
 }
 
+.grades__assessment-score {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+}
+
+.grades__assessment-bar-bg {
+  width: 100%;
+  height: 8px;
+  background-color: var(--neutral-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.grades__assessment-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 1s var(--ease-smooth);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .grades {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .grades__gpa-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .grades__gpa-value {
+    font-size: 3rem;
+  }
+
+  .grades__gpa-stats {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .grades__course-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .grades__course-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .grades__chart-container {
+    height: 250px;
+  }
+}
+
+@media (max-width: 640px) {
+  .grades__title {
+    font-size: var(--font-2xl);
+  }
+
+  .grades__gpa-value {
+    font-size: 2.5rem;
+  }
+
+  .grades__semester-selector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grades__semester-select {
+    min-width: 100%;
+  }
+}
+
 /* Dark mode */
-[data-theme='dark'] .grades__title {
+[data-theme="dark"] .grades__title,
+[data-theme="dark"] .grades__course-title,
+[data-theme="dark"] .grades__chart-title,
+[data-theme="dark"] .grades__courses-title,
+[data-theme="dark"] .grades__semester-label,
+[data-theme="dark"] .grades__assessments-title {
   color: var(--neutral-100);
 }
 
-[data-theme='dark'] .grades__subtitle {
+[data-theme="dark"] .grades__subtitle,
+[data-theme="dark"] .grades__course-meta {
   color: var(--neutral-400);
+}
+
+[data-theme="dark"] .grades__chart-card,
+[data-theme="dark"] .grades__course-card,
+[data-theme="dark"] .grades__semester-select {
+  background: var(--neutral-800);
+}
+
+[data-theme="dark"] .grades__semester-select {
+  border-color: var(--neutral-600);
+  color: var(--neutral-100);
 }
