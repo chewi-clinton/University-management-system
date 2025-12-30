@@ -1,18 +1,617 @@
+/* Grading Page Styles */
 .grading {
-  padding: var(--space-6);
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: var(--space-6) 0;
+  animation: fadeIn var(--duration-normal) var(--ease-smooth);
 }
 
-.grading h1 {
+/* Header */
+.grading__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-8);
+  gap: var(--space-6);
+}
+
+.grading__header-content {
+  flex: 1;
+}
+
+.grading__title {
   font-size: var(--font-3xl);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  margin-bottom: var(--space-2);
 }
 
-.grading > div > p {
-  font-size: var(--font-lg);
-  color: var(--text-secondary);
+.grading__subtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-600);
+}
+
+.grading__save-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Controls */
+.grading__controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
   margin-bottom: var(--space-6);
+}
+
+.grading__controls-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.grading__control-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.grading__control-label {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-700);
+  white-space: nowrap;
+}
+
+/* Spreadsheet Grid */
+.grading__grid-card {
+  margin-bottom: var(--space-6);
+  overflow: hidden;
+}
+
+.grading__grid-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.grading__grid-scroll {
+  min-width: 100%;
+}
+
+.grading__grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-sm);
+}
+
+.grading__grid-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--neutral-50);
+}
+
+.grading__grid-cell {
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  text-align: center;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.grading__grid-cell--header {
+  background: var(--neutral-50);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-700);
+  border-bottom: 2px solid var(--neutral-300);
+}
+
+.grading__grid-cell--fixed {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: white;
+  text-align: left;
+  min-width: 200px;
+  max-width: 200px;
+}
+
+.grading__grid-header .grading__grid-cell--fixed {
+  background: var(--neutral-50);
+  z-index: 15;
+}
+
+.grading__grid-cell--student {
+  font-weight: var(--font-weight-medium);
+}
+
+.grading__grid-cell--editable {
+  cursor: pointer;
+  background: white;
+}
+
+.grading__grid-cell--editable:hover {
+  background: var(--primary-50);
+}
+
+.grading__grid-cell--excellent {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.grading__grid-cell--good {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.grading__grid-cell--average {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.grading__grid-cell--poor {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.grading__grid-cell--total {
+  background: var(--primary-50);
+  font-weight: var(--font-weight-bold);
+  border-left: 2px solid var(--primary-300);
+}
+
+.grading__grid-cell--grade {
+  background: var(--neutral-50);
+  border-left: 2px solid var(--neutral-300);
+}
+
+.grading__grid-row {
+  transition: background-color var(--duration-fast) var(--ease-smooth);
+}
+
+.grading__grid-row:hover {
+  background: var(--neutral-50);
+}
+
+.grading__grid-row:hover .grading__grid-cell--fixed {
+  background: var(--neutral-100);
+}
+
+/* Header Content */
+.grading__header-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.grading__header-name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.grading__header-info {
+  font-size: var(--font-xs);
+  color: var(--neutral-600);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Student Info */
+.grading__student-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.grading__student-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+}
+
+.grading__student-reg {
+  font-size: var(--font-xs);
+  color: var(--neutral-600);
+}
+
+/* Grade Display */
+.grading__grade-display {
+  font-weight: var(--font-weight-medium);
+}
+
+.grading__total-value {
+  font-size: var(--font-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--primary-600);
+}
+
+/* Input */
+.grading__grid-input {
+  width: 100%;
+  padding: var(--space-2);
+  border: 2px solid var(--primary-500);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  text-align: center;
+  outline: none;
+}
+
+.grading__grid-input:focus {
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px rgba(232, 125, 38, 0.1);
+}
+
+/* Statistics Section */
+.grading__statistics-section {
+  margin-bottom: var(--space-6);
+}
+
+.grading__stats-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+.grading__stat-card {
+  padding: var(--space-6);
+}
+
+.grading__stat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.grading__stat-icon {
+  color: var(--primary-600);
+}
+
+.grading__stat-header h3 {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin: 0;
+}
+
+.grading__stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.grading__stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.grading__stat-label {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+}
+
+.grading__stat-value {
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+}
+
+/* Chart Card */
+.grading__chart-card {
+  padding: var(--space-6);
+}
+
+.grading__chart-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.grading__chart-icon {
+  color: var(--primary-600);
+}
+
+.grading__chart-header h3 {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin: 0;
+}
+
+.grading__chart-tooltip {
+  background: white;
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.grading__tooltip-label {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-900);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.grading__tooltip-value {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+  margin: 0;
+}
+
+/* Actions */
+.grading__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+}
+
+.grading__actions-left,
+.grading__actions-right {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* Modal Content */
+.grading__modal-content {
+  padding: var(--space-4) 0;
+}
+
+.grading__form-group {
+  margin-bottom: var(--space-4);
+}
+
+.grading__form-label {
+  display: block;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-700);
+  margin-bottom: var(--space-2);
+}
+
+.grading__form-input {
+  width: 100%;
+  padding: var(--space-3);
+  border: 2px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  font-size: var(--font-base);
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.grading__form-input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(232, 125, 38, 0.1);
+}
+
+.grading__form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.grading__modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--neutral-200);
+}
+
+.grading__modal-text {
+  font-size: var(--font-base);
+  color: var(--neutral-700);
+  margin-bottom: var(--space-4);
+}
+
+.grading__modal-list {
+  list-style: disc;
+  padding-left: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.grading__modal-list li {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+  margin-bottom: var(--space-2);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .grading__stats-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .grading__grid-cell--fixed {
+    min-width: 150px;
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .grading {
+    padding: var(--space-4) 0;
+  }
+
+  .grading__header {
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .grading__title {
+    font-size: var(--font-2xl);
+  }
+
+  .grading__subtitle {
+    font-size: var(--font-sm);
+  }
+
+  .grading__controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .grading__controls-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grading__control-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .grading__stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grading__actions {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .grading__actions-left,
+  .grading__actions-right {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .grading__form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .grading__grid-cell--fixed {
+    min-width: 120px;
+    max-width: 120px;
+  }
+
+  .grading__student-name {
+    font-size: var(--font-sm);
+  }
+
+  .grading__student-reg {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .grading__grid {
+    font-size: 12px;
+  }
+
+  .grading__grid-cell {
+    padding: var(--space-2);
+  }
+
+  .grading__header-name {
+    font-size: var(--font-xs);
+  }
+
+  .grading__header-info {
+    font-size: 10px;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .grading__title {
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .grading__subtitle {
+  color: var(--neutral-400);
+}
+
+[data-theme="dark"] .grading__control-label {
+  color: var(--neutral-300);
+}
+
+[data-theme="dark"] .grading__grid-header {
+  background: var(--neutral-800);
+}
+
+[data-theme="dark"] .grading__grid-cell {
+  border-color: var(--neutral-700);
+  background: var(--neutral-900);
+}
+
+[data-theme="dark"] .grading__grid-cell--header {
+  background: var(--neutral-800);
+  color: var(--neutral-300);
+  border-bottom-color: var(--neutral-600);
+}
+
+[data-theme="dark"] .grading__grid-cell--fixed {
+  background: var(--neutral-900);
+}
+
+[data-theme="dark"] .grading__grid-header .grading__grid-cell--fixed {
+  background: var(--neutral-800);
+}
+
+[data-theme="dark"] .grading__grid-cell--editable:hover {
+  background: rgba(232, 125, 38, 0.1);
+}
+
+[data-theme="dark"] .grading__grid-row:hover {
+  background: var(--neutral-800);
+}
+
+[data-theme="dark"] .grading__grid-row:hover .grading__grid-cell--fixed {
+  background: var(--neutral-700);
+}
+
+[data-theme="dark"] .grading__student-name {
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .grading__student-reg {
+  color: var(--neutral-400);
+}
+
+[data-theme="dark"] .grading__stat-header h3 {
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .grading__stat-label {
+  color: var(--neutral-400);
+}
+
+[data-theme="dark"] .grading__stat-value {
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .grading__chart-header h3 {
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .grading__form-label {
+  color: var(--neutral-300);
+}
+
+[data-theme="dark"] .grading__form-input {
+  background: var(--neutral-800);
+  border-color: var(--neutral-700);
+  color: var(--neutral-100);
+}
+
+[data-theme="dark"] .grading__modal-text {
+  color: var(--neutral-300);
+}
+
+[data-theme="dark"] .grading__modal-list li {
+  color: var(--neutral-400);
 }
