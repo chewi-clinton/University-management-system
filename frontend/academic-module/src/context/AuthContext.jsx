@@ -1,41 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-
-const mockUsers = {
-  student: {
-    id: 1,
-    name: "John Doe",
-    regNumber: "UNI-2024-0123",
-    program: "Computer Science",
-    gpa: 3.84,
-    email: "student@university.edu",
-    phone: "+1234567890",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    dateOfBirth: "2002-05-15",
-    address: "123 University Ave, Campus City",
-    semester: 6,
-    enrollmentYear: 2021,
-    guardianName: "Jane Doe",
-    guardianPhone: "+0987654321",
-    bloodGroup: "O+",
-    nationality: "American",
-    religion: "Christian",
-    gender: "Male",
-    role: "student",
-  },
-  faculty: {
-    id: 1,
-    name: "Prof. Jane Smith",
-    employeeId: "EMP-2020-045",
-    email: "faculty@university.edu",
-    phone: "+1234567890",
-    department: "Computer Science",
-    designation: "Associate Professor",
-    officeHours: "Mon, Wed 2:00-4:00 PM",
-    officeRoom: "Faculty Block, Room 301",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-    role: "faculty",
-  },
-};
+import authService from "../services/api/authService";
 
 const AUTH_ACTIONS = {
   LOGIN_SUCCESS: "LOGIN_SUCCESS",
@@ -43,12 +7,13 @@ const AUTH_ACTIONS = {
   SET_LOADING: "SET_LOADING",
   SET_ERROR: "SET_ERROR",
   INIT_AUTH: "INIT_AUTH",
+  UPDATE_USER: "UPDATE_USER",
 };
 
 const initialState = {
   user: null,
   isAuthenticated: false,
-  isLoading: true, // Start with loading true to check localStorage
+  isLoading: true,
   error: null,
 };
 
@@ -89,6 +54,11 @@ const authReducer = (state, action) => {
         error: action.payload,
         isLoading: false,
       };
+    case AUTH_ACTIONS.UPDATE_USER:
+      return {
+        ...state,
+        user: { ...state.user, ...action.payload },
+      };
     default:
       return state;
   }
@@ -101,16 +71,59 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize auth state from localStorage on mount
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem("authToken");
-        const role = localStorage.getItem("userRole");
+        const token = localStorage.getItem("access_token");
+        const userRole = localStorage.getItem("userRole");
 
-        if (token && role && mockUsers[role]) {
-          dispatch({
-            type: AUTH_ACTIONS.INIT_AUTH,
-            payload: mockUsers[role],
-          });
+        if (token && userRole) {
+          // Fetch current user data from API
+          const { success, data, error } = await authService.getCurrentUser();
+
+          if (success && data) {
+            // Fetch role-specific profile data
+            let profileData = null;
+
+            if (data.role === "student") {
+              const studentResult = await authService.getStudentProfile(
+                data.id
+              );
+              if (studentResult.success) {
+                profileData = studentResult.data;
+              }
+            } else if (data.role === "faculty") {
+              const facultyResult = await authService.getFacultyProfile(
+                data.id
+              );
+              if (facultyResult.success) {
+                profileData = facultyResult.data;
+              }
+            }
+
+            // Merge user data with profile data
+            const completeUserData = {
+              ...data,
+              ...profileData,
+              name:
+                data.first_name && data.last_name
+                  ? `${data.first_name} ${data.last_name}`
+                  : data.email,
+            };
+
+            dispatch({
+              type: AUTH_ACTIONS.INIT_AUTH,
+              payload: completeUserData,
+            });
+          } else {
+            // Token invalid or expired
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("userRole");
+            dispatch({
+              type: AUTH_ACTIONS.INIT_AUTH,
+              payload: null,
+            });
+          }
         } else {
           dispatch({
             type: AUTH_ACTIONS.INIT_AUTH,
@@ -119,6 +132,9 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("userRole");
         dispatch({
           type: AUTH_ACTIONS.INIT_AUTH,
           payload: null,
@@ -133,62 +149,140 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call login API
+      const { success, data, error } = await authService.login(credentials);
 
-      let user = null;
-      if (
-        credentials.email === "student@university.edu" &&
-        credentials.password === "password123"
-      ) {
-        user = mockUsers.student;
-      } else if (
-        credentials.email === "faculty@university.edu" &&
-        credentials.password === "password123"
-      ) {
-        user = mockUsers.faculty;
+      if (!success) {
+        throw new Error(error || "Login failed");
       }
 
-      if (!user) {
-        throw new Error("Invalid email or password");
+      // Store tokens
+      if (data.access) {
+        localStorage.setItem("access_token", data.access);
+      }
+      if (data.refresh) {
+        localStorage.setItem("refresh_token", data.refresh);
+      }
+      if (data.user?.role) {
+        localStorage.setItem("userRole", data.user.role);
       }
 
-      // Store auth data
-      localStorage.setItem("authToken", "mock-jwt-token-" + Date.now());
-      localStorage.setItem("userRole", user.role);
+      // Fetch complete user profile
+      let completeUserData = { ...data.user };
 
-      dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: user });
+      if (data.user.role === "student") {
+        const studentResult = await authService.getStudentProfile(data.user.id);
+        if (studentResult.success) {
+          completeUserData = { ...completeUserData, ...studentResult.data };
+        }
+      } else if (data.user.role === "faculty") {
+        const facultyResult = await authService.getFacultyProfile(data.user.id);
+        if (facultyResult.success) {
+          completeUserData = { ...completeUserData, ...facultyResult.data };
+        }
+      }
 
-      return { success: true };
+      // Add formatted name
+      completeUserData.name =
+        completeUserData.first_name && completeUserData.last_name
+          ? `${completeUserData.first_name} ${completeUserData.last_name}`
+          : completeUserData.email;
+
+      dispatch({
+        type: AUTH_ACTIONS.LOGIN_SUCCESS,
+        payload: completeUserData,
+      });
+
+      return { success: true, user: completeUserData };
     } catch (error) {
-      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: error.message });
-      return { success: false, error: error.message };
+      const errorMessage = error.message || "Invalid email or password";
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: errorMessage });
+      return { success: false, error: errorMessage };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userRole");
-    dispatch({ type: AUTH_ACTIONS.LOGOUT });
+  const logout = async () => {
+    try {
+      // Call logout API (optional, for server-side token invalidation)
+      await authService.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Always clear local storage and state
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("userRole");
+      dispatch({ type: AUTH_ACTIONS.LOGOUT });
+    }
   };
 
   const updateProfile = async (updatedData) => {
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const { success, data, error } = await authService.updateProfile(
+        state.user.id,
+        updatedData
+      );
 
-      const updatedUser = { ...state.user, ...updatedData };
+      if (!success) {
+        throw new Error(error || "Profile update failed");
+      }
+
       dispatch({
-        type: AUTH_ACTIONS.LOGIN_SUCCESS,
-        payload: updatedUser,
+        type: AUTH_ACTIONS.UPDATE_USER,
+        payload: data,
       });
 
-      return { success: true };
+      dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+      return { success: true, data };
     } catch (error) {
       dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: error.message });
       return { success: false, error: error.message };
+    }
+  };
+
+  const refreshUserData = async () => {
+    try {
+      const { success, data } = await authService.getCurrentUser();
+
+      if (success && data) {
+        // Fetch role-specific profile
+        let profileData = null;
+
+        if (data.role === "student") {
+          const studentResult = await authService.getStudentProfile(data.id);
+          if (studentResult.success) {
+            profileData = studentResult.data;
+          }
+        } else if (data.role === "faculty") {
+          const facultyResult = await authService.getFacultyProfile(data.id);
+          if (facultyResult.success) {
+            profileData = facultyResult.data;
+          }
+        }
+
+        const completeUserData = {
+          ...data,
+          ...profileData,
+          name:
+            data.first_name && data.last_name
+              ? `${data.first_name} ${data.last_name}`
+              : data.email,
+        };
+
+        dispatch({
+          type: AUTH_ACTIONS.UPDATE_USER,
+          payload: completeUserData,
+        });
+
+        return { success: true };
+      }
+
+      return { success: false };
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      return { success: false };
     }
   };
 
@@ -197,6 +291,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
+    refreshUserData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

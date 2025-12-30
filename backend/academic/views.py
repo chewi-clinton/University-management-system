@@ -53,14 +53,7 @@ from .integrations.notifications import (
     send_class_reminder
 )
 
-
-# Custom permission for viewing notices
 class CanViewNotices(IsAuthenticated):
-    """
-    Allows authenticated users to view notices.
-    Super admins and academic admins can view all notices.
-    Faculty and students can view notices (further filtered in get_queryset).
-    """
     def has_permission(self, request, view):
         if not super().has_permission(request, view):
             return False
@@ -76,7 +69,6 @@ class CanViewNotices(IsAuthenticated):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """User management viewset"""
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -88,7 +80,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class FacultyMemberViewSet(viewsets.ModelViewSet):
-    """Faculty member (professor/teacher) management viewset"""
     queryset = FacultyMember.objects.select_related('user', 'department').all()
     serializer_class = FacultyMemberSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -99,7 +90,6 @@ class FacultyMemberViewSet(viewsets.ModelViewSet):
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
-    """Department management viewset"""
     queryset = Department.objects.select_related('faculty', 'head').all()
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -109,7 +99,6 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
 
 class ProgramViewSet(viewsets.ModelViewSet):
-    """Program management viewset"""
     queryset = Program.objects.select_related('department').all()
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -119,7 +108,6 @@ class ProgramViewSet(viewsets.ModelViewSet):
 
 
 class CourseViewSet(viewsets.ModelViewSet):
-    """Course management viewset"""
     queryset = Course.objects.select_related('department').all()
     serializer_class = CourseSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -129,14 +117,12 @@ class CourseViewSet(viewsets.ModelViewSet):
 
 
 class CoursePrerequisiteViewSet(viewsets.ModelViewSet):
-    """Course prerequisite management viewset"""
     queryset = CoursePrerequisite.objects.select_related('course', 'prerequisite_course').all()
     serializer_class = CoursePrerequisiteSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
 
 
 class AcademicSessionViewSet(viewsets.ModelViewSet):
-    """Academic session management viewset"""
     queryset = AcademicSession.objects.all()
     serializer_class = AcademicSessionSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -146,13 +132,10 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def activate(self, request, pk=None):
-        """Activate an academic session"""
         session = self.get_object()
         
-        # Deactivate all other sessions
         AcademicSession.objects.filter(is_active=True).update(is_active=False)
         
-        # Activate this session
         session.is_active = True
         session.save()
         
@@ -160,7 +143,6 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
 
 
 class SemesterViewSet(viewsets.ModelViewSet):
-    """Semester management viewset"""
     queryset = Semester.objects.select_related('session').all()
     serializer_class = SemesterSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -170,7 +152,6 @@ class SemesterViewSet(viewsets.ModelViewSet):
 
 
 class StudentViewSet(viewsets.ModelViewSet):
-    """Student management viewset"""
     queryset = Student.objects.select_related('user', 'program').all()
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
@@ -184,12 +165,17 @@ class StudentViewSet(viewsets.ModelViewSet):
             return StudentSummarySerializer
         return StudentSerializer
 
+    def get_permissions(self):
+        if self.action == 'list':
+            permission_classes = [IsAuthenticated, IsFacultyOrAdmin | IsOwnerOrAdmin]
+        else:
+            permission_classes = self.permission_classes
+        return [permission() for permission in permission_classes]
+
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsStudentOrAdmin])
     def transcript(self, request, pk=None):
-        """Get student transcript"""
         student = self.get_object()
         
-        # Check if user can view this transcript
         if request.user.role == 'student' and student.user != request.user:
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         
@@ -199,10 +185,8 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsStudentOrAdmin])
     def attendance_summary(self, request, pk=None):
-        """Get student attendance summary"""
         student = self.get_object()
         
-        # Check if user can view this attendance
         if request.user.role == 'student' and student.user != request.user:
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
         
@@ -210,9 +194,20 @@ class StudentViewSet(viewsets.ModelViewSet):
         serializer = AttendanceSummarySerializer(attendance_summaries, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        try:
+            student = Student.objects.select_related('program').get(user=request.user)
+            serializer = StudentSerializer(student)
+            return Response(serializer.data)
+        except Student.DoesNotExist:
+            return Response(
+                {'detail': 'Student profile not found for the authenticated user.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 
 class AcademicAdminViewSet(viewsets.ModelViewSet):
-    """Academic admin management viewset"""
     queryset = AcademicAdmin.objects.select_related('user', 'department').all()
     serializer_class = AcademicAdminSerializer
     permission_classes = [IsAuthenticated, IsSuperAdmin]
@@ -222,7 +217,6 @@ class AcademicAdminViewSet(viewsets.ModelViewSet):
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
-    """Enrollment management viewset"""
     queryset = Enrollment.objects.select_related('student', 'semester', 'confirmed_by_admin').all()
     serializer_class = EnrollmentSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -233,7 +227,6 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def confirm(self, request, pk=None):
-        """Confirm an enrollment"""
         enrollment = self.get_object()
         enrollment.status = 'confirmed'
         enrollment.confirmed_by_admin = request.user.admin_profile
@@ -244,7 +237,6 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
 
 class CourseOfferingViewSet(viewsets.ModelViewSet):
-    """Course offering management viewset"""
     queryset = CourseOffering.objects.select_related('course', 'semester', 'faculty').all()
     serializer_class = CourseOfferingSerializer
     permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
@@ -255,7 +247,6 @@ class CourseOfferingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsEnrolledStudent])
     def materials(self, request, pk=None):
-        """Get study materials for this course offering"""
         offering = self.get_object()
         materials = StudyMaterial.objects.filter(offering=offering, is_visible=True)
         serializer = StudyMaterialSerializer(materials, many=True)
@@ -263,7 +254,6 @@ class CourseOfferingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsEnrolledStudent])
     def zoom_classes(self, request, pk=None):
-        """Get Zoom classes for this course offering"""
         offering = self.get_object()
         zoom_classes = ZoomClass.objects.filter(offering=offering, is_active=True)
         serializer = ZoomClassSerializer(zoom_classes, many=True)
@@ -271,7 +261,6 @@ class CourseOfferingViewSet(viewsets.ModelViewSet):
 
 
 class StudentCourseRegistrationViewSet(viewsets.ModelViewSet):
-    """Student course registration management viewset"""
     queryset = StudentCourseRegistration.objects.select_related('student', 'offering', 'enrollment').all()
     serializer_class = StudentCourseRegistrationSerializer
     permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
@@ -281,12 +270,10 @@ class StudentCourseRegistrationViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsFacultyOrAdmin])
     def withdraw(self, request, pk=None):
-        """Withdraw from a course"""
         registration = self.get_object()
         registration.status = 'withdrawn'
         registration.save()
         
-        # Update enrollment count
         offering = registration.offering
         offering.current_enrollment = max(0, offering.current_enrollment - 1)
         offering.save()
@@ -295,7 +282,6 @@ class StudentCourseRegistrationViewSet(viewsets.ModelViewSet):
 
 
 class AttendanceViewSet(viewsets.ModelViewSet):
-    """Attendance management viewset"""
     queryset = Attendance.objects.select_related('student', 'offering', 'marked_by_faculty').all()
     serializer_class = AttendanceSerializer
     permission_classes = [IsAuthenticated, CanMarkAttendance]
@@ -306,12 +292,10 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, CanMarkAttendance])
     def mark_by_qr(self, request):
-        """Mark attendance using QR code"""
         serializer = QRAttendanceSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
             
-            # Check if attendance already marked
             existing_attendance = Attendance.objects.filter(
                 student_id=data['student_id'],
                 offering_id=data['offering_id'],
@@ -322,7 +306,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Attendance already marked for today'}, 
                               status=status.HTTP_400_BAD_REQUEST)
             
-            # Create attendance record
             attendance = Attendance.objects.create(
                 student_id=data['student_id'],
                 offering_id=data['offering_id'],
@@ -340,23 +323,18 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, IsFaculty])
     def generate_qr(self, request):
-        """Generate QR code for attendance"""
         offering_id = request.data.get('offering_id')
         attendance_date = request.data.get('attendance_date', timezone.now().date())
         
-        # Generate QR payload
         payload = f"ATTENDANCE|{offering_id}|{attendance_date}"
         encrypted_payload = encrypt_qr_payload(payload)
         
-        # Generate QR code
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(encrypted_payload)
         qr.make(fit=True)
         
-        # Create image
         img = qr.make_image(fill_color="black", back_color="white")
         
-        # Convert to base64
         buffer = BytesIO()
         img.save(buffer, format='PNG')
         img_str = base64.b64encode(buffer.getvalue()).decode()
@@ -369,7 +347,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
 
 class AttendanceSummaryViewSet(viewsets.ReadOnlyModelViewSet):
-    """Attendance summary viewset"""
     queryset = AttendanceSummary.objects.select_related('student', 'offering').all()
     serializer_class = AttendanceSummarySerializer
     permission_classes = [IsAuthenticated, CanViewGrades]
@@ -379,7 +356,6 @@ class AttendanceSummaryViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class GradeViewSet(viewsets.ModelViewSet):
-    """Grade management viewset"""
     queryset = Grade.objects.select_related('student', 'offering', 'graded_by_faculty').all()
     serializer_class = GradeSerializer
     permission_classes = [IsAuthenticated, CanViewGrades]
@@ -389,14 +365,12 @@ class GradeViewSet(viewsets.ModelViewSet):
     ordering_fields = ['graded_at', 'marks_obtained']
 
     def get_permissions(self):
-        """Set permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanModifyGrades()]
         return [IsAuthenticated(), CanViewGrades()]
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanModifyGrades])
     def finalize(self, request, pk=None):
-        """Finalize a grade"""
         grade = self.get_object()
         grade.is_finalized = True
         grade.save()
@@ -405,7 +379,6 @@ class GradeViewSet(viewsets.ModelViewSet):
 
 
 class ExaminationViewSet(viewsets.ModelViewSet):
-    """Examination management viewset"""
     queryset = Examination.objects.select_related('offering').all()
     serializer_class = ExaminationSerializer
     permission_classes = [IsAuthenticated, CanViewExamDetails]
@@ -414,14 +387,12 @@ class ExaminationViewSet(viewsets.ModelViewSet):
     search_fields = ['exam_name', 'offering__course__course_code']
 
     def get_permissions(self):
-        """Set permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanCreateExams()]
         return [IsAuthenticated(), CanViewExamDetails()]
 
 
 class ExamRoomViewSet(viewsets.ModelViewSet):
-    """Exam room management viewset"""
     queryset = ExamRoom.objects.all()
     serializer_class = ExamRoomSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -431,7 +402,6 @@ class ExamRoomViewSet(viewsets.ModelViewSet):
 
 
 class ExamScheduleViewSet(viewsets.ModelViewSet):
-    """Exam schedule management viewset"""
     queryset = ExamSchedule.objects.select_related('exam', 'room', 'invigilator').all()
     serializer_class = ExamScheduleSerializer
     permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
@@ -442,7 +412,6 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
 
 
 class AdmitCardViewSet(viewsets.ModelViewSet):
-    """Admit card management viewset"""
     queryset = AdmitCard.objects.select_related('student', 'exam').all()
     serializer_class = AdmitCardSerializer
     permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
@@ -452,26 +421,20 @@ class AdmitCardViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def generate_qr(self, request, pk=None):
-        """Generate QR code for admit card verification"""
         admit_card = self.get_object()
         
-        # Generate QR payload
         payload = f"ADMIT_CARD|{admit_card.student_id}|{admit_card.exam_id}|{admit_card.admit_card_id}"
         encrypted_payload = encrypt_qr_payload(payload)
         
-        # Update admit card with QR data
         admit_card.qr_code_data = encrypted_payload
         admit_card.save()
         
-        # Generate QR code
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(encrypted_payload)
         qr.make(fit=True)
         
-        # Create image
         img = qr.make_image(fill_color="black", back_color="white")
         
-        # Convert to base64
         buffer = BytesIO()
         img.save(buffer, format='PNG')
         img_str = base64.b64encode(buffer.getvalue()).decode()
@@ -485,26 +448,22 @@ class AdmitCardViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def verify_qr(self, request):
-        """Verify admit card using QR code"""
         qr_data = request.data.get('qr_data')
         
         if not qr_data:
             return Response({'error': 'QR data required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Decrypt QR payload
         decrypted_payload = decrypt_qr_payload(qr_data)
         
         if not decrypted_payload:
             return Response({'error': 'Invalid QR code'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Extract admit card ID
         try:
             parts = decrypted_payload.split('|')
             if len(parts) >= 4 and parts[0] == 'ADMIT_CARD':
                 admit_card_id = int(parts[3])
                 admit_card = AdmitCard.objects.get(admit_card_id=admit_card_id)
                 
-                # Check eligibility
                 eligible, reason = self._check_eligibility(admit_card.student, admit_card.exam)
                 
                 return Response({
@@ -530,13 +489,11 @@ class AdmitCardViewSet(viewsets.ModelViewSet):
         return Response({'error': 'Admit card not found'}, status=status.HTTP_404_NOT_FOUND)
     
     def _check_eligibility(self, student, exam):
-        """Check if student is eligible for exam"""
         from .utils import is_eligible_for_exam
         return is_eligible_for_exam(student, exam)
 
 
 class ZoomClassViewSet(viewsets.ModelViewSet):
-    """Zoom class management viewset"""
     queryset = ZoomClass.objects.select_related('offering', 'created_by_faculty').all()
     serializer_class = ZoomClassSerializer
     permission_classes = [IsAuthenticated, CanManageZoomClasses]
@@ -546,12 +503,10 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
     ordering_fields = ['schedule_date', 'start_time']
 
     def create(self, request, *args, **kwargs):
-        """Create Zoom/Google Meet class"""
         serializer = ZoomMeetingSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
             
-            # Determine platform
             platform = request.data.get('platform', 'zoom')
             
             if platform == 'zoom':
@@ -560,7 +515,6 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
                 result = create_google_meet_class(data)
             
             if result['success']:
-                # Create ZoomClass record
                 zoom_class = ZoomClass.objects.create(
                     offering_id=data['offering_id'],
                     topic=data['topic'],
@@ -583,7 +537,6 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageZoomClasses])
     def start_meeting(self, request, pk=None):
-        """Start a meeting"""
         zoom_class = self.get_object()
         
         return Response({
@@ -594,23 +547,19 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageZoomClasses])
     def send_reminder(self, request, pk=None):
-        """Send reminder to enrolled students"""
         zoom_class = self.get_object()
         
-        # Get enrolled students
         enrolled_students = Student.objects.filter(
             studentcourseregistration__offering=zoom_class.offering,
             studentcourseregistration__status='registered'
         )
         
-        # Send reminder
         result = send_class_reminder(enrolled_students, zoom_class)
         
         return Response(result)
 
 
 class StudyMaterialViewSet(viewsets.ModelViewSet):
-    """Study material management viewset"""
     queryset = StudyMaterial.objects.select_related('offering', 'uploaded_by_faculty').all()
     serializer_class = StudyMaterialSerializer
     permission_classes = [IsAuthenticated, CanViewMaterials]
@@ -619,14 +568,12 @@ class StudyMaterialViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'offering__course__course_code']
 
     def get_permissions(self):
-        """Set permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanUploadMaterials()]
         return [IsAuthenticated(), CanViewMaterials()]
 
 
 class ResultPublicationViewSet(viewsets.ModelViewSet):
-    """Result publication management viewset"""
     queryset = ResultPublication.objects.select_related('semester', 'published_by_admin').all()
     serializer_class = ResultPublicationSerializer
     permission_classes = [IsAuthenticated, IsAcademicAdmin]
@@ -636,13 +583,11 @@ class ResultPublicationViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def publish(self, request, pk=None):
-        """Publish results"""
         result_pub = self.get_object()
         result_pub.status = 'published'
         result_pub.published_to_students_at = timezone.now()
         result_pub.save()
         
-        # Send notifications to all students in the semester
         enrollments = Enrollment.objects.filter(semester=result_pub.semester, status='confirmed')
         for enrollment in enrollments:
             send_result_notification(enrollment.student, result_pub.semester, enrollment.student.current_gpa)
@@ -651,7 +596,6 @@ class ResultPublicationViewSet(viewsets.ModelViewSet):
 
 
 class TranscriptViewSet(viewsets.ReadOnlyModelViewSet):
-    """Transcript viewset"""
     queryset = Transcript.objects.select_related('student', 'issued_by_admin').all()
     serializer_class = TranscriptSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
@@ -661,7 +605,6 @@ class TranscriptViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class NoticeViewSet(viewsets.ModelViewSet):
-    """Notice management viewset"""
     queryset = Notice.objects.select_related('posted_by_user', 'department').all()
     serializer_class = NoticeSerializer
     permission_classes = [IsAuthenticated, CanViewNotices]
@@ -671,17 +614,14 @@ class NoticeViewSet(viewsets.ModelViewSet):
     ordering_fields = ['post_date', 'priority']
 
     def get_permissions(self):
-        """Set permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanManageNotices()]
         return [IsAuthenticated(), CanViewNotices()]
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_notices(self, request):
-        """Get notices for current user"""
         user = request.user
         
-        # Filter notices based on user's role and department
         if user.role == 'student':
             student = user.student_profile
             notices = Notice.objects.filter(
@@ -699,7 +639,6 @@ class NoticeViewSet(viewsets.ModelViewSet):
         else:
             notices = Notice.objects.all()
         
-        # Filter by expiry date
         notices = notices.filter(Q(expiry_date__isnull=True) | Q(expiry_date__gte=timezone.now()))
         
         serializer = NoticeSerializer(notices, many=True)
@@ -707,7 +646,6 @@ class NoticeViewSet(viewsets.ModelViewSet):
 
 
 class AdmissionInquiryViewSet(viewsets.ModelViewSet):
-    """Admission inquiry management viewset"""
     queryset = AdmissionInquiry.objects.select_related('assigned_to_admin').all()
     serializer_class = AdmissionInquirySerializer
     permission_classes = [IsAuthenticated, CanViewAdmissions]
@@ -717,14 +655,12 @@ class AdmissionInquiryViewSet(viewsets.ModelViewSet):
     ordering_fields = ['inquiry_date', 'status']
 
     def get_permissions(self):
-        """Set permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanManageAdmissions()]
         return [IsAuthenticated(), CanViewAdmissions()]
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageAdmissions])
     def assign(self, request, pk=None):
-        """Assign inquiry to admin"""
         inquiry = self.get_object()
         admin_id = request.data.get('admin_id')
         
@@ -741,7 +677,6 @@ class AdmissionInquiryViewSet(viewsets.ModelViewSet):
 
 
 class ApplicantViewSet(viewsets.ModelViewSet):
-    """Applicant management viewset"""
     queryset = Applicant.objects.select_related('inquiry', 'program', 'accepted_by_admin').all()
     serializer_class = ApplicantSerializer
     permission_classes = [IsAuthenticated, CanViewAdmissions]
@@ -751,21 +686,18 @@ class ApplicantViewSet(viewsets.ModelViewSet):
     ordering_fields = ['applied_date', 'status']
 
     def get_permissions(self):
-        """Set permissions based on action"""
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanManageAdmissions()]
         return [IsAuthenticated(), CanViewAdmissions()]
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageAdmissions])
     def accept(self, request, pk=None):
-        """Accept an applicant"""
         applicant = self.get_object()
         applicant.status = 'accepted'
         applicant.accepted_date = timezone.now()
         applicant.accepted_by_admin = request.user.admin_profile
         applicant.save()
         
-        # Create student record
         from .utils import generate_university_reg_number
         student = Student.objects.create(
             user=User.objects.create_user(
@@ -781,27 +713,22 @@ class ApplicantViewSet(viewsets.ModelViewSet):
             enrollment_date=timezone.now()
         )
         
-        # Send admission confirmation
         send_student_admission_confirmation(student)
         
         return Response({'status': 'Applicant accepted and student record created'})
 
 
-# Custom viewsets for specific actions
 class GPAViewSet(viewsets.ViewSet):
-    """GPA calculation viewset"""
     permission_classes = [IsAuthenticated, CanGenerateReports]
 
     @action(detail=False, methods=['post'])
     def calculate(self, request):
-        """Calculate GPA for a student"""
         serializer = GPAReportSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
             student_id = data['student_id']
             semester_id = data.get('semester_id')
             
-            # Get completed registrations
             registrations = StudentCourseRegistration.objects.filter(
                 student_id=student_id,
                 status='completed',
@@ -832,25 +759,21 @@ class GPAViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def class_performance(self, request):
-        """Get class performance report"""
         offering_id = request.query_params.get('offering_id')
         
         if not offering_id:
             return Response({'error': 'Offering ID required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Get grades for the offering
         grades = Grade.objects.filter(offering_id=offering_id, is_finalized=True)
         
         if not grades.exists():
             return Response({'error': 'No grades found for this offering'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Calculate statistics
         stats = grades.aggregate(
             total_students=Count('student', distinct=True),
             average_score=Avg('marks_obtained')
         )
         
-        # Grade distribution
         grade_distribution = {}
         for grade in grades:
             grade_letter = grade.grade

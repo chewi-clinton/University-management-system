@@ -25,25 +25,46 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === "student") {
-        navigate("/student/dashboard", { replace: true });
-      } else if (user.role === "faculty") {
-        navigate("/faculty/dashboard", { replace: true });
-      }
+      const redirectPath = getRoleBasedRedirect(user.role);
+      navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
+  const getRoleBasedRedirect = (role) => {
+    switch (role) {
+      case "student":
+        return "/student/dashboard";
+      case "faculty":
+        return "/faculty/dashboard";
+      case "academic_admin":
+        return "/admin/dashboard";
+      case "super_admin":
+        return "/admin/dashboard";
+      default:
+        return "/dashboard";
+    }
+  };
+
   const onSubmit = async (data) => {
     clearErrors("root");
-    const { success, error: loginError } = await login(data);
+
+    const {
+      success,
+      error: loginError,
+      user: loggedInUser,
+    } = await login(data);
 
     if (success) {
       // Navigation will be handled by the useEffect above
-      // This ensures proper redirect based on user role
+      // But we can also trigger it here for immediate redirect
+      if (loggedInUser) {
+        const redirectPath = getRoleBasedRedirect(loggedInUser.role);
+        navigate(redirectPath, { replace: true });
+      }
     } else {
       setError("root", {
         type: "manual",
-        message: loginError || "Invalid email or password",
+        message: loginError || "Invalid email or password. Please try again.",
       });
       setShake(true);
       setTimeout(() => setShake(false), 600);
@@ -83,6 +104,7 @@ const Login = () => {
                 type="email"
                 placeholder="Enter your email"
                 floatingLabel={false}
+                disabled={isLoading}
                 {...register("email", {
                   required: "Email is required",
                   pattern: {
@@ -100,6 +122,7 @@ const Login = () => {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 floatingLabel={false}
+                disabled={isLoading}
                 {...register("password", {
                   required: "Password is required",
                   minLength: {
@@ -113,6 +136,8 @@ const Login = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="login__toggle-password"
+                    disabled={isLoading}
+                    tabIndex={-1}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -136,10 +161,14 @@ const Login = () => {
 
             <div className="login__options">
               <label className="login__remember">
-                <input type="checkbox" />
+                <input type="checkbox" disabled={isLoading} />
                 <span>Remember Me</span>
               </label>
-              <button type="button" className="login__forgot">
+              <button
+                type="button"
+                className="login__forgot"
+                disabled={isLoading}
+              >
                 Forgot Password?
               </button>
             </div>
@@ -150,16 +179,19 @@ const Login = () => {
               size="lg"
               fullWidth
               loading={isLoading}
+              disabled={isLoading}
             >
-              Login
+              {isLoading ? "Signing in..." : "Login"}
             </Button>
 
             <div className="login__demo-creds">
               <p>
-                <strong>Demo Credentials:</strong>
+                <strong>Note:</strong>
               </p>
-              <p>Student: student@university.edu / password123</p>
-              <p>Faculty: faculty@university.edu / password123</p>
+              <p>Use your university credentials to login</p>
+              <p className="login__demo-hint">
+                Contact admin if you don't have access
+              </p>
             </div>
           </form>
 
