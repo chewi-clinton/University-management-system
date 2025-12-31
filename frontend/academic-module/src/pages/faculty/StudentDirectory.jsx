@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Grid3x3,
@@ -11,11 +11,9 @@ import {
   Award,
   Calendar,
   BookOpen,
-  X,
-  MessageSquare,
   Download,
-  Filter,
   SlidersHorizontal,
+  MessageSquare,
 } from "lucide-react";
 import Card from "../../components/shared/layout/Card";
 import Button from "../../components/shared/ui/Button";
@@ -26,6 +24,7 @@ import Select from "../../components/shared/ui/Select";
 import Modal from "../../components/shared/feedback/Modal";
 import Table from "../../components/shared/ui/Table";
 import ProgressBar from "../../components/shared/ui/ProgressBar";
+import Skeleton from "../../components/shared/feedback/skeleton";
 import {
   LineChart,
   Line,
@@ -35,207 +34,24 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import facultyService from "../../services/api/facultyService";
+import api from "../../services/api/api";
 import "../../styles/pages/StudentDirectory.css";
 
-// Mock data remains unchanged
-const mockStudents = [
-  {
-    id: 1,
-    name: "John Doe",
-    regNumber: "UNI-2024-0123",
-    email: "john@student.edu",
-    phone: "+1234567891",
-    gpa: 3.8,
-    attendance: 92,
-    currentGrade: "A",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "A", percentage: 92 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "A",
-        percentage: 88,
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    regNumber: "UNI-2024-0124",
-    email: "jane@student.edu",
-    phone: "+1234567892",
-    gpa: 3.9,
-    attendance: 95,
-    currentGrade: "A",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=JaneS",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "A", percentage: 95 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "A",
-        percentage: 90,
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Mike Chen",
-    regNumber: "UNI-2024-0125",
-    email: "mike@student.edu",
-    phone: "+1234567893",
-    gpa: 3.2,
-    attendance: 78,
-    currentGrade: "B",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "B", percentage: 78 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "B+",
-        percentage: 82,
-      },
-    ],
-  },
-  {
-    id: 4,
-    name: "Sarah Johnson",
-    regNumber: "UNI-2024-0126",
-    email: "sarah@student.edu",
-    phone: "+1234567894",
-    gpa: 3.6,
-    attendance: 89,
-    currentGrade: "A-",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "A-", percentage: 86 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "A",
-        percentage: 88,
-      },
-    ],
-  },
-  {
-    id: 5,
-    name: "David Lee",
-    regNumber: "UNI-2024-0127",
-    email: "david@student.edu",
-    phone: "+1234567895",
-    gpa: 2.9,
-    attendance: 72,
-    currentGrade: "C+",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "C+", percentage: 72 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "B",
-        percentage: 75,
-      },
-    ],
-  },
-  {
-    id: 6,
-    name: "Emily Brown",
-    regNumber: "UNI-2024-0128",
-    email: "emily@student.edu",
-    phone: "+1234567896",
-    gpa: 3.7,
-    attendance: 94,
-    currentGrade: "A",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "A", percentage: 90 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "A",
-        percentage: 89,
-      },
-    ],
-  },
-  {
-    id: 7,
-    name: "Alex Martinez",
-    regNumber: "UNI-2024-0129",
-    email: "alex@student.edu",
-    phone: "+1234567897",
-    gpa: 3.4,
-    attendance: 85,
-    currentGrade: "B+",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "B+", percentage: 84 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "A-",
-        percentage: 86,
-      },
-    ],
-  },
-  {
-    id: 8,
-    name: "Lisa Wang",
-    regNumber: "UNI-2024-0130",
-    email: "lisa@student.edu",
-    phone: "+1234567898",
-    gpa: 3.5,
-    attendance: 88,
-    currentGrade: "A-",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa",
-    program: "Computer Science",
-    semester: 4,
-    courses: [
-      { code: "CS301", name: "Data Structures", grade: "A-", percentage: 87 },
-      {
-        code: "CS201",
-        name: "Programming Fundamentals",
-        grade: "A-",
-        percentage: 85,
-      },
-    ],
-  },
-];
-
-// Mock performance trend data
-const getPerformanceTrend = () => [
-  { assessment: "Assignment 1", score: 85 },
-  { assessment: "Assignment 2", score: 88 },
-  { assessment: "Quiz 1", score: 82 },
-  { assessment: "Midterm", score: 90 },
-  { assessment: "Assignment 3", score: 92 },
-  { assessment: "Quiz 2", score: 89 },
-];
-
 const StudentDirectory = () => {
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list' | 'table'
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [privateNotes, setPrivateNotes] = useState({});
+  const [error, setError] = useState(null);
+  const [studentDetails, setStudentDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Filters
   const [filters, setFilters] = useState({
     course: "all",
     gpaMin: 0,
@@ -244,12 +60,206 @@ const StudentDirectory = () => {
     sortBy: "name",
   });
 
+  useEffect(() => {
+    loadStudentsData();
+  }, []);
+
+  const loadStudentsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get faculty's courses
+      const coursesResponse = await facultyService.getCourses({
+        is_visible: true,
+      });
+      const coursesData = coursesResponse.results || coursesResponse;
+      setCourses(coursesData);
+
+      // Get all students enrolled in faculty's courses
+      const allStudents = new Map();
+
+      for (const course of coursesData) {
+        try {
+          const registrationsResponse = await facultyService.getCourseStudents(
+            course.id
+          );
+          const registrations =
+            registrationsResponse.results || registrationsResponse;
+
+          for (const reg of registrations) {
+            const student = reg.student;
+            if (!allStudents.has(student.student_id)) {
+              // Get student's attendance summary
+              let attendancePercentage = 0;
+              try {
+                const attendanceResponse = await api.get(
+                  "attendance-summaries/",
+                  {
+                    params: { student: student.student_id },
+                  }
+                );
+                const summaries =
+                  attendanceResponse.data.results || attendanceResponse.data;
+
+                if (summaries.length > 0) {
+                  const totalAttendance = summaries.reduce((sum, s) => {
+                    const attended = s.classes_attended || 0;
+                    const total = s.total_classes || 0;
+                    return sum + (total > 0 ? (attended / total) * 100 : 0);
+                  }, 0);
+                  attendancePercentage = Math.round(
+                    totalAttendance / summaries.length
+                  );
+                }
+              } catch (err) {
+                console.warn(
+                  "Could not load attendance for student:",
+                  student.student_id
+                );
+              }
+
+              allStudents.set(student.student_id, {
+                id: student.student_id,
+                name:
+                  student.full_name ||
+                  `${student.first_name || ""} ${
+                    student.last_name || ""
+                  }`.trim(),
+                regNumber: student.university_reg_number || "N/A",
+                email: student.email || "N/A",
+                phone: student.phone || "N/A",
+                gpa: parseFloat(student.current_gpa) || 0,
+                attendance: attendancePercentage,
+                currentGrade: getLetterGrade(
+                  parseFloat(student.current_gpa) || 0
+                ),
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.student_id}`,
+                program: student.program_name || "N/A",
+                semester: student.current_semester || 1,
+                courses: [],
+              });
+            }
+
+            // Add course to student's course list
+            const studentData = allStudents.get(student.student_id);
+            studentData.courses.push({
+              code: course.course?.course_code || "N/A",
+              name: course.course?.course_name || "N/A",
+              grade: reg.grade || "N/A",
+              percentage: reg.grade_points ? (reg.grade_points / 4.0) * 100 : 0,
+              registrationId: reg.id,
+              offeringId: course.id,
+            });
+          }
+        } catch (err) {
+          console.warn(`Could not load students for course ${course.id}:`, err);
+        }
+      }
+
+      setStudents(Array.from(allStudents.values()));
+    } catch (error) {
+      console.error("Error loading students:", error);
+      setError("Failed to load student data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStudentDetails = async (student) => {
+    setLoadingDetails(true);
+    try {
+      // Get detailed grades for this student
+      const gradesResponse = await api.get("grades/", {
+        params: { student: student.id },
+      });
+      const grades = gradesResponse.data.results || gradesResponse.data;
+
+      // Get attendance records
+      const attendanceResponse = await api.get("attendance/", {
+        params: { student: student.id },
+      });
+      const attendance =
+        attendanceResponse.data.results || attendanceResponse.data;
+
+      // Process performance trend from grades
+      const performanceTrend = grades
+        .filter((g) => g.is_finalized)
+        .sort((a, b) => new Date(a.graded_at) - new Date(b.graded_at))
+        .slice(-6)
+        .map((g) => ({
+          assessment: g.assessment_name || "Assessment",
+          score:
+            g.max_marks > 0
+              ? Math.round((g.marks_obtained / g.max_marks) * 100)
+              : 0,
+        }));
+
+      // Calculate attendance per course
+      const courseAttendance = {};
+      attendance.forEach((record) => {
+        const courseId = record.offering?.id;
+        if (!courseId) return;
+
+        if (!courseAttendance[courseId]) {
+          courseAttendance[courseId] = {
+            present: 0,
+            total: 0,
+            courseName: record.offering?.course?.course_name || "N/A",
+            courseCode: record.offering?.course?.course_code || "N/A",
+          };
+        }
+
+        courseAttendance[courseId].total++;
+        if (record.status === "present") {
+          courseAttendance[courseId].present++;
+        }
+      });
+
+      setStudentDetails({
+        ...student,
+        performanceTrend:
+          performanceTrend.length > 0
+            ? performanceTrend
+            : [{ assessment: "No data", score: 0 }],
+        courseAttendance: Object.values(courseAttendance).map((ca) => ({
+          code: ca.courseCode,
+          name: ca.courseName,
+          percentage:
+            ca.total > 0 ? Math.round((ca.present / ca.total) * 100) : 0,
+        })),
+      });
+    } catch (error) {
+      console.error("Error loading student details:", error);
+      setStudentDetails({
+        ...student,
+        performanceTrend: [],
+        courseAttendance: [],
+      });
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const getLetterGrade = (gpa) => {
+    if (gpa >= 3.7) return "A";
+    if (gpa >= 3.3) return "A-";
+    if (gpa >= 3.0) return "B+";
+    if (gpa >= 2.7) return "B";
+    if (gpa >= 2.3) return "B-";
+    if (gpa >= 2.0) return "C+";
+    if (gpa >= 1.7) return "C";
+    if (gpa >= 1.3) return "C-";
+    if (gpa >= 1.0) return "D";
+    return "F";
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const filteredAndSortedStudents = useMemo(() => {
-    let filtered = mockStudents.filter((student) => {
+    let filtered = students.filter((student) => {
       const matchesSearch =
         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.regNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -267,7 +277,13 @@ const StudentDirectory = () => {
         matchesAttendance = student.attendance < 75;
       }
 
-      return matchesSearch && matchesGPA && matchesAttendance;
+      const matchesCourse =
+        filters.course === "all" ||
+        student.courses.some(
+          (c) => c.offeringId?.toString() === filters.course
+        );
+
+      return matchesSearch && matchesGPA && matchesAttendance && matchesCourse;
     });
 
     filtered.sort((a, b) => {
@@ -286,23 +302,49 @@ const StudentDirectory = () => {
     });
 
     return filtered;
-  }, [searchQuery, filters]);
+  }, [students, searchQuery, filters]);
 
-  const handleViewStudent = (student) => {
+  const handleViewStudent = async (student) => {
     setSelectedStudent(student);
     setIsDetailModalOpen(true);
+    await loadStudentDetails(student);
   };
 
   const handleEmailStudent = (student) => {
     window.location.href = `mailto:${student.email}`;
   };
 
-  const handleSaveNotes = (studentId, notes) => {
+  const handleSaveNotes = async (studentId, notes) => {
     setPrivateNotes((prev) => ({
       ...prev,
       [studentId]: notes,
     }));
+    // TODO: Implement API call to save notes
     console.log("Saving notes for student:", studentId, notes);
+  };
+
+  const handleExportList = () => {
+    const csvContent = [
+      ["Name", "Reg Number", "Email", "Program", "GPA", "Attendance", "Grade"],
+      ...filteredAndSortedStudents.map((s) => [
+        s.name,
+        s.regNumber,
+        s.email,
+        s.program,
+        s.gpa.toFixed(2),
+        `${s.attendance}%`,
+        s.currentGrade,
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `students_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
   };
 
   const getGPAColor = (gpa) => {
@@ -346,7 +388,7 @@ const StudentDirectory = () => {
       sortable: true,
       render: (student) => (
         <Badge variant={getGPAColor(student.gpa)}>
-          {(student.gpa ?? 0).toFixed(2)}
+          {student.gpa.toFixed(2)}
         </Badge>
       ),
     },
@@ -390,9 +432,36 @@ const StudentDirectory = () => {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="student-directory">
+        <Skeleton variant="text" width="300px" height="40px" />
+        <Skeleton
+          variant="rectangular"
+          height="600px"
+          style={{ marginTop: "24px" }}
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="student-directory">
+        <Card variant="flat">
+          <div style={{ padding: "2rem", textAlign: "center" }}>
+            <p style={{ color: "var(--error-500)", marginBottom: "1rem" }}>
+              {error}
+            </p>
+            <Button onClick={loadStudentsData}>Retry</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="student-directory">
-      {/* Header and controls unchanged */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -404,13 +473,12 @@ const StudentDirectory = () => {
           <p>View and manage student information</p>
         </div>
         <div className="student-directory__header-actions">
-          <Button variant="outline" icon={Download}>
+          <Button variant="outline" icon={Download} onClick={handleExportList}>
             Export List
           </Button>
         </div>
       </motion.div>
 
-      {/* Controls section unchanged */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -471,7 +539,6 @@ const StudentDirectory = () => {
         </div>
       </motion.div>
 
-      {/* Filters and results count unchanged */}
       <AnimatePresence>
         {isFilterOpen && (
           <motion.div
@@ -482,6 +549,24 @@ const StudentDirectory = () => {
           >
             <Card className="student-directory__filters">
               <div className="student-directory__filters-content">
+                <div className="student-directory__filter-group">
+                  <label>Course</label>
+                  <Select
+                    value={filters.course}
+                    onChange={(e) =>
+                      handleFilterChange("course", e.target.value)
+                    }
+                  >
+                    <option value="all">All Courses</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id.toString()}>
+                        {course.course?.course_code} -{" "}
+                        {course.course?.course_name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
                 <div className="student-directory__filter-group">
                   <label>GPA Range</label>
                   <div className="student-directory__range-inputs">
@@ -575,12 +660,11 @@ const StudentDirectory = () => {
         className="student-directory__results"
       >
         <p className="student-directory__count">
-          Showing {filteredAndSortedStudents.length} of {mockStudents.length}{" "}
+          Showing {filteredAndSortedStudents.length} of {students.length}{" "}
           students
         </p>
       </motion.div>
 
-      {/* Grid, List, and Table views with safe GPA rendering */}
       <AnimatePresence mode="wait">
         {viewMode === "grid" && (
           <motion.div
@@ -617,7 +701,7 @@ const StudentDirectory = () => {
                       <Award size={16} />
                       <span className="student-card__stat-label">GPA</span>
                       <Badge variant={getGPAColor(student.gpa)}>
-                        {(student.gpa ?? 0).toFixed(2)}
+                        {student.gpa.toFixed(2)}
                       </Badge>
                     </div>
                     <div className="student-card__stat">
@@ -707,7 +791,7 @@ const StudentDirectory = () => {
                     <div className="student-list-item__stat-box">
                       <span className="student-list-item__stat-label">GPA</span>
                       <Badge variant={getGPAColor(student.gpa)}>
-                        {(student.gpa ?? 0).toFixed(2)}
+                        {student.gpa.toFixed(2)}
                       </Badge>
                     </div>
                     <div className="student-list-item__stat-box">
@@ -772,12 +856,12 @@ const StudentDirectory = () => {
         </Card>
       )}
 
-      {/* Student Detail Modal - Fixed GPA rendering */}
       <Modal
         isOpen={isDetailModalOpen}
         onClose={() => {
           setIsDetailModalOpen(false);
           setSelectedStudent(null);
+          setStudentDetails(null);
         }}
         title="Student Details"
         size="large"
@@ -813,7 +897,7 @@ const StudentDirectory = () => {
                 <div>
                   <span className="student-detail__stat-label">GPA</span>
                   <span className="student-detail__stat-value">
-                    {(selectedStudent.gpa ?? 0).toFixed(2)}
+                    {selectedStudent.gpa.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -848,125 +932,148 @@ const StudentDirectory = () => {
               </div>
             </div>
 
-            {/* Rest of modal content unchanged */}
-            <div className="student-detail__section">
-              <h3>Courses with Prof. Smith</h3>
-              <div className="student-detail__courses">
-                {selectedStudent.courses.map((course, index) => (
-                  <div key={index} className="student-detail__course-item">
-                    <div className="student-detail__course-info">
-                      <span className="student-detail__course-code">
-                        {course.code}
-                      </span>
-                      <span className="student-detail__course-name">
-                        {course.name}
-                      </span>
-                    </div>
-                    <div className="student-detail__course-performance">
-                      <Badge
-                        variant={
-                          course.grade.startsWith("A")
-                            ? "success"
-                            : course.grade.startsWith("B")
-                            ? "primary"
-                            : "warning"
-                        }
-                      >
-                        {course.grade}
-                      </Badge>
-                      <span className="student-detail__course-percentage">
-                        {course.percentage}%
-                      </span>
-                    </div>
+            {loadingDetails ? (
+              <Skeleton variant="rectangular" height="200px" />
+            ) : (
+              <>
+                <div className="student-detail__section">
+                  <h3>Enrolled Courses</h3>
+                  <div className="student-detail__courses">
+                    {selectedStudent.courses.map((course, index) => (
+                      <div key={index} className="student-detail__course-item">
+                        <div className="student-detail__course-info">
+                          <span className="student-detail__course-code">
+                            {course.code}
+                          </span>
+                          <span className="student-detail__course-name">
+                            {course.name}
+                          </span>
+                        </div>
+                        <div className="student-detail__course-performance">
+                          <Badge
+                            variant={
+                              course.grade.startsWith("A")
+                                ? "success"
+                                : course.grade.startsWith("B")
+                                ? "primary"
+                                : "warning"
+                            }
+                          >
+                            {course.grade}
+                          </Badge>
+                          <span className="student-detail__course-percentage">
+                            {Math.round(course.percentage)}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="student-detail__section">
-              <h3>Attendance Across Courses</h3>
-              <div className="student-detail__attendance-bars">
-                {selectedStudent.courses.map((course, index) => (
-                  <div key={index} className="student-detail__attendance-item">
-                    <div className="student-detail__attendance-label">
-                      <span>{course.code}</span>
-                      <span>{course.percentage}%</span>
+                {studentDetails?.courseAttendance &&
+                  studentDetails.courseAttendance.length > 0 && (
+                    <div className="student-detail__section">
+                      <h3>Attendance Across Courses</h3>
+                      <div className="student-detail__attendance-bars">
+                        {studentDetails.courseAttendance.map(
+                          (course, index) => (
+                            <div
+                              key={index}
+                              className="student-detail__attendance-item"
+                            >
+                              <div className="student-detail__attendance-label">
+                                <span>{course.code}</span>
+                                <span>{course.percentage}%</span>
+                              </div>
+                              <ProgressBar
+                                value={course.percentage}
+                                max={100}
+                                variant={
+                                  course.percentage >= 90
+                                    ? "success"
+                                    : course.percentage >= 75
+                                    ? "warning"
+                                    : "error"
+                                }
+                              />
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
-                    <ProgressBar
-                      value={course.percentage}
-                      max={100}
-                      variant={
-                        course.percentage >= 90
-                          ? "success"
-                          : course.percentage >= 75
-                          ? "warning"
-                          : "error"
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+                  )}
 
-            <div className="student-detail__section">
-              <h3>Performance Trend</h3>
-              <div className="student-detail__chart">
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={getPerformanceTrend()}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="assessment"
-                      stroke="#6b7280"
-                      fontSize={12}
-                    />
-                    <YAxis stroke="#6b7280" fontSize={12} domain={[0, 100]} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "white",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="score"
-                      stroke="#e87d26"
-                      strokeWidth={2}
-                      dot={{ fill: "#e87d26", r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+                {studentDetails?.performanceTrend &&
+                  studentDetails.performanceTrend.length > 0 && (
+                    <div className="student-detail__section">
+                      <h3>Performance Trend</h3>
+                      <div className="student-detail__chart">
+                        <ResponsiveContainer width="100%" height={250}>
+                          <LineChart data={studentDetails.performanceTrend}>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#e5e7eb"
+                            />
+                            <XAxis
+                              dataKey="assessment"
+                              stroke="#6b7280"
+                              fontSize={12}
+                            />
+                            <YAxis
+                              stroke="#6b7280"
+                              fontSize={12}
+                              domain={[0, 100]}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "white",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="score"
+                              stroke="#e87d26"
+                              strokeWidth={2}
+                              dot={{ fill: "#e87d26", r: 4 }}
+                              activeDot={{ r: 6 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
 
-            <div className="student-detail__section">
-              <h3>Private Notes (Faculty Only)</h3>
-              <textarea
-                className="student-detail__notes"
-                placeholder="Enter private notes about this student..."
-                value={privateNotes[selectedStudent.id] || ""}
-                onChange={(e) =>
-                  setPrivateNotes((prev) => ({
-                    ...prev,
-                    [selectedStudent.id]: e.target.value,
-                  }))
-                }
-                rows="4"
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() =>
-                  handleSaveNotes(
-                    selectedStudent.id,
-                    privateNotes[selectedStudent.id] || ""
-                  )
-                }
-              >
-                Save Notes
-              </Button>
-            </div>
+                <div className="student-detail__section">
+                  <h3>Private Notes (Faculty Only)</h3>
+                  <textarea
+                    className="student-detail__notes"
+                    placeholder="Enter private notes about this student..."
+                    value={privateNotes[selectedStudent.id] || ""}
+                    onChange={(e) =>
+                      setPrivateNotes((prev) => ({
+                        ...prev,
+                        [selectedStudent.id]: e.target.value,
+                      }))
+                    }
+                    rows="4"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() =>
+                      handleSaveNotes(
+                        selectedStudent.id,
+                        privateNotes[selectedStudent.id] || ""
+                      )
+                    }
+                  >
+                    Save Notes
+                  </Button>
+                </div>
+              </>
+            )}
 
             <div className="student-detail__actions">
               <Button

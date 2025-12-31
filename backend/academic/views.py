@@ -399,6 +399,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     filterset_fields = ['offering', 'attendance_date', 'status']
     search_fields = ['student__university_reg_number', 'student__first_name']
     ordering_fields = ['attendance_date', 'marked_at']
+    ordering = ['-attendance_date', '-marked_at']
     def get_permissions(self):
         """
         Allow students to access their own attendance records via my_attendance action
@@ -505,6 +506,7 @@ class GradeViewSet(viewsets.ModelViewSet):
     filterset_fields = ['offering', 'assessment_type', 'is_finalized']
     search_fields = ['student__university_reg_number', 'student__first_name', 'assessment_name']
     ordering_fields = ['graded_at', 'marks_obtained']
+    ordering = ['-graded_at']
     def get_permissions(self):
         """
         Allow students to access their own grades via my_grades action
@@ -627,6 +629,7 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
     filterset_fields = ['exam__exam_type', 'room', 'invigilator']
     search_fields = ['exam__exam_name', 'room__room_number']
     ordering_fields = ['exam_date', 'start_time']
+    ordering = ['exam_date', 'start_time']
    
     def get_permissions(self):
         """
