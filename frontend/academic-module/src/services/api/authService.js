@@ -68,6 +68,30 @@ const authService = {
     }
   },
 
+  // Change password — ADDED
+  changePassword: async (passwordData) => {
+    try {
+      const response = await api.post("/auth/change-password/", {
+        old_password: passwordData.old_password,
+        new_password: passwordData.new_password,
+      });
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error.response?.data?.old_password?.[0] ||
+          error.response?.data?.new_password?.[0] ||
+          error.response?.data?.detail ||
+          error.response?.data?.error ||
+          "Failed to change password",
+      };
+    }
+  },
+
   // Update profile — FIXED: removed /academic/
   updateProfile: async (userId, data) => {
     try {
