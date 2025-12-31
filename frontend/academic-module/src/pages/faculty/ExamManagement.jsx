@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -9,14 +9,11 @@ import {
   Users,
   MapPin,
   Clock,
-  AlertCircle,
   Download,
-  Grid3x3,
   ChevronLeft,
   ChevronRight,
   Book,
   Award,
-  Filter,
 } from "lucide-react";
 import Card from "../../components/shared/layout/Card";
 import Button from "../../components/shared/ui/Button";
@@ -24,101 +21,25 @@ import Modal from "../../components/shared/feedback/Modal";
 import Input from "../../components/shared/ui/Input";
 import Select from "../../components/shared/ui/Select";
 import Badge from "../../components/shared/ui/Badge";
+import Skeleton from "../../components/shared/feedback/skeleton";
+import facultyService from "../../services/api/facultyService";
+import api from "../../services/api/api";
 import "../../styles/pages/ExamManagement.css";
 
-// Mock data
-const mockExams = [
-  {
-    id: 1,
-    courseId: 1,
-    courseName: "CS301 - Data Structures",
-    type: "Midterm",
-    date: "2024-02-25",
-    startTime: "09:00",
-    endTime: "12:00",
-    duration: 180,
-    room: "A-101",
-    totalMarks: 40,
-    weightage: 30,
-    syllabus: "Chapters 1-5, Arrays, Linked Lists, Trees",
-    instructions: "Closed book exam. No electronic devices allowed.",
-    invigilator: "Prof. Jane Smith",
-    enrolledStudents: 45,
-    color: "#3b82f6",
-  },
-  {
-    id: 2,
-    courseId: 1,
-    courseName: "CS301 - Data Structures",
-    type: "Final",
-    date: "2024-04-15",
-    startTime: "14:00",
-    endTime: "17:00",
-    duration: 180,
-    room: "A-101",
-    totalMarks: 100,
-    weightage: 30,
-    syllabus: "Complete course material",
-    instructions: "Comprehensive exam. Bring admit card and ID.",
-    invigilator: "Prof. Jane Smith",
-    enrolledStudents: 45,
-    color: "#3b82f6",
-  },
-  {
-    id: 3,
-    courseId: 2,
-    courseName: "CS201 - Programming Fundamentals",
-    type: "Quiz",
-    date: "2024-02-10",
-    startTime: "14:00",
-    endTime: "15:00",
-    duration: 60,
-    room: "B-205",
-    totalMarks: 20,
-    weightage: 10,
-    syllabus: "Chapters 1-3",
-    instructions: "Open book. 1 hour duration.",
-    invigilator: "Prof. Jane Smith",
-    enrolledStudents: 38,
-    color: "#8b5cf6",
-  },
-  {
-    id: 4,
-    courseId: 3,
-    courseName: "CS401 - Advanced Algorithms",
-    type: "Practical",
-    date: "2024-03-05",
-    startTime: "10:00",
-    endTime: "13:00",
-    duration: 180,
-    room: "Lab-A",
-    totalMarks: 50,
-    weightage: 25,
-    syllabus: "Implementation of sorting and graph algorithms",
-    instructions: "Practical coding exam. Bring laptop.",
-    invigilator: "Prof. Jane Smith",
-    enrolledStudents: 32,
-    color: "#10b981",
-  },
-];
-
-const mockCourses = [
-  { id: 1, code: "CS301", name: "Data Structures", color: "#3b82f6" },
-  { id: 2, code: "CS201", name: "Programming Fundamentals", color: "#8b5cf6" },
-  { id: 3, code: "CS401", name: "Advanced Algorithms", color: "#10b981" },
-];
-
 const examTypes = [
-  { value: "Midterm", label: "Midterm", color: "#3b82f6" },
-  { value: "Final", label: "Final", color: "#ef4444" },
-  { value: "Quiz", label: "Quiz", color: "#10b981" },
-  { value: "Practical", label: "Practical", color: "#8b5cf6" },
+  { value: "midterm", label: "Midterm", color: "#3b82f6" },
+  { value: "final", label: "Final", color: "#ef4444" },
+  { value: "quiz", label: "Quiz", color: "#10b981" },
+  { value: "practical", label: "Practical", color: "#8b5cf6" },
 ];
 
 const ExamManagement = () => {
-  const [exams, setExams] = useState(mockExams);
-  const [view, setView] = useState("calendar"); // 'calendar' | 'list'
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 1, 1)); // February 2024
+  const [loading, setLoading] = useState(true);
+  const [exams, setExams] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [examRooms, setExamRooms] = useState([]);
+  const [view, setView] = useState("calendar");
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -126,23 +47,126 @@ const ExamManagement = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [error, setError] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
-    courseId: "",
-    type: "",
-    date: "",
-    startTime: "",
-    endTime: "",
-    room: "",
-    totalMarks: "",
-    weightage: "",
+    offering_id: "",
+    exam_type: "",
+    exam_name: "",
+    exam_date: "",
+    start_time: "",
+    end_time: "",
+    room_id: "",
+    total_marks: "",
+    passing_marks: "",
     syllabus: "",
     instructions: "",
-    invigilator: "Prof. Jane Smith",
   });
 
-  // Calendar logic
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [coursesResponse, examsResponse, roomsResponse] = await Promise.all(
+        [
+          facultyService.getCourses({ is_visible: true }),
+          api.get("examinations/"),
+          api.get("exam-rooms/"),
+        ]
+      );
+
+      const coursesData = coursesResponse.results || coursesResponse;
+      setCourses(coursesData);
+
+      const examsData = examsResponse.data.results || examsResponse.data;
+
+      // Enrich exam data with schedules
+      const enrichedExams = await Promise.all(
+        examsData.map(async (exam) => {
+          try {
+            const scheduleResponse = await api.get("exam-schedules/", {
+              params: { exam: exam.exam_id },
+            });
+            const schedules =
+              scheduleResponse.data.results || scheduleResponse.data;
+            const schedule = schedules[0]; // Get first schedule
+
+            return {
+              id: exam.exam_id,
+              offeringId: exam.offering?.id,
+              courseName: exam.offering?.course?.course_code
+                ? `${exam.offering.course.course_code} - ${exam.offering.course.course_name}`
+                : "N/A",
+              courseId: exam.offering?.course?.course_id,
+              type: exam.exam_type,
+              examName: exam.exam_name,
+              date: schedule?.exam_date || null,
+              startTime: schedule?.start_time || null,
+              endTime: schedule?.end_time || null,
+              duration: exam.duration_minutes || 180,
+              room: schedule?.room?.room_number || "TBA",
+              roomId: schedule?.room?.room_id,
+              totalMarks: exam.total_marks,
+              passingMarks: exam.passing_marks,
+              weightage: exam.weightage_percentage || 0,
+              syllabus: exam.syllabus_portion || "",
+              instructions: exam.instructions || "",
+              invigilator: schedule?.invigilator
+                ? `${schedule.invigilator.user.first_name} ${schedule.invigilator.user.last_name}`
+                : "TBA",
+              enrolledStudents: exam.offering?.current_enrollment || 0,
+              color: getExamTypeColor(exam.exam_type),
+              scheduleId: schedule?.schedule_id,
+            };
+          } catch (error) {
+            console.error(
+              `Error loading schedule for exam ${exam.exam_id}:`,
+              error
+            );
+            return {
+              id: exam.exam_id,
+              offeringId: exam.offering?.id,
+              courseName: exam.offering?.course?.course_code
+                ? `${exam.offering.course.course_code} - ${exam.offering.course.course_name}`
+                : "N/A",
+              courseId: exam.offering?.course?.course_id,
+              type: exam.exam_type,
+              examName: exam.exam_name,
+              date: null,
+              startTime: null,
+              endTime: null,
+              duration: exam.duration_minutes || 180,
+              room: "TBA",
+              totalMarks: exam.total_marks,
+              passingMarks: exam.passing_marks,
+              weightage: exam.weightage_percentage || 0,
+              syllabus: exam.syllabus_portion || "",
+              instructions: exam.instructions || "",
+              enrolledStudents: exam.offering?.current_enrollment || 0,
+              color: getExamTypeColor(exam.exam_type),
+            };
+          }
+        })
+      );
+
+      setExams(enrichedExams);
+
+      const roomsData = roomsResponse.data.results || roomsResponse.data;
+      setExamRooms(roomsData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      setError("Failed to load exam data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -152,17 +176,12 @@ const ExamManagement = () => {
     const startingDayOfWeek = firstDay.getDay();
 
     const days = [];
-
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
-
-    // Add all days of the month
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i));
     }
-
     return days;
   };
 
@@ -175,7 +194,7 @@ const ExamManagement = () => {
   const filteredExams = useMemo(() => {
     return exams.filter((exam) => {
       const courseMatch =
-        filterCourse === "all" || exam.courseId.toString() === filterCourse;
+        filterCourse === "all" || exam.courseId?.toString() === filterCourse;
       const typeMatch = filterType === "all" || exam.type === filterType;
       return courseMatch && typeMatch;
     });
@@ -204,17 +223,17 @@ const ExamManagement = () => {
 
   const handleCreateExam = () => {
     setFormData({
-      courseId: "",
-      type: "",
-      date: "",
-      startTime: "",
-      endTime: "",
-      room: "",
-      totalMarks: "",
-      weightage: "",
+      offering_id: "",
+      exam_type: "",
+      exam_name: "",
+      exam_date: "",
+      start_time: "",
+      end_time: "",
+      room_id: "",
+      total_marks: "",
+      passing_marks: "",
       syllabus: "",
       instructions: "",
-      invigilator: "Prof. Jane Smith",
     });
     setIsCreateModalOpen(true);
   };
@@ -222,90 +241,140 @@ const ExamManagement = () => {
   const handleEditExam = (exam) => {
     setSelectedExam(exam);
     setFormData({
-      courseId: exam.courseId.toString(),
-      type: exam.type,
-      date: exam.date,
-      startTime: exam.startTime,
-      endTime: exam.endTime,
-      room: exam.room,
-      totalMarks: exam.totalMarks.toString(),
-      weightage: exam.weightage.toString(),
+      offering_id: exam.offeringId?.toString() || "",
+      exam_type: exam.type,
+      exam_name: exam.examName,
+      exam_date: exam.date || "",
+      start_time: exam.startTime || "",
+      end_time: exam.endTime || "",
+      room_id: exam.roomId?.toString() || "",
+      total_marks: exam.totalMarks?.toString() || "",
+      passing_marks: exam.passingMarks?.toString() || "",
       syllabus: exam.syllabus,
       instructions: exam.instructions,
-      invigilator: exam.invigilator,
     });
     setIsDetailsModalOpen(false);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteExam = (examId) => {
+  const handleDeleteExam = async (examId) => {
     if (window.confirm("Are you sure you want to delete this exam?")) {
-      setExams(exams.filter((e) => e.id !== examId));
-      setIsDetailsModalOpen(false);
+      try {
+        await api.delete(`examinations/${examId}/`);
+        setExams(exams.filter((e) => e.id !== examId));
+        setIsDetailsModalOpen(false);
+        setSaveStatus({
+          type: "success",
+          message: "Exam deleted successfully",
+        });
+      } catch (error) {
+        console.error("Error deleting exam:", error);
+        setSaveStatus({ type: "error", message: "Failed to delete exam" });
+      }
     }
   };
 
-  const handleSubmitCreate = (e) => {
+  const handleSubmitCreate = async (e) => {
     e.preventDefault();
-    const course = mockCourses.find(
-      (c) => c.id.toString() === formData.courseId
-    );
-    const duration = calculateDuration(formData.startTime, formData.endTime);
+    setSaveStatus({ type: "loading", message: "Creating exam..." });
 
-    const newExam = {
-      id: Math.max(...exams.map((e) => e.id)) + 1,
-      courseId: parseInt(formData.courseId),
-      courseName: `${course.code} - ${course.name}`,
-      type: formData.type,
-      date: formData.date,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      duration,
-      room: formData.room,
-      totalMarks: parseInt(formData.totalMarks),
-      weightage: parseInt(formData.weightage),
-      syllabus: formData.syllabus,
-      instructions: formData.instructions,
-      invigilator: formData.invigilator,
-      enrolledStudents: course.id === 1 ? 45 : course.id === 2 ? 38 : 32,
-      color: course.color,
-    };
+    try {
+      // Calculate duration
+      const duration = calculateDuration(
+        formData.start_time,
+        formData.end_time
+      );
 
-    setExams([...exams, newExam]);
-    setIsCreateModalOpen(false);
+      // Create examination
+      const examData = {
+        offering_id: parseInt(formData.offering_id),
+        exam_type: formData.exam_type,
+        exam_name: formData.exam_name,
+        total_marks: parseInt(formData.total_marks),
+        passing_marks: parseInt(formData.passing_marks),
+        duration_minutes: duration,
+        syllabus_portion: formData.syllabus,
+        instructions: formData.instructions,
+      };
+
+      const examResponse = await api.post("examinations/", examData);
+      const newExam = examResponse.data;
+
+      // Create exam schedule
+      const scheduleData = {
+        exam_id: newExam.exam_id,
+        exam_date: formData.exam_date,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        room_id: parseInt(formData.room_id),
+      };
+
+      await api.post("exam-schedules/", scheduleData);
+
+      setIsCreateModalOpen(false);
+      setSaveStatus({ type: "success", message: "Exam created successfully" });
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error creating exam:", error);
+      setSaveStatus({ type: "error", message: "Failed to create exam" });
+    }
   };
 
-  const handleSubmitEdit = (e) => {
+  const handleSubmitEdit = async (e) => {
     e.preventDefault();
-    const course = mockCourses.find(
-      (c) => c.id.toString() === formData.courseId
-    );
-    const duration = calculateDuration(formData.startTime, formData.endTime);
+    setSaveStatus({ type: "loading", message: "Updating exam..." });
 
-    setExams(
-      exams.map((exam) =>
-        exam.id === selectedExam.id
-          ? {
-              ...exam,
-              courseId: parseInt(formData.courseId),
-              courseName: `${course.code} - ${course.name}`,
-              type: formData.type,
-              date: formData.date,
-              startTime: formData.startTime,
-              endTime: formData.endTime,
-              duration,
-              room: formData.room,
-              totalMarks: parseInt(formData.totalMarks),
-              weightage: parseInt(formData.weightage),
-              syllabus: formData.syllabus,
-              instructions: formData.instructions,
-              invigilator: formData.invigilator,
-              color: course.color,
-            }
-          : exam
-      )
-    );
-    setIsEditModalOpen(false);
+    try {
+      const duration = calculateDuration(
+        formData.start_time,
+        formData.end_time
+      );
+
+      // Update examination
+      const examData = {
+        offering_id: parseInt(formData.offering_id),
+        exam_type: formData.exam_type,
+        exam_name: formData.exam_name,
+        total_marks: parseInt(formData.total_marks),
+        passing_marks: parseInt(formData.passing_marks),
+        duration_minutes: duration,
+        syllabus_portion: formData.syllabus,
+        instructions: formData.instructions,
+      };
+
+      await api.patch(`examinations/${selectedExam.id}/`, examData);
+
+      // Update exam schedule if it exists
+      if (selectedExam.scheduleId) {
+        const scheduleData = {
+          exam_date: formData.exam_date,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          room_id: parseInt(formData.room_id),
+        };
+        await api.patch(
+          `exam-schedules/${selectedExam.scheduleId}/`,
+          scheduleData
+        );
+      } else {
+        // Create schedule if it doesn't exist
+        const scheduleData = {
+          exam_id: selectedExam.id,
+          exam_date: formData.exam_date,
+          start_time: formData.start_time,
+          end_time: formData.end_time,
+          room_id: parseInt(formData.room_id),
+        };
+        await api.post("exam-schedules/", scheduleData);
+      }
+
+      setIsEditModalOpen(false);
+      setSaveStatus({ type: "success", message: "Exam updated successfully" });
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error updating exam:", error);
+      setSaveStatus({ type: "error", message: "Failed to update exam" });
+    }
   };
 
   const calculateDuration = (start, end) => {
@@ -315,6 +384,7 @@ const ExamManagement = () => {
   };
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return "TBA";
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -324,6 +394,7 @@ const ExamManagement = () => {
   };
 
   const formatTime = (time) => {
+    if (!time) return "TBA";
     const [hour, min] = time.split(":");
     const h = parseInt(hour);
     const ampm = h >= 12 ? "PM" : "AM";
@@ -335,11 +406,54 @@ const ExamManagement = () => {
     return examTypes.find((t) => t.value === type)?.color || "#6b7280";
   };
 
+  const getExamTypeBadgeVariant = (type) => {
+    switch (type) {
+      case "final":
+        return "error";
+      case "midterm":
+        return "primary";
+      case "quiz":
+        return "success";
+      case "practical":
+        return "warning";
+      default:
+        return "default";
+    }
+  };
+
   const days = getDaysInMonth(currentDate);
   const monthName = currentDate.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
+
+  if (loading) {
+    return (
+      <div className="exam-management">
+        <Skeleton variant="text" width="300px" height="40px" />
+        <Skeleton
+          variant="rectangular"
+          height="600px"
+          style={{ marginTop: "24px" }}
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="exam-management">
+        <Card variant="flat">
+          <div style={{ padding: "2rem", textAlign: "center" }}>
+            <p style={{ color: "var(--error-500)", marginBottom: "1rem" }}>
+              {error}
+            </p>
+            <Button onClick={loadInitialData}>Retry</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="exam-management">
@@ -357,6 +471,26 @@ const ExamManagement = () => {
           Create Exam
         </Button>
       </motion.div>
+
+      {saveStatus && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ marginBottom: "1rem" }}
+        >
+          <Badge
+            variant={
+              saveStatus.type === "success"
+                ? "success"
+                : saveStatus.type === "error"
+                ? "error"
+                : "warning"
+            }
+          >
+            {saveStatus.message}
+          </Badge>
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -391,9 +525,12 @@ const ExamManagement = () => {
             onChange={(e) => setFilterCourse(e.target.value)}
           >
             <option value="all">All Courses</option>
-            {mockCourses.map((course) => (
-              <option key={course.id} value={course.id.toString()}>
-                {course.code} - {course.name}
+            {courses.map((course) => (
+              <option
+                key={course.id}
+                value={course.course?.course_id?.toString()}
+              >
+                {course.course?.course_code} - {course.course?.course_name}
               </option>
             ))}
           </Select>
@@ -449,7 +586,7 @@ const ExamManagement = () => {
                       ? getExamsForDate(day).filter((exam) => {
                           const courseMatch =
                             filterCourse === "all" ||
-                            exam.courseId.toString() === filterCourse;
+                            exam.courseId?.toString() === filterCourse;
                           const typeMatch =
                             filterType === "all" || exam.type === filterType;
                           return courseMatch && typeMatch;
@@ -482,9 +619,7 @@ const ExamManagement = () => {
                                     key={exam.id}
                                     className="exam-dot"
                                     style={{
-                                      backgroundColor: getExamTypeColor(
-                                        exam.type
-                                      ),
+                                      backgroundColor: exam.color,
                                     }}
                                     title={`${exam.courseName} - ${exam.type}`}
                                   />
@@ -546,24 +681,15 @@ const ExamManagement = () => {
                   <Card className="exam-card">
                     <div
                       className="exam-card__type-bar"
-                      style={{ backgroundColor: getExamTypeColor(exam.type) }}
+                      style={{ backgroundColor: exam.color }}
                     />
                     <div className="exam-card__content">
                       <div className="exam-card__header">
                         <div>
                           <h3>{exam.courseName}</h3>
-                          <Badge
-                            variant={
-                              exam.type === "Final"
-                                ? "error"
-                                : exam.type === "Midterm"
-                                ? "primary"
-                                : exam.type === "Quiz"
-                                ? "success"
-                                : "warning"
-                            }
-                          >
-                            {exam.type}
+                          <Badge variant={getExamTypeBadgeVariant(exam.type)}>
+                            {exam.type.charAt(0).toUpperCase() +
+                              exam.type.slice(1)}
                           </Badge>
                         </div>
                         <div className="exam-card__actions">
@@ -626,9 +752,6 @@ const ExamManagement = () => {
                         >
                           View Details
                         </Button>
-                        <Button variant="primary" size="sm" icon={Download}>
-                          Generate Admit Cards
-                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -639,35 +762,41 @@ const ExamManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Create Exam Modal */}
+      {/* Create/Edit Exam Modal */}
       <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="Create New Exam"
+        isOpen={isCreateModalOpen || isEditModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setIsEditModalOpen(false);
+        }}
+        title={isCreateModalOpen ? "Create New Exam" : "Edit Exam"}
       >
-        <form onSubmit={handleSubmitCreate} className="exam-form">
+        <form
+          onSubmit={isCreateModalOpen ? handleSubmitCreate : handleSubmitEdit}
+          className="exam-form"
+        >
           <div className="exam-form__row">
             <Select
               label="Course"
-              value={formData.courseId}
+              value={formData.offering_id}
               onChange={(e) =>
-                setFormData({ ...formData, courseId: e.target.value })
+                setFormData({ ...formData, offering_id: e.target.value })
               }
               required
             >
               <option value="">Select Course</option>
-              {mockCourses.map((course) => (
+              {courses.map((course) => (
                 <option key={course.id} value={course.id.toString()}>
-                  {course.code} - {course.name}
+                  {course.course?.course_code} - {course.course?.course_name}
                 </option>
               ))}
             </Select>
 
             <Select
               label="Exam Type"
-              value={formData.type}
+              value={formData.exam_type}
               onChange={(e) =>
-                setFormData({ ...formData, type: e.target.value })
+                setFormData({ ...formData, exam_type: e.target.value })
               }
               required
             >
@@ -680,24 +809,14 @@ const ExamManagement = () => {
             </Select>
           </div>
 
-          <div className="exam-form__row">
-            <Input
-              type="date"
-              label="Date"
-              value={formData.date}
-              onChange={(e) =>
-                setFormData({ ...formData, date: e.target.value })
-              }
-              required
-            />
-
+          <div className="exam-form__group">
             <Input
               type="text"
-              label="Room"
-              placeholder="e.g., A-101"
-              value={formData.room}
+              label="Exam Name"
+              placeholder="e.g., Midterm Examination"
+              value={formData.exam_name}
               onChange={(e) =>
-                setFormData({ ...formData, room: e.target.value })
+                setFormData({ ...formData, exam_name: e.target.value })
               }
               required
             />
@@ -705,11 +824,40 @@ const ExamManagement = () => {
 
           <div className="exam-form__row">
             <Input
+              type="date"
+              label="Date"
+              value={formData.exam_date}
+              onChange={(e) =>
+                setFormData({ ...formData, exam_date: e.target.value })
+              }
+              required
+            />
+
+            <Select
+              label="Room"
+              value={formData.room_id}
+              onChange={(e) =>
+                setFormData({ ...formData, room_id: e.target.value })
+              }
+              required
+            >
+              <option value="">Select Room</option>
+              {examRooms.map((room) => (
+                <option key={room.room_id} value={room.room_id.toString()}>
+                  {room.room_number} - {room.building} (Capacity:{" "}
+                  {room.capacity})
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="exam-form__row">
+            <Input
               type="time"
               label="Start Time"
-              value={formData.startTime}
+              value={formData.start_time}
               onChange={(e) =>
-                setFormData({ ...formData, startTime: e.target.value })
+                setFormData({ ...formData, start_time: e.target.value })
               }
               required
             />
@@ -717,9 +865,9 @@ const ExamManagement = () => {
             <Input
               type="time"
               label="End Time"
-              value={formData.endTime}
+              value={formData.end_time}
               onChange={(e) =>
-                setFormData({ ...formData, endTime: e.target.value })
+                setFormData({ ...formData, end_time: e.target.value })
               }
               required
             />
@@ -730,24 +878,22 @@ const ExamManagement = () => {
               type="number"
               label="Total Marks"
               placeholder="e.g., 100"
-              value={formData.totalMarks}
+              value={formData.total_marks}
               onChange={(e) =>
-                setFormData({ ...formData, totalMarks: e.target.value })
+                setFormData({ ...formData, total_marks: e.target.value })
               }
               required
             />
 
             <Input
               type="number"
-              label="Weightage (%)"
-              placeholder="e.g., 30"
-              value={formData.weightage}
+              label="Passing Marks"
+              placeholder="e.g., 40"
+              value={formData.passing_marks}
               onChange={(e) =>
-                setFormData({ ...formData, weightage: e.target.value })
+                setFormData({ ...formData, passing_marks: e.target.value })
               }
               required
-              min="0"
-              max="100"
             />
           </div>
 
@@ -781,165 +927,15 @@ const ExamManagement = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setIsEditModalOpen(false);
+              }}
             >
               Cancel
             </Button>
             <Button type="submit" variant="primary">
-              Create Exam
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Edit Exam Modal */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Exam"
-      >
-        <form onSubmit={handleSubmitEdit} className="exam-form">
-          <div className="exam-form__row">
-            <Select
-              label="Course"
-              value={formData.courseId}
-              onChange={(e) =>
-                setFormData({ ...formData, courseId: e.target.value })
-              }
-              required
-            >
-              <option value="">Select Course</option>
-              {mockCourses.map((course) => (
-                <option key={course.id} value={course.id.toString()}>
-                  {course.code} - {course.name}
-                </option>
-              ))}
-            </Select>
-
-            <Select
-              label="Exam Type"
-              value={formData.type}
-              onChange={(e) =>
-                setFormData({ ...formData, type: e.target.value })
-              }
-              required
-            >
-              <option value="">Select Type</option>
-              {examTypes.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="exam-form__row">
-            <Input
-              type="date"
-              label="Date"
-              value={formData.date}
-              onChange={(e) =>
-                setFormData({ ...formData, date: e.target.value })
-              }
-              required
-            />
-
-            <Input
-              type="text"
-              label="Room"
-              placeholder="e.g., A-101"
-              value={formData.room}
-              onChange={(e) =>
-                setFormData({ ...formData, room: e.target.value })
-              }
-              required
-            />
-          </div>
-
-          <div className="exam-form__row">
-            <Input
-              type="time"
-              label="Start Time"
-              value={formData.startTime}
-              onChange={(e) =>
-                setFormData({ ...formData, startTime: e.target.value })
-              }
-              required
-            />
-
-            <Input
-              type="time"
-              label="End Time"
-              value={formData.endTime}
-              onChange={(e) =>
-                setFormData({ ...formData, endTime: e.target.value })
-              }
-              required
-            />
-          </div>
-
-          <div className="exam-form__row">
-            <Input
-              type="number"
-              label="Total Marks"
-              placeholder="e.g., 100"
-              value={formData.totalMarks}
-              onChange={(e) =>
-                setFormData({ ...formData, totalMarks: e.target.value })
-              }
-              required
-            />
-
-            <Input
-              type="number"
-              label="Weightage (%)"
-              placeholder="e.g., 30"
-              value={formData.weightage}
-              onChange={(e) =>
-                setFormData({ ...formData, weightage: e.target.value })
-              }
-              required
-              min="0"
-              max="100"
-            />
-          </div>
-
-          <div className="exam-form__group">
-            <label>Syllabus Portion</label>
-            <textarea
-              value={formData.syllabus}
-              onChange={(e) =>
-                setFormData({ ...formData, syllabus: e.target.value })
-              }
-              placeholder="Enter syllabus details..."
-              rows="3"
-              required
-            />
-          </div>
-
-          <div className="exam-form__group">
-            <label>Instructions</label>
-            <textarea
-              value={formData.instructions}
-              onChange={(e) =>
-                setFormData({ ...formData, instructions: e.target.value })
-              }
-              placeholder="Enter exam instructions..."
-              rows="3"
-              required
-            />
-          </div>
-
-          <div className="exam-form__actions">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Save Changes
+              {isCreateModalOpen ? "Create Exam" : "Save Changes"}
             </Button>
           </div>
         </form>
@@ -955,18 +951,9 @@ const ExamManagement = () => {
           <div className="exam-details">
             <div className="exam-details__header">
               <h2>{selectedExam.courseName}</h2>
-              <Badge
-                variant={
-                  selectedExam.type === "Final"
-                    ? "error"
-                    : selectedExam.type === "Midterm"
-                    ? "primary"
-                    : selectedExam.type === "Quiz"
-                    ? "success"
-                    : "warning"
-                }
-              >
-                {selectedExam.type}
+              <Badge variant={getExamTypeBadgeVariant(selectedExam.type)}>
+                {selectedExam.type.charAt(0).toUpperCase() +
+                  selectedExam.type.slice(1)}
               </Badge>
             </div>
 
@@ -1028,9 +1015,9 @@ const ExamManagement = () => {
                 <div className="exam-details__info-item">
                   <Book size={18} />
                   <div>
-                    <span className="exam-details__label">Weightage</span>
+                    <span className="exam-details__label">Passing Marks</span>
                     <span className="exam-details__value">
-                      {selectedExam.weightage}%
+                      {selectedExam.passingMarks}
                     </span>
                   </div>
                 </div>
@@ -1043,17 +1030,30 @@ const ExamManagement = () => {
                     </span>
                   </div>
                 </div>
+                <div className="exam-details__info-item">
+                  <Book size={18} />
+                  <div>
+                    <span className="exam-details__label">Weightage</span>
+                    <span className="exam-details__value">
+                      {selectedExam.weightage}%
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="exam-details__section">
               <h3>Syllabus</h3>
-              <p className="exam-details__text">{selectedExam.syllabus}</p>
+              <p className="exam-details__text">
+                {selectedExam.syllabus || "No syllabus information provided"}
+              </p>
             </div>
 
             <div className="exam-details__section">
               <h3>Instructions</h3>
-              <p className="exam-details__text">{selectedExam.instructions}</p>
+              <p className="exam-details__text">
+                {selectedExam.instructions || "No instructions provided"}
+              </p>
             </div>
 
             <div className="exam-details__section">
@@ -1069,11 +1069,12 @@ const ExamManagement = () => {
               >
                 Edit Exam
               </Button>
-              <Button variant="primary" icon={Download}>
-                Generate Admit Cards
-              </Button>
-              <Button variant="outline" icon={Grid3x3}>
-                Set Seating Plan
+              <Button
+                variant="error"
+                icon={Trash2}
+                onClick={() => handleDeleteExam(selectedExam.id)}
+              >
+                Delete Exam
               </Button>
             </div>
           </div>

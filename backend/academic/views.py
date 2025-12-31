@@ -1,4 +1,3 @@
-
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -604,10 +603,20 @@ class ExaminationViewSet(viewsets.ModelViewSet):
 class ExamRoomViewSet(viewsets.ModelViewSet):
     queryset = ExamRoom.objects.all()
     serializer_class = ExamRoomSerializer
-    permission_classes = [IsAuthenticated, IsAcademicAdmin]
+    # CHANGED: Allow faculty to view exam rooms
+    permission_classes = [IsAuthenticated] # Changed from [IsAuthenticated, IsAcademicAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['building']
     search_fields = ['room_number', 'building']
+   
+    def get_permissions(self):
+        """
+        Faculty can list and retrieve exam rooms (read-only)
+        Only admins can create, update, or delete
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsAcademicAdmin()]
+        return [IsAuthenticated()]
 
 class ExamScheduleViewSet(viewsets.ModelViewSet):
     queryset = ExamSchedule.objects.select_related('exam', 'room', 'invigilator').all()

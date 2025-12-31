@@ -321,6 +321,16 @@ const facultyService = {
     }
   },
 
+  async updateGrade(gradeId, gradeData) {
+    try {
+      const response = await api.patch(`grades/${gradeId}/`, gradeData);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating grade:", error);
+      throw error;
+    }
+  },
+
   async getGrades(params = {}) {
     try {
       const response = await api.get("grades/", { params });
