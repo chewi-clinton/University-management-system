@@ -15,6 +15,7 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import facultyService from "../../services/api/facultyService.js";
 import Container from "../../components/shared/layout/Container.jsx";
 import Card from "../../components/shared/layout/Card.jsx";
 import StatCard from "../../components/shared/ui/StatCard.jsx";
@@ -25,136 +26,68 @@ const FacultyDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Mock data
-        setDashboardData({
-          stats: {
-            totalCourses: 5,
-            totalStudents: 142,
-            attendanceRate: 87.5,
-            pendingGrading: 23,
-          },
-          todaySchedule: [
-            {
-              time: "09:00 AM - 10:30 AM",
-              courseName: "Data Structures & Algorithms",
-              courseCode: "CS301",
-              room: "Room 204",
-              studentCount: 45,
-            },
-            {
-              time: "11:00 AM - 12:30 PM",
-              courseName: "Database Management Systems",
-              courseCode: "CS402",
-              room: "Lab 3",
-              studentCount: 38,
-            },
-            {
-              time: "02:00 PM - 03:30 PM",
-              courseName: "Software Engineering",
-              courseCode: "CS501",
-              room: "Room 305",
-              studentCount: 32,
-            },
-          ],
-          upcomingDeadlines: [
-            {
-              id: 1,
-              title: "Midterm Exam Grading",
-              course: "Data Structures & Algorithms",
-              date: "2024-12-30",
-              priority: "urgent",
-            },
-            {
-              id: 2,
-              title: "Assignment 3 Review",
-              course: "Database Management Systems",
-              date: "2024-12-31",
-              priority: "important",
-            },
-            {
-              id: 3,
-              title: "Project Proposal Evaluation",
-              course: "Software Engineering",
-              date: "2025-01-02",
-              priority: "normal",
-            },
-          ],
-          recentNotices: [
-            {
-              id: 1,
-              title: "Faculty Meeting - End of Semester Review",
-              content:
-                "All faculty members are requested to attend the end of semester review meeting scheduled for next week.",
-              postedBy: "Dean Office",
-              postedDate: "2024-12-28",
-              priority: "important",
-              isRead: false,
-            },
-            {
-              id: 2,
-              title: "Exam Schedule Released",
-              content:
-                "The final examination schedule for Fall 2024 has been published. Please review and confirm your exam slots.",
-              postedBy: "Academic Affairs",
-              postedDate: "2024-12-27",
-              priority: "urgent",
-              isRead: false,
-            },
-            {
-              id: 3,
-              title: "New LMS Features Available",
-              content:
-                "Check out the new automated grading features now available in the Learning Management System.",
-              postedBy: "IT Department",
-              postedDate: "2024-12-26",
-              priority: "normal",
-              isRead: true,
-            },
-          ],
-          recentActivities: [
-            {
-              id: 1,
-              type: "submission",
-              student: "John Smith",
-              course: "CS301",
-              action: "submitted Assignment 5",
-              time: "2 hours ago",
-            },
-            {
-              id: 2,
-              type: "attendance",
-              student: "Emma Wilson",
-              course: "CS402",
-              action: "marked present",
-              time: "4 hours ago",
-            },
-            {
-              id: 3,
-              type: "query",
-              student: "Michael Brown",
-              course: "CS501",
-              action: "posted a question in forum",
-              time: "5 hours ago",
-            },
-          ],
-        });
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await facultyService.getDashboardData();
+      setDashboardData(data);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+      setError(error.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAttendance = () => {
+    // Navigate to attendance marking page
+    window.location.href = "/faculty/attendance";
+  };
+
+  const handleGradeSubmissions = () => {
+    // Navigate to grading page
+    window.location.href = "/faculty/grades";
+  };
+
+  const handleStartVirtualClass = async () => {
+    try {
+      // Get first course offering
+      const courses = await facultyService.getCourses({ limit: 1 });
+      if (courses.results && courses.results.length > 0) {
+        const courseId = courses.results[0].id;
+
+        // Create zoom class for today
+        const today = new Date().toISOString().split("T")[0];
+        const startTime = new Date().toTimeString().split(" ")[0];
+
+        await facultyService.createZoomClass({
+          offering_id: courseId,
+          topic: "Virtual Class",
+          schedule_date: today,
+          start_time: startTime,
+          duration_minutes: 60,
+          platform: "zoom",
+        });
+
+        alert("Virtual class created successfully!");
+      }
+    } catch (error) {
+      console.error("Error creating virtual class:", error);
+      alert("Failed to create virtual class");
+    }
+  };
+
+  const handleCreateAssignment = () => {
+    // Navigate to assignment creation page
+    window.location.href = "/faculty/assignments/create";
+  };
 
   const containerVariants = {
     initial: { opacity: 0 },
@@ -191,6 +124,25 @@ const FacultyDashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <Container>
+        <Card className="dashboard__error">
+          <Card.Body>
+            <div className="error__content">
+              <AlertCircle size={48} className="error__icon" />
+              <h2>Failed to Load Dashboard</h2>
+              <p>{error}</p>
+              <Button onClick={fetchDashboardData} variant="primary">
+                Try Again
+              </Button>
+            </div>
+          </Card.Body>
+        </Card>
+      </Container>
+    );
+  }
+
   const {
     stats,
     todaySchedule,
@@ -198,6 +150,10 @@ const FacultyDashboard = () => {
     recentNotices,
     recentActivities,
   } = dashboardData || {};
+
+  // Get user's first name, handling different user object structures
+  const firstName =
+    user?.first_name || user?.name?.split(" ")[0] || "Professor";
 
   return (
     <Container>
@@ -211,7 +167,7 @@ const FacultyDashboard = () => {
         <motion.div className="dashboard__header" variants={itemVariants}>
           <div>
             <h1 className="dashboard__title">
-              Welcome back, Prof. {user?.name?.split(" ")[0]}! 👋
+              Welcome back, Prof. {firstName}! 👋
             </h1>
             <p className="dashboard__subtitle">
               Here's an overview of your teaching activities today.
@@ -237,7 +193,6 @@ const FacultyDashboard = () => {
             value={stats?.totalCourses || 0}
             icon={BookOpen}
             color="primary"
-            trend={{ value: 1, direction: "up" }}
             className="dashboard__stat-card"
           />
           <StatCard
@@ -245,7 +200,6 @@ const FacultyDashboard = () => {
             value={stats?.totalStudents || 0}
             icon={Users}
             color="success"
-            trend={{ value: 12, direction: "up" }}
             className="dashboard__stat-card"
           />
           <StatCard
@@ -255,7 +209,6 @@ const FacultyDashboard = () => {
             color="info"
             suffix="%"
             decimal={1}
-            trend={{ value: 3.2, direction: "up" }}
             className="dashboard__stat-card"
           />
           <StatCard
@@ -263,7 +216,6 @@ const FacultyDashboard = () => {
             value={stats?.pendingGrading || 0}
             icon={Award}
             color="warning"
-            trend={{ value: 5, direction: "down" }}
             className="dashboard__stat-card"
           />
         </motion.div>
@@ -279,34 +231,41 @@ const FacultyDashboard = () => {
                 </Badge>
               </Card.Header>
               <Card.Body>
-                <div className="schedule__list">
-                  {todaySchedule?.map((schedule, index) => (
-                    <div key={index} className="schedule__item">
-                      <div className="schedule__time">
-                        <Clock size={16} />
-                        <span>{schedule.time}</span>
+                {todaySchedule && todaySchedule.length > 0 ? (
+                  <div className="schedule__list">
+                    {todaySchedule.map((schedule, index) => (
+                      <div key={index} className="schedule__item">
+                        <div className="schedule__time">
+                          <Clock size={16} />
+                          <span>{schedule.time}</span>
+                        </div>
+                        <div className="schedule__details">
+                          <h3 className="schedule__course">
+                            {schedule.courseName}
+                            <Badge variant="neutral" size="xs" className="ml-2">
+                              {schedule.courseCode}
+                            </Badge>
+                          </h3>
+                          <p className="schedule__meta">
+                            {schedule.room} • {schedule.studentCount} students
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="schedule__action"
+                        >
+                          Start Class
+                        </Button>
                       </div>
-                      <div className="schedule__details">
-                        <h3 className="schedule__course">
-                          {schedule.courseName}
-                          <Badge variant="neutral" size="xs" className="ml-2">
-                            {schedule.courseCode}
-                          </Badge>
-                        </h3>
-                        <p className="schedule__meta">
-                          {schedule.room} • {schedule.studentCount} students
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="schedule__action"
-                      >
-                        Start Class
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <CalendarCheck size={48} />
+                    <p>No classes scheduled for today</p>
+                  </div>
+                )}
               </Card.Body>
             </Card>
           </motion.div>
@@ -323,6 +282,7 @@ const FacultyDashboard = () => {
                     variant="elevated"
                     className="action__btn"
                     leftIcon={<ClipboardCheck size={20} />}
+                    onClick={handleMarkAttendance}
                   >
                     Mark Attendance
                   </Button>
@@ -330,6 +290,7 @@ const FacultyDashboard = () => {
                     variant="elevated"
                     className="action__btn"
                     leftIcon={<Award size={20} />}
+                    onClick={handleGradeSubmissions}
                   >
                     Grade Submissions
                   </Button>
@@ -337,6 +298,7 @@ const FacultyDashboard = () => {
                     variant="elevated"
                     className="action__btn"
                     leftIcon={<Video size={20} />}
+                    onClick={handleStartVirtualClass}
                   >
                     Start Virtual Class
                   </Button>
@@ -344,6 +306,7 @@ const FacultyDashboard = () => {
                     variant="elevated"
                     className="action__btn"
                     leftIcon={<FileText size={20} />}
+                    onClick={handleCreateAssignment}
                   >
                     Create Assignment
                   </Button>
@@ -362,25 +325,32 @@ const FacultyDashboard = () => {
                 </Badge>
               </Card.Header>
               <Card.Body>
-                <div className="deadlines__list">
-                  {upcomingDeadlines?.map((deadline) => (
-                    <div key={deadline.id} className="deadline__item">
-                      <div className="deadline__icon">
-                        <AlertCircle size={16} />
+                {upcomingDeadlines && upcomingDeadlines.length > 0 ? (
+                  <div className="deadlines__list">
+                    {upcomingDeadlines.map((deadline) => (
+                      <div key={deadline.id} className="deadline__item">
+                        <div className="deadline__icon">
+                          <AlertCircle size={16} />
+                        </div>
+                        <div className="deadline__content">
+                          <h3 className="deadline__title">{deadline.title}</h3>
+                          <p className="deadline__course">{deadline.course}</p>
+                        </div>
+                        <div className="deadline__date">
+                          {new Date(deadline.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </div>
                       </div>
-                      <div className="deadline__content">
-                        <h3 className="deadline__title">{deadline.title}</h3>
-                        <p className="deadline__course">{deadline.course}</p>
-                      </div>
-                      <div className="deadline__date">
-                        {new Date(deadline.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <AlertCircle size={48} />
+                    <p>No upcoming tasks</p>
+                  </div>
+                )}
               </Card.Body>
             </Card>
           </motion.div>
@@ -400,34 +370,42 @@ const FacultyDashboard = () => {
                 </Button>
               </Card.Header>
               <Card.Body>
-                <div className="activity__list">
-                  {recentActivities?.map((activity) => (
-                    <div key={activity.id} className="activity__item">
-                      <div className="activity__icon">
-                        {activity.type === "submission" && (
-                          <FileText size={16} />
-                        )}
-                        {activity.type === "attendance" && (
-                          <CalendarCheck size={16} />
-                        )}
-                        {activity.type === "query" && <Bell size={16} />}
-                      </div>
-                      <div className="activity__content">
-                        <p className="activity__text">
-                          <strong>{activity.student}</strong> {activity.action}
-                        </p>
-                        <div className="activity__meta">
-                          <span className="activity__course">
-                            {activity.course}
-                          </span>
-                          <span className="activity__time">
-                            {activity.time}
-                          </span>
+                {recentActivities && recentActivities.length > 0 ? (
+                  <div className="activity__list">
+                    {recentActivities.map((activity) => (
+                      <div key={activity.id} className="activity__item">
+                        <div className="activity__icon">
+                          {activity.type === "submission" && (
+                            <FileText size={16} />
+                          )}
+                          {activity.type === "attendance" && (
+                            <CalendarCheck size={16} />
+                          )}
+                          {activity.type === "query" && <Bell size={16} />}
+                        </div>
+                        <div className="activity__content">
+                          <p className="activity__text">
+                            <strong>{activity.student}</strong>{" "}
+                            {activity.action}
+                          </p>
+                          <div className="activity__meta">
+                            <span className="activity__course">
+                              {activity.course}
+                            </span>
+                            <span className="activity__time">
+                              {activity.time}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <Bell size={48} />
+                    <p>No recent activity</p>
+                  </div>
+                )}
               </Card.Body>
             </Card>
           </motion.div>
@@ -444,46 +422,54 @@ const FacultyDashboard = () => {
               </Button>
             </Card.Header>
             <Card.Body>
-              <div className="notices__list notices__list--horizontal">
-                {recentNotices?.map((notice) => (
-                  <div
-                    key={notice.id}
-                    className={`notice__item ${
-                      notice.isRead ? "notice__item--read" : ""
-                    }`}
-                  >
-                    <div className="notice__icon">
-                      <Bell size={16} />
-                    </div>
-                    <div className="notice__content">
-                      <h3 className="notice__title">{notice.title}</h3>
-                      <p className="notice__preview">
-                        {notice.content.substring(0, 120)}...
-                      </p>
-                      <div className="notice__meta">
-                        <span className="notice__by">{notice.postedBy}</span>
-                        <span className="notice__time">
-                          {new Date(notice.postedDate).toLocaleDateString()}
-                        </span>
+              {recentNotices && recentNotices.length > 0 ? (
+                <div className="notices__list notices__list--horizontal">
+                  {recentNotices.map((notice) => (
+                    <div
+                      key={notice.id}
+                      className={`notice__item ${
+                        notice.isRead ? "notice__item--read" : ""
+                      }`}
+                    >
+                      <div className="notice__icon">
+                        <Bell size={16} />
+                      </div>
+                      <div className="notice__content">
+                        <h3 className="notice__title">{notice.title}</h3>
+                        <p className="notice__preview">
+                          {notice.content.substring(0, 120)}
+                          {notice.content.length > 120 && "..."}
+                        </p>
+                        <div className="notice__meta">
+                          <span className="notice__by">{notice.postedBy}</span>
+                          <span className="notice__time">
+                            {new Date(notice.postedDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="notice__badge">
+                        <Badge
+                          variant={
+                            notice.priority === "urgent"
+                              ? "error"
+                              : notice.priority === "important"
+                              ? "warning"
+                              : "neutral"
+                          }
+                          size="xs"
+                        >
+                          {notice.priority}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="notice__badge">
-                      <Badge
-                        variant={
-                          notice.priority === "urgent"
-                            ? "error"
-                            : notice.priority === "important"
-                            ? "warning"
-                            : "neutral"
-                        }
-                        size="xs"
-                      >
-                        {notice.priority}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <Bell size={48} />
+                  <p>No notices available</p>
+                </div>
+              )}
             </Card.Body>
           </Card>
         </motion.div>
@@ -509,6 +495,9 @@ const FacultyDashboard = () => {
                 <div className="chart__placeholder">
                   <TrendingUp size={48} />
                   <p>Course performance analytics will be displayed here</p>
+                  <Button variant="outline" size="sm" className="mt-4">
+                    View Detailed Analytics
+                  </Button>
                 </div>
               </div>
             </Card.Body>

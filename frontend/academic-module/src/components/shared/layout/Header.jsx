@@ -11,7 +11,6 @@ import {
   User,
   AlertCircle,
   Info,
-  X,
 } from "lucide-react";
 import Avatar from "../ui/Avatar.jsx";
 import Badge from "../ui/Badge.jsx";
@@ -23,16 +22,15 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
-
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-
-  // Search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const notificationsRef = useRef(null);
   const profileRef = useRef(null);
@@ -58,12 +56,169 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
         setShowProfileMenu(false);
       }
       if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsSearchFocused(false);
+        setShowSearchResults(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Search functionality with debounce
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (searchQuery.trim().length >= 2) {
+        performSearch(searchQuery);
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  const performSearch = async (query) => {
+    try {
+      setSearchLoading(true);
+      setShowSearchResults(true);
+
+      // Search across multiple resources
+      const [coursesRes, materialsRes, noticesRes] = await Promise.all([
+        studentService.getCourses(),
+        studentService.getCourses().then(async (res) => {
+          if (!res.success) return { success: false, data: [] };
+          const courses = Array.isArray(res.data)
+            ? res.data
+            : res.data?.results || [];
+
+          // Fetch materials for all courses
+          const allMaterials = [];
+          for (const course of courses) {
+            if (course.offering?.id) {
+              const matRes = await studentService.getCourseMaterials(
+                course.offering.id
+              );
+              if (matRes.success) {
+                const materials = Array.isArray(matRes.data)
+                  ? matRes.data
+                  : matRes.data?.results || [];
+                allMaterials.push(...materials);
+              }
+            }
+          }
+          return { success: true, data: allMaterials };
+        }),
+        studentService.getNotices(),
+      ]);
+
+      const results = [];
+
+      // Filter courses
+      if (coursesRes.success) {
+        const courses = Array.isArray(coursesRes.data)
+          ? coursesRes.data
+          : coursesRes.data?.results || [];
+        courses
+          .filter((course) => {
+            const searchLower = query.toLowerCase();
+            const courseCode =
+              course.offering?.course?.course_code?.toLowerCase() || "";
+            const courseName =
+              course.offering?.course?.course_name?.toLowerCase() || "";
+            return (
+              courseCode.includes(searchLower) ||
+              courseName.includes(searchLower)
+            );
+          })
+          .slice(0, 3)
+          .forEach((course) => {
+            results.push({
+              type: "course",
+              title: `${course.offering?.course?.course_code} - ${course.offering?.course?.course_name}`,
+              subtitle: course.offering?.faculty?.user?.first_name
+                ? `Instructor: ${course.offering.faculty.user.first_name} ${course.offering.faculty.user.last_name}`
+                : "Course",
+              path: `/student/courses`,
+            });
+          });
+      }
+
+      // Filter materials
+      if (materialsRes.success) {
+        const materials = Array.isArray(materialsRes.data)
+          ? materialsRes.data
+          : [];
+        materials
+          .filter((material) => {
+            const searchLower = query.toLowerCase();
+            const title = material.title?.toLowerCase() || "";
+            const description = material.description?.toLowerCase() || "";
+            return (
+              title.includes(searchLower) || description.includes(searchLower)
+            );
+          })
+          .slice(0, 3)
+          .forEach((material) => {
+            results.push({
+              type: "material",
+              title: material.title || "Untitled Material",
+              subtitle: material.courseCode || "Study Material",
+              path: `/student/materials`,
+            });
+          });
+      }
+
+      // Filter notices
+      if (noticesRes.success) {
+        const notices = Array.isArray(noticesRes.data)
+          ? noticesRes.data
+          : noticesRes.data?.results || [];
+        notices
+          .filter((notice) => {
+            const searchLower = query.toLowerCase();
+            const title = notice.title?.toLowerCase() || "";
+            const content = notice.content?.toLowerCase() || "";
+            return title.includes(searchLower) || content.includes(searchLower);
+          })
+          .slice(0, 3)
+          .forEach((notice) => {
+            results.push({
+              type: "notice",
+              title: notice.title || "Notice",
+              subtitle: formatNotificationTime(notice.post_date),
+              path: `/student/notices`,
+            });
+          });
+      }
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Search error:", error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearchResultClick = (result) => {
+    navigate(result.path);
+    setSearchQuery("");
+    setShowSearchResults(false);
+  };
+
+  const getSearchResultIcon = (type) => {
+    switch (type) {
+      case "course":
+        return "📚";
+      case "material":
+        return "📄";
+      case "notice":
+        return "📢";
+      default:
+        return "🔍";
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -75,6 +230,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
           ? response.data
           : response.data?.results || [];
 
+        // Convert notices to notifications and limit to 5 most recent
         const recentNotices = noticesList
           .sort((a, b) => new Date(b.post_date) - new Date(a.post_date))
           .slice(0, 5)
@@ -83,12 +239,14 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
             title: notice.title,
             content: notice.content,
             time: formatNotificationTime(notice.post_date),
-            unread: true,
+            unread: true, // You can track read status locally or from API
             priority: notice.priority,
             category: notice.target_audience,
           }));
 
         setNotifications(recentNotices);
+
+        // Count unread (you can modify this based on your tracking logic)
         const unread = recentNotices.filter((n) => n.unread).length;
         setUnreadCount(unread);
       }
@@ -165,10 +323,13 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
     return pathnames.map((name, index) => {
       const routeTo = `/${pathnames.slice(0, index + 1).join("/")}`;
       const isLast = index === pathnames.length - 1;
+
+      // Format label: capitalize and replace hyphens with spaces
       const label = name
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
+
       return {
         label,
         path: routeTo,
@@ -192,22 +353,6 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
     setShowProfileMenu(false);
   };
 
-  // Handle search submit
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // For now: navigate to a search results page (you can create this later)
-      // Or filter current page content if needed
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery("");
-      setIsSearchFocused(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-  };
-
   return (
     <header
       className={`header ${isSidebarCollapsed ? "header--expanded" : ""}`}
@@ -221,6 +366,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
         >
           <Menu size={20} />
         </Button>
+
         <nav className="header__breadcrumbs">
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={index}>
@@ -240,34 +386,83 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
       </div>
 
       <div className="header__right">
-        {/* Search - NOW FULLY FUNCTIONAL */}
-        <div
-          ref={searchRef}
-          className={`header__search ${
-            isSearchFocused ? "header__search--focused" : ""
-          }`}
-        >
+        {/* Search */}
+        <div className="header__search" ref={searchRef}>
           <Search size={18} className="header__search-icon" />
-          <form onSubmit={handleSearch} style={{ width: "100%" }}>
-            <input
-              type="text"
-              placeholder="Search courses, materials, notices..."
-              className="header__search-input"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="header__search-clear"
-                aria-label="Clear search"
+          <input
+            type="text"
+            placeholder="Search courses, materials..."
+            className="header__search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchResults.length > 0) {
+                setShowSearchResults(true);
+              }
+            }}
+          />
+
+          <AnimatePresence>
+            {showSearchResults && (
+              <motion.div
+                className="header__search-dropdown"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
               >
-                <X size={16} />
-              </button>
+                {searchLoading ? (
+                  <div
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "#6b7280",
+                    }}
+                  >
+                    Searching...
+                  </div>
+                ) : searchResults.length > 0 ? (
+                  <>
+                    <div className="header__search-results">
+                      {searchResults.map((result, index) => (
+                        <div
+                          key={index}
+                          className="header__search-result"
+                          onClick={() => handleSearchResultClick(result)}
+                        >
+                          <span className="header__search-result-icon">
+                            {getSearchResultIcon(result.type)}
+                          </span>
+                          <div className="header__search-result-content">
+                            <p className="header__search-result-title">
+                              {result.title}
+                            </p>
+                            <p className="header__search-result-subtitle">
+                              {result.subtitle}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : searchQuery.trim().length >= 2 ? (
+                  <div
+                    style={{
+                      padding: "20px",
+                      textAlign: "center",
+                      color: "#6b7280",
+                    }}
+                  >
+                    <Search
+                      size={32}
+                      style={{ marginBottom: "8px", opacity: 0.5 }}
+                    />
+                    <p>No results found for "{searchQuery}"</p>
+                  </div>
+                ) : null}
+              </motion.div>
             )}
-          </form>
+          </AnimatePresence>
         </div>
 
         {/* Notifications */}
@@ -289,6 +484,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
               </Badge>
             )}
           </Button>
+
           <AnimatePresence>
             {showNotifications && (
               <motion.div
@@ -367,6 +563,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
                     </div>
                   )}
                 </div>
+
                 {notifications.length > 0 && (
                   <div className="header__notifications-footer">
                     <Button
@@ -396,6 +593,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
             <span className="header__profile-name">{user?.name}</span>
             <ChevronDown size={16} className="header__profile-chevron" />
           </Button>
+
           <AnimatePresence>
             {showProfileMenu && (
               <motion.div
@@ -412,6 +610,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
                     <p className="header__profile-email">{user?.email}</p>
                   </div>
                 </div>
+
                 <div className="header__profile-menu">
                   <Button
                     variant="ghost"
@@ -427,7 +626,7 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
                     size="sm"
                     className="header__profile-item"
                     onClick={() => {
-                      navigate("/student/settings"); // or appropriate path
+                      navigate("/student/profile");
                       setShowProfileMenu(false);
                     }}
                   >
