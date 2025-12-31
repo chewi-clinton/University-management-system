@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Video,
@@ -17,7 +17,6 @@ import {
   ExternalLink,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Repeat,
 } from "lucide-react";
 import Card from "../../components/shared/layout/Card";
@@ -26,111 +25,111 @@ import Input from "../../components/shared/ui/Input";
 import Select from "../../components/shared/ui/Select";
 import Modal from "../../components/shared/feedback/Modal";
 import Badge from "../../components/shared/ui/Badge";
+import Skeleton from "../../components/shared/feedback/skeleton";
+import facultyService from "../../services/api/facultyService";
+import api from "../../services/api/api";
 import "../../styles/pages/VirtualClassSetup.css";
 
-// Mock data
-const mockCourses = [
-  { id: 1, code: "CS301", name: "Data Structures", color: "#3b82f6" },
-  { id: 2, code: "CS201", name: "Programming Fundamentals", color: "#8b5cf6" },
-  { id: 3, code: "CS401", name: "Advanced Algorithms", color: "#10b981" },
-];
-
-const mockVirtualClasses = [
-  {
-    id: 1,
-    courseId: 1,
-    courseName: "CS301 - Data Structures",
-    topic: "Lecture 12 - Advanced Trees",
-    date: "2024-01-22",
-    startTime: "09:00",
-    endTime: "10:30",
-    duration: 90,
-    platform: "zoom",
-    meetingLink: "https://zoom.us/j/123456789",
-    meetingId: "123-456-789",
-    passcode: "abc123",
-    status: "upcoming",
-    recurring: false,
-    enrolledStudents: 45,
-  },
-  {
-    id: 2,
-    courseId: 1,
-    courseName: "CS301 - Data Structures",
-    topic: "Lecture 11 - Binary Search Trees",
-    date: "2024-01-20",
-    startTime: "09:00",
-    endTime: "10:30",
-    duration: 90,
-    platform: "zoom",
-    recordingUrl: "https://zoom.us/rec/123",
-    status: "recorded",
-    actualDuration: "1:25:32",
-    views: 42,
-    enrolledStudents: 45,
-  },
-  {
-    id: 3,
-    courseId: 2,
-    courseName: "CS201 - Programming Fundamentals",
-    topic: "Tutorial 5 - Loops and Functions",
-    date: "2024-01-23",
-    startTime: "14:00",
-    endTime: "15:30",
-    duration: 90,
-    platform: "meet",
-    meetingLink: "https://meet.google.com/xyz-abcd-efg",
-    status: "upcoming",
-    recurring: false,
-    enrolledStudents: 38,
-  },
-  {
-    id: 4,
-    courseId: 3,
-    courseName: "CS401 - Advanced Algorithms",
-    topic: "Lecture 8 - Graph Algorithms",
-    date: "2024-01-21",
-    startTime: "11:00",
-    endTime: "12:30",
-    duration: 90,
-    platform: "zoom",
-    meetingLink: "https://zoom.us/j/987654321",
-    meetingId: "987-654-321",
-    passcode: "xyz789",
-    status: "live",
-    enrolledStudents: 32,
-  },
-];
-
 const VirtualClassSetup = () => {
-  const [classes, setClasses] = useState(mockVirtualClasses);
+  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
-  const [activeTab, setActiveTab] = useState("upcoming"); // 'upcoming' | 'past'
+  const [activeTab, setActiveTab] = useState("upcoming");
+  const [error, setError] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
-    courseId: "",
+    offering_id: "",
     topic: "",
-    date: "",
-    startTime: "",
-    duration: "60",
+    schedule_date: "",
+    start_time: "",
+    duration_minutes: "60",
     platform: "zoom",
-    recurring: false,
-    recurringPattern: "weekly",
+    description: "",
   });
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [coursesResponse, classesResponse] = await Promise.all([
+        facultyService.getCourses({ is_visible: true }),
+        api.get("zoom-classes/"),
+      ]);
+
+      const coursesData = coursesResponse.results || coursesResponse;
+      setCourses(coursesData);
+
+      const classesData = classesResponse.data.results || classesResponse.data;
+
+      // Enrich classes data
+      const enrichedClasses = classesData.map((cls) => ({
+        id: cls.class_id,
+        offeringId: cls.offering?.id,
+        courseName: cls.offering?.course?.course_code
+          ? `${cls.offering.course.course_code} - ${cls.offering.course.course_name}`
+          : "N/A",
+        topic: cls.topic,
+        date: cls.schedule_date,
+        startTime: cls.start_time,
+        duration: cls.duration_minutes,
+        platform: cls.platform || "zoom",
+        meetingLink: cls.join_link,
+        meetingId: cls.meeting_id,
+        startUrl: cls.start_url,
+        passcode: cls.passcode,
+        status: determineStatus(
+          cls.schedule_date,
+          cls.start_time,
+          cls.duration_minutes
+        ),
+        isActive: cls.is_active,
+        enrolledStudents: cls.offering?.current_enrollment || 0,
+        description: cls.description || "",
+      }));
+
+      setClasses(enrichedClasses);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      setError("Failed to load virtual classes. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const determineStatus = (date, time, duration) => {
+    if (!date || !time) return "upcoming";
+
+    const classDateTime = new Date(`${date}T${time}`);
+    const now = new Date();
+    const endTime = new Date(classDateTime.getTime() + duration * 60000);
+
+    if (now >= classDateTime && now <= endTime) {
+      return "live";
+    } else if (now > endTime) {
+      return "recorded";
+    } else {
+      return "upcoming";
+    }
+  };
 
   const handleCreateClass = () => {
     setFormData({
-      courseId: "",
+      offering_id: "",
       topic: "",
-      date: "",
-      startTime: "",
-      duration: "60",
+      schedule_date: "",
+      start_time: "",
+      duration_minutes: "60",
       platform: "zoom",
-      recurring: false,
-      recurringPattern: "weekly",
+      description: "",
     });
     setIsCreateModalOpen(true);
   };
@@ -138,132 +137,139 @@ const VirtualClassSetup = () => {
   const handleEditClass = (classItem) => {
     setSelectedClass(classItem);
     setFormData({
-      courseId: classItem.courseId.toString(),
+      offering_id: classItem.offeringId?.toString() || "",
       topic: classItem.topic,
-      date: classItem.date,
-      startTime: classItem.startTime,
-      duration: classItem.duration.toString(),
+      schedule_date: classItem.date,
+      start_time: classItem.startTime,
+      duration_minutes: classItem.duration?.toString() || "60",
       platform: classItem.platform,
-      recurring: classItem.recurring || false,
-      recurringPattern: "weekly",
+      description: classItem.description || "",
     });
     setIsEditModalOpen(true);
   };
 
-  const handleSubmitCreate = (e) => {
+  const handleSubmitCreate = async (e) => {
     e.preventDefault();
-    const course = mockCourses.find(
-      (c) => c.id.toString() === formData.courseId
-    );
-    const endTime = calculateEndTime(
-      formData.startTime,
-      parseInt(formData.duration)
-    );
+    setSaveStatus({ type: "loading", message: "Creating virtual class..." });
 
-    const newClass = {
-      id: Math.max(...classes.map((c) => c.id)) + 1,
-      courseId: parseInt(formData.courseId),
-      courseName: `${course.code} - ${course.name}`,
-      topic: formData.topic,
-      date: formData.date,
-      startTime: formData.startTime,
-      endTime,
-      duration: parseInt(formData.duration),
-      platform: formData.platform,
-      meetingLink:
-        formData.platform === "zoom"
-          ? `https://zoom.us/j/${Math.floor(Math.random() * 1000000000)}`
-          : `https://meet.google.com/${generateMeetCode()}`,
-      meetingId:
-        formData.platform === "zoom"
-          ? `${Math.floor(100 + Math.random() * 900)}-${Math.floor(
-              100 + Math.random() * 900
-            )}-${Math.floor(100 + Math.random() * 900)}`
-          : undefined,
-      passcode: formData.platform === "zoom" ? generatePasscode() : undefined,
-      status: "upcoming",
-      recurring: formData.recurring,
-      enrolledStudents: course.id === 1 ? 45 : course.id === 2 ? 38 : 32,
-    };
+    try {
+      const classData = {
+        offering_id: parseInt(formData.offering_id),
+        topic: formData.topic,
+        schedule_date: formData.schedule_date,
+        start_time: formData.start_time,
+        duration_minutes: parseInt(formData.duration_minutes),
+        platform: formData.platform,
+        description: formData.description,
+      };
 
-    setClasses([...classes, newClass]);
-    setIsCreateModalOpen(false);
-  };
+      const response = await facultyService.createZoomClass(classData);
 
-  const handleSubmitEdit = (e) => {
-    e.preventDefault();
-    const course = mockCourses.find(
-      (c) => c.id.toString() === formData.courseId
-    );
-    const endTime = calculateEndTime(
-      formData.startTime,
-      parseInt(formData.duration)
-    );
-
-    setClasses(
-      classes.map((c) =>
-        c.id === selectedClass.id
-          ? {
-              ...c,
-              courseId: parseInt(formData.courseId),
-              courseName: `${course.code} - ${course.name}`,
-              topic: formData.topic,
-              date: formData.date,
-              startTime: formData.startTime,
-              endTime,
-              duration: parseInt(formData.duration),
-              platform: formData.platform,
-              recurring: formData.recurring,
-            }
-          : c
-      )
-    );
-    setIsEditModalOpen(false);
-  };
-
-  const handleDeleteClass = (classId) => {
-    if (window.confirm("Are you sure you want to cancel this virtual class?")) {
-      setClasses(classes.filter((c) => c.id !== classId));
+      setIsCreateModalOpen(false);
+      setSaveStatus({
+        type: "success",
+        message: "Virtual class created successfully!",
+      });
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error creating virtual class:", error);
+      setSaveStatus({
+        type: "error",
+        message: "Failed to create virtual class",
+      });
     }
   };
 
-  const handleStartMeeting = (classItem) => {
-    window.open(classItem.meetingLink, "_blank");
+  const handleSubmitEdit = async (e) => {
+    e.preventDefault();
+    setSaveStatus({ type: "loading", message: "Updating virtual class..." });
+
+    try {
+      const classData = {
+        offering_id: parseInt(formData.offering_id),
+        topic: formData.topic,
+        schedule_date: formData.schedule_date,
+        start_time: formData.start_time,
+        duration_minutes: parseInt(formData.duration_minutes),
+        platform: formData.platform,
+        description: formData.description,
+      };
+
+      await api.patch(`zoom-classes/${selectedClass.id}/`, classData);
+
+      setIsEditModalOpen(false);
+      setSaveStatus({
+        type: "success",
+        message: "Virtual class updated successfully!",
+      });
+      await loadInitialData();
+    } catch (error) {
+      console.error("Error updating virtual class:", error);
+      setSaveStatus({
+        type: "error",
+        message: "Failed to update virtual class",
+      });
+    }
+  };
+
+  const handleDeleteClass = async (classId) => {
+    if (window.confirm("Are you sure you want to delete this virtual class?")) {
+      try {
+        await api.delete(`zoom-classes/${classId}/`);
+        setSaveStatus({ type: "success", message: "Virtual class deleted" });
+        await loadInitialData();
+      } catch (error) {
+        console.error("Error deleting class:", error);
+        setSaveStatus({
+          type: "error",
+          message: "Failed to delete virtual class",
+        });
+      }
+    }
+  };
+
+  const handleStartMeeting = async (classItem) => {
+    try {
+      if (classItem.status === "live" || classItem.startUrl) {
+        // Use start URL for host
+        const response = await facultyService.startZoomMeeting(classItem.id);
+        window.open(response.start_url || classItem.startUrl, "_blank");
+      } else {
+        // Use join link for future meetings
+        window.open(classItem.meetingLink, "_blank");
+      }
+    } catch (error) {
+      console.error("Error starting meeting:", error);
+      // Fallback to direct link
+      window.open(classItem.meetingLink || classItem.startUrl, "_blank");
+    }
   };
 
   const handleCopyLink = (link) => {
     navigator.clipboard.writeText(link);
-    alert("Meeting link copied to clipboard!");
+    setSaveStatus({
+      type: "success",
+      message: "Meeting link copied to clipboard!",
+    });
+    setTimeout(() => setSaveStatus(null), 2000);
   };
 
-  const handleSendReminder = (classItem) => {
-    alert(
-      `Reminder sent to ${classItem.enrolledStudents} students for "${classItem.topic}"`
-    );
-  };
-
-  const calculateEndTime = (startTime, duration) => {
-    const [hours, minutes] = startTime.split(":").map(Number);
-    const totalMinutes = hours * 60 + minutes + duration;
-    const endHours = Math.floor(totalMinutes / 60) % 24;
-    const endMinutes = totalMinutes % 60;
-    return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(
-      2,
-      "0"
-    )}`;
-  };
-
-  const generatePasscode = () => {
-    return Math.random().toString(36).substring(2, 8);
-  };
-
-  const generateMeetCode = () => {
-    return `${Math.random().toString(36).substring(2, 5)}-${Math.random()
-      .toString(36)
-      .substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+  const handleSendReminder = async (classItem) => {
+    try {
+      await facultyService.sendClassReminder(classItem.id);
+      setSaveStatus({
+        type: "success",
+        message: `Reminder sent to ${classItem.enrolledStudents} students`,
+      });
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      setSaveStatus({ type: "error", message: "Failed to send reminder" });
+    }
   };
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return "N/A";
+
     const date = new Date(dateStr);
     const today = new Date();
     const tomorrow = new Date(today);
@@ -282,11 +288,26 @@ const VirtualClassSetup = () => {
   };
 
   const formatTime = (time) => {
+    if (!time) return "N/A";
+
     const [hour, min] = time.split(":");
     const h = parseInt(hour);
     const ampm = h >= 12 ? "PM" : "AM";
     const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
     return `${displayHour}:${min} ${ampm}`;
+  };
+
+  const calculateEndTime = (startTime, duration) => {
+    if (!startTime || !duration) return "N/A";
+
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const totalMinutes = hours * 60 + minutes + parseInt(duration);
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(
+      2,
+      "0"
+    )}`;
   };
 
   const getPlatformColor = (platform) => {
@@ -304,9 +325,37 @@ const VirtualClassSetup = () => {
   };
 
   const upcomingClasses = classes.filter(
-    (c) => c.status === "upcoming" || c.status === "live"
+    (c) => (c.status === "upcoming" || c.status === "live") && c.isActive
   );
   const pastClasses = classes.filter((c) => c.status === "recorded");
+
+  if (loading) {
+    return (
+      <div className="virtual-class-setup">
+        <Skeleton variant="text" width="300px" height="40px" />
+        <Skeleton
+          variant="rectangular"
+          height="600px"
+          style={{ marginTop: "24px" }}
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="virtual-class-setup">
+        <Card variant="flat">
+          <div style={{ padding: "2rem", textAlign: "center" }}>
+            <p style={{ color: "var(--error-500)", marginBottom: "1rem" }}>
+              {error}
+            </p>
+            <Button onClick={loadInitialData}>Retry</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="virtual-class-setup">
@@ -325,7 +374,27 @@ const VirtualClassSetup = () => {
         </Button>
       </motion.div>
 
-      {/* Create Form */}
+      {saveStatus && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ marginBottom: "1rem" }}
+        >
+          <Badge
+            variant={
+              saveStatus.type === "success"
+                ? "success"
+                : saveStatus.type === "error"
+                ? "error"
+                : "warning"
+            }
+          >
+            {saveStatus.message}
+          </Badge>
+        </motion.div>
+      )}
+
+      {/* Quick Create Form */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -337,16 +406,16 @@ const VirtualClassSetup = () => {
             <div className="quick-create-form__row">
               <Select
                 label="Course"
-                value={formData.courseId}
+                value={formData.offering_id}
                 onChange={(e) =>
-                  setFormData({ ...formData, courseId: e.target.value })
+                  setFormData({ ...formData, offering_id: e.target.value })
                 }
                 required
               >
                 <option value="">Select Course</option>
-                {mockCourses.map((course) => (
+                {courses.map((course) => (
                   <option key={course.id} value={course.id.toString()}>
-                    {course.code} - {course.name}
+                    {course.course?.course_code} - {course.course?.course_name}
                   </option>
                 ))}
               </Select>
@@ -367,9 +436,9 @@ const VirtualClassSetup = () => {
               <Input
                 type="date"
                 label="Date"
-                value={formData.date}
+                value={formData.schedule_date}
                 onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
+                  setFormData({ ...formData, schedule_date: e.target.value })
                 }
                 required
               />
@@ -377,18 +446,18 @@ const VirtualClassSetup = () => {
               <Input
                 type="time"
                 label="Start Time"
-                value={formData.startTime}
+                value={formData.start_time}
                 onChange={(e) =>
-                  setFormData({ ...formData, startTime: e.target.value })
+                  setFormData({ ...formData, start_time: e.target.value })
                 }
                 required
               />
 
               <Select
                 label="Duration"
-                value={formData.duration}
+                value={formData.duration_minutes}
                 onChange={(e) =>
-                  setFormData({ ...formData, duration: e.target.value })
+                  setFormData({ ...formData, duration_minutes: e.target.value })
                 }
                 required
               >
@@ -424,7 +493,7 @@ const VirtualClassSetup = () => {
                   </label>
                   <label
                     className={`platform-option ${
-                      formData.platform === "meet"
+                      formData.platform === "google_meet"
                         ? "platform-option--active"
                         : ""
                     }`}
@@ -432,8 +501,8 @@ const VirtualClassSetup = () => {
                     <input
                       type="radio"
                       name="platform"
-                      value="meet"
-                      checked={formData.platform === "meet"}
+                      value="google_meet"
+                      checked={formData.platform === "google_meet"}
                       onChange={(e) =>
                         setFormData({ ...formData, platform: e.target.value })
                       }
@@ -442,20 +511,6 @@ const VirtualClassSetup = () => {
                     <span>Google Meet</span>
                   </label>
                 </div>
-              </div>
-
-              <div className="quick-create-form__recurring">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={formData.recurring}
-                    onChange={(e) =>
-                      setFormData({ ...formData, recurring: e.target.checked })
-                    }
-                  />
-                  <Repeat size={16} />
-                  <span>Recurring (Weekly)</span>
-                </label>
               </div>
             </div>
 
@@ -517,6 +572,10 @@ const VirtualClassSetup = () => {
               upcomingClasses.map((classItem, index) => {
                 const statusConfig = getStatusBadge(classItem.status);
                 const StatusIcon = statusConfig.icon;
+                const endTime = calculateEndTime(
+                  classItem.startTime,
+                  classItem.duration
+                );
 
                 return (
                   <motion.div
@@ -557,7 +616,7 @@ const VirtualClassSetup = () => {
                             <Clock size={16} />
                             <span>
                               {formatTime(classItem.startTime)} -{" "}
-                              {formatTime(classItem.endTime)}
+                              {formatTime(endTime)}
                             </span>
                           </div>
                           <div className="session-card__detail">
@@ -568,7 +627,7 @@ const VirtualClassSetup = () => {
                                 textTransform: "capitalize",
                               }}
                             >
-                              {classItem.platform}
+                              {classItem.platform.replace("_", " ")}
                             </span>
                           </div>
                           <div className="session-card__detail">
@@ -577,50 +636,42 @@ const VirtualClassSetup = () => {
                           </div>
                         </div>
 
-                        <div className="session-card__meeting-info">
-                          <div className="session-card__link">
-                            <LinkIcon size={16} />
-                            <input
-                              type="text"
-                              value={classItem.meetingLink}
-                              readOnly
-                              onClick={(e) => e.target.select()}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon={Copy}
-                              onClick={() =>
-                                handleCopyLink(classItem.meetingLink)
-                              }
-                            />
-                          </div>
-
-                          {classItem.meetingId && (
-                            <div className="session-card__credentials">
-                              <span>
-                                Meeting ID:{" "}
-                                <strong>{classItem.meetingId}</strong>
-                              </span>
-                              <span>
-                                Passcode: <strong>{classItem.passcode}</strong>
-                              </span>
+                        {classItem.meetingLink && (
+                          <div className="session-card__meeting-info">
+                            <div className="session-card__link">
+                              <LinkIcon size={16} />
+                              <input
+                                type="text"
+                                value={classItem.meetingLink}
+                                readOnly
+                                onClick={(e) => e.target.select()}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                icon={Copy}
+                                onClick={() =>
+                                  handleCopyLink(classItem.meetingLink)
+                                }
+                              />
                             </div>
-                          )}
 
-                          {classItem.recurring && (
-                            <div className="session-card__recurring">
-                              <Repeat size={14} />
-                              <span>
-                                Recurring weekly on{" "}
-                                {new Date(classItem.date).toLocaleDateString(
-                                  "en-US",
-                                  { weekday: "long" }
+                            {classItem.meetingId && (
+                              <div className="session-card__credentials">
+                                <span>
+                                  Meeting ID:{" "}
+                                  <strong>{classItem.meetingId}</strong>
+                                </span>
+                                {classItem.passcode && (
+                                  <span>
+                                    Passcode:{" "}
+                                    <strong>{classItem.passcode}</strong>
+                                  </span>
                                 )}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <div className="session-card__actions">
                           {classItem.status === "live" ? (
@@ -724,7 +775,7 @@ const VirtualClassSetup = () => {
                         </div>
                         <div className="session-card__detail">
                           <Clock size={16} />
-                          <span>Duration: {classItem.actualDuration}</span>
+                          <span>Duration: {classItem.duration} min</span>
                         </div>
                         <div className="session-card__detail">
                           <Video size={16} />
@@ -734,28 +785,23 @@ const VirtualClassSetup = () => {
                               textTransform: "capitalize",
                             }}
                           >
-                            {classItem.platform}
+                            {classItem.platform.replace("_", " ")}
                           </span>
-                        </div>
-                        <div className="session-card__detail">
-                          <Eye size={16} />
-                          <span>{classItem.views} Views</span>
                         </div>
                       </div>
 
                       <div className="session-card__actions">
-                        <Button
-                          variant="primary"
-                          icon={ExternalLink}
-                          onClick={() =>
-                            window.open(classItem.recordingUrl, "_blank")
-                          }
-                        >
-                          View Recording
-                        </Button>
-                        <Button variant="outline" size="sm" icon={Download}>
-                          Download
-                        </Button>
+                        {classItem.meetingLink && (
+                          <Button
+                            variant="primary"
+                            icon={ExternalLink}
+                            onClick={() =>
+                              window.open(classItem.meetingLink, "_blank")
+                            }
+                          >
+                            View Recording
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -783,16 +829,16 @@ const VirtualClassSetup = () => {
         <form onSubmit={handleSubmitEdit} className="virtual-class-form">
           <Select
             label="Course"
-            value={formData.courseId}
+            value={formData.offering_id}
             onChange={(e) =>
-              setFormData({ ...formData, courseId: e.target.value })
+              setFormData({ ...formData, offering_id: e.target.value })
             }
             required
           >
             <option value="">Select Course</option>
-            {mockCourses.map((course) => (
+            {courses.map((course) => (
               <option key={course.id} value={course.id.toString()}>
-                {course.code} - {course.name}
+                {course.course?.course_code} - {course.course?.course_name}
               </option>
             ))}
           </Select>
@@ -812,9 +858,9 @@ const VirtualClassSetup = () => {
             <Input
               type="date"
               label="Date"
-              value={formData.date}
+              value={formData.schedule_date}
               onChange={(e) =>
-                setFormData({ ...formData, date: e.target.value })
+                setFormData({ ...formData, schedule_date: e.target.value })
               }
               required
             />
@@ -822,9 +868,9 @@ const VirtualClassSetup = () => {
             <Input
               type="time"
               label="Start Time"
-              value={formData.startTime}
+              value={formData.start_time}
               onChange={(e) =>
-                setFormData({ ...formData, startTime: e.target.value })
+                setFormData({ ...formData, start_time: e.target.value })
               }
               required
             />
@@ -832,9 +878,9 @@ const VirtualClassSetup = () => {
 
           <Select
             label="Duration"
-            value={formData.duration}
+            value={formData.duration_minutes}
             onChange={(e) =>
-              setFormData({ ...formData, duration: e.target.value })
+              setFormData({ ...formData, duration_minutes: e.target.value })
             }
             required
           >
@@ -866,14 +912,16 @@ const VirtualClassSetup = () => {
               </label>
               <label
                 className={`platform-option ${
-                  formData.platform === "meet" ? "platform-option--active" : ""
+                  formData.platform === "google_meet"
+                    ? "platform-option--active"
+                    : ""
                 }`}
               >
                 <input
                   type="radio"
                   name="platform"
-                  value="meet"
-                  checked={formData.platform === "meet"}
+                  value="google_meet"
+                  checked={formData.platform === "google_meet"}
                   onChange={(e) =>
                     setFormData({ ...formData, platform: e.target.value })
                   }

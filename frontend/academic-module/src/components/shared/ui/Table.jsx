@@ -11,6 +11,24 @@ const Table = ({
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
+  // Normalize columns: support both string[] and object[]
+  const normalizedColumns = React.useMemo(() => {
+    return columns.map((col, index) => {
+      if (typeof col === "string") {
+        return {
+          key: `col-${index}`, // fallback unique key
+          label: col,
+          sortable: sortable,
+        };
+      }
+      return {
+        ...col,
+        key: col.key ?? `col-${index}`,
+        sortable: col.sortable !== false && sortable,
+      };
+    });
+  }, [columns, sortable]);
+
   const handleSort = (key) => {
     if (!sortable) return;
 
@@ -20,25 +38,18 @@ const Table = ({
     }
 
     setSortConfig({ key, direction });
-
-    if (onSort) {
-      onSort(key, direction);
-    }
+    if (onSort) onSort(key, direction);
   };
 
   const sortedData = React.useMemo(() => {
-    if (!sortConfig.key) return data;
+    if (!sortConfig.key || !data.length) return data;
 
     return [...data].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
-      if (aValue < bValue) {
-        return sortConfig.direction === "asc" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === "asc" ? 1 : -1;
-      }
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
   }, [data, sortConfig]);
@@ -49,22 +60,18 @@ const Table = ({
         <table className="table__element">
           <thead className="table__header">
             <tr className="table__row">
-              {columns.map((column) => (
+              {normalizedColumns.map((column) => (
                 <th
                   key={column.key}
                   className={`table__cell table__cell--header ${
-                    column.sortable !== false && sortable
-                      ? "table__cell--sortable"
-                      : ""
+                    column.sortable ? "table__cell--sortable" : ""
                   }`}
-                  onClick={() =>
-                    column.sortable !== false && handleSort(column.key)
-                  }
+                  onClick={() => column.sortable && handleSort(column.key)}
                   style={{ width: column.width }}
                 >
                   <div className="table__cell-content">
                     {column.label}
-                    {column.sortable !== false && sortable && (
+                    {column.sortable && (
                       <div className="table__sort-icon">
                         {sortConfig.key === column.key ? (
                           sortConfig.direction === "asc" ? (
@@ -89,7 +96,7 @@ const Table = ({
             {sortedData.length === 0 ? (
               <tr className="table__row">
                 <td
-                  colSpan={columns.length}
+                  colSpan={normalizedColumns.length}
                   className="table__cell table__cell--empty"
                 >
                   No data available
@@ -97,12 +104,18 @@ const Table = ({
               </tr>
             ) : (
               sortedData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="table__row table__row--body">
-                  {columns.map((column) => (
-                    <td key={column.key} className="table__cell">
+                <tr
+                  key={row.id || rowIndex}
+                  className="table__row table__row--body"
+                >
+                  {normalizedColumns.map((column, colIndex) => (
+                    <td
+                      key={`${rowIndex}-${column.key}`}
+                      className="table__cell"
+                    >
                       {column.render
-                        ? column.render(row[column.key], row)
-                        : row[column.key]}
+                        ? column.render(row[column.key], row, rowIndex)
+                        : row[column.key] ?? row[colIndex]}
                     </td>
                   ))}
                 </tr>

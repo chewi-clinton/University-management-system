@@ -1,5 +1,4 @@
-// src/pages/faculty/Reports.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Card from "../../components/shared/layout/Card";
 import Select from "../../components/shared/ui/Select";
@@ -9,223 +8,514 @@ import LineChart from "../../components/shared/charts/LineChart";
 import BarChart from "../../components/shared/charts/BarChart";
 import PieChart from "../../components/shared/charts/PieChart";
 import Table from "../../components/shared/ui/Table";
+import Skeleton from "../../components/shared/feedback/skeleton";
+import facultyService from "../../services/api/facultyService";
+import api from "../../services/api/api";
 import "../../styles/pages/Reports.css";
 
-// Embedded mock data directly in the file (no external import required)
-const mockFacultyCourses = [
-  { id: 1, code: "CS301", name: "Data Structures", section: "A" },
-  { id: 2, code: "CS201", name: "Programming Fundamentals", section: "B" },
-  { id: 3, code: "CS401", name: "Advanced Algorithms", section: "A" },
-];
-
-const mockStudents = [
-  {
-    id: 1,
-    name: "John Doe",
-    regNumber: "UNI-2024-0123",
-    gpa: 3.8,
-    attendance: 92,
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    regNumber: "UNI-2024-0124",
-    gpa: 3.9,
-    attendance: 95,
-  },
-  {
-    id: 3,
-    name: "Mike Chen",
-    regNumber: "UNI-2024-0125",
-    gpa: 3.2,
-    attendance: 78,
-  },
-  {
-    id: 4,
-    name: "Sarah Johnson",
-    regNumber: "UNI-2024-0126",
-    gpa: 3.6,
-    attendance: 89,
-  },
-  {
-    id: 5,
-    name: "David Lee",
-    regNumber: "UNI-2024-0127",
-    gpa: 2.9,
-    attendance: 72,
-  },
-];
-
 const Reports = () => {
+  const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState("course-performance");
-  const [selectedCourse, setSelectedCourse] = useState(
-    mockFacultyCourses[0].id
+  const [courses, setCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [dateFrom, setDateFrom] = useState(
+    new Date(new Date().getFullYear(), 0, 1).toISOString().split("T")[0]
   );
-  const [dateFrom, setDateFrom] = useState("2024-01-01");
-  const [dateTo, setDateTo] = useState("2024-12-31");
+  const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
+  const [reportData, setReportData] = useState(null);
+  const [error, setError] = useState(null);
 
-  // Report content based on selected type using embedded mock data
-  const getReportContent = () => {
-    switch (reportType) {
-      case "course-performance":
-        return {
-          charts: [
-            {
-              type: "bar",
-              title: "Grade Distribution",
-              data: [
-                { name: "A", Students: 12 },
-                { name: "A-", Students: 10 },
-                { name: "B+", Students: 18 },
-                { name: "B", Students: 8 },
-                { name: "C", Students: 3 },
-                { name: "F", Students: 2 },
-              ],
-            },
-            {
-              type: "line",
-              title: "GPA Trend Over Semesters",
-              data: [
-                { name: "Fall 2022", GPA: 3.4 },
-                { name: "Spring 2023", GPA: 3.5 },
-                { name: "Fall 2023", GPA: 3.6 },
-                { name: "Spring 2024", GPA: 3.7 },
-                { name: "Fall 2024", GPA: 3.8 },
-              ],
-            },
-          ],
-          table: {
-            title: "Top 5 Performers",
-            columns: ["Rank", "Student", "Reg #", "GPA", "Attendance %"],
-            rows: mockStudents
-              .sort((a, b) => b.gpa - a.gpa)
-              .slice(0, 5)
-              .map((s, i) => [
-                i + 1,
-                s.name,
-                s.regNumber,
-                s.gpa.toFixed(2),
-                s.attendance,
-              ]),
-          },
-          stats: {
-            Average: "78%",
-            Median: "80%",
-            "Pass Rate": "92%",
-            "Std Dev": "8.5",
-          },
-        };
+  useEffect(() => {
+    loadCourses();
+  }, []);
 
-      case "attendance":
-        return {
-          charts: [
-            {
-              type: "line",
-              title: "Attendance Trend (Last 30 Days)",
-              data: [
-                { name: "Week 1", Attendance: 85 },
-                { name: "Week 2", Attendance: 88 },
-                { name: "Week 3", Attendance: 82 },
-                { name: "Week 4", Attendance: 90 },
-                { name: "Week 5", Attendance: 87 },
-              ],
-            },
-          ],
-          table: {
-            title: "Student Attendance Summary",
-            columns: [
-              "Student",
-              "Reg #",
-              "Present",
-              "Absent",
-              "Late",
-              "Percentage",
-            ],
-            rows: mockStudents.map((s) => [
-              s.name,
-              s.regNumber,
-              Math.round((s.attendance / 100) * 45),
-              5,
-              2,
-              `${s.attendance}%`,
-            ]),
-          },
-        };
+  useEffect(() => {
+    if (selectedCourse) {
+      generateReport();
+    }
+  }, [reportType, selectedCourse, dateFrom, dateTo]);
 
-      case "grade-distribution":
-        return {
-          charts: [
-            {
-              type: "pie",
-              title: "Overall Grade Distribution",
-              data: [
-                { name: "A", value: 30 },
-                { name: "B+", value: 25 },
-                { name: "B", value: 20 },
-                { name: "C", value: 15 },
-                { name: "F", value: 10 },
-              ],
-            },
-            {
-              type: "bar",
-              title: "Assessment-wise Average Marks",
-              data: [
-                { name: "Assignment 1", Average: 42 },
-                { name: "Assignment 2", Average: 45 },
-                { name: "Midterm", Average: 35 },
-                { name: "Final", Average: 82 },
-              ],
-            },
-          ],
-          stats: {
-            Average: "78%",
-            Median: "80%",
-            "Pass Rate": "92%",
-            Highest: "95%",
-            Lowest: "62%",
-          },
-        };
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await facultyService.getCourses({ is_visible: true });
+      const coursesData = response.results || response;
+      setCourses(coursesData);
 
-      case "student-progress":
-        return {
-          charts: [
-            {
-              type: "line",
-              title: "Individual Performance Trend - John Doe",
-              data: [
-                { name: "Assignment 1", Score: 45 },
-                { name: "Assignment 2", Score: 48 },
-                { name: "Midterm", Score: 38 },
-                { name: "Final", Score: 85 },
-              ],
-            },
-          ],
-          table: {
-            title: "Assessment Breakdown",
-            columns: ["Assessment", "Score", "Max", "Percentage", "Weightage"],
-            rows: [
-              ["Assignment 1", 45, 50, "90%", "20%"],
-              ["Assignment 2", 48, 50, "96%", "20%"],
-              ["Midterm", 38, 40, "95%", "30%"],
-              ["Final", 85, 100, "85%", "30%"],
-            ],
-          },
-        };
-
-      default:
-        return {};
+      if (coursesData.length > 0) {
+        setSelectedCourse(coursesData[0].id.toString());
+      }
+    } catch (error) {
+      console.error("Error loading courses:", error);
+      setError("Failed to load courses");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const content = getReportContent();
+  const generateReport = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const handleExport = (format) => {
-    alert(`Exporting report as ${format.toUpperCase()}... (Mock action)`);
+      switch (reportType) {
+        case "course-performance":
+          await generateCoursePerformanceReport();
+          break;
+        case "attendance":
+          await generateAttendanceReport();
+          break;
+        case "grade-distribution":
+          await generateGradeDistributionReport();
+          break;
+        case "student-progress":
+          await generateStudentProgressReport();
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+      setError("Failed to generate report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateCoursePerformanceReport = async () => {
+    try {
+      // Get class performance data
+      const performanceResponse = await facultyService.getClassPerformance(
+        selectedCourse
+      );
+
+      // Get students in the course
+      const studentsResponse = await facultyService.getCourseStudents(
+        selectedCourse
+      );
+      const students = studentsResponse.results || studentsResponse;
+
+      // Get grades for the course
+      const gradesResponse = await api.get("grades/", {
+        params: { offering: selectedCourse, is_finalized: true },
+      });
+      const grades = gradesResponse.data.results || gradesResponse.data;
+
+      // Calculate grade distribution
+      const gradeDistribution = {};
+      students.forEach((student) => {
+        const studentGrades = grades.filter(
+          (g) => g.student.student_id === student.student.student_id
+        );
+        if (studentGrades.length > 0) {
+          const avgGrade = getLetterGrade(
+            studentGrades.reduce((sum, g) => sum + (g.marks_obtained || 0), 0) /
+              studentGrades.length
+          );
+          gradeDistribution[avgGrade] = (gradeDistribution[avgGrade] || 0) + 1;
+        }
+      });
+
+      const gradeDistData = Object.entries(gradeDistribution).map(
+        ([grade, count]) => ({
+          name: grade,
+          Students: count,
+        })
+      );
+
+      // Get top performers
+      const studentsWithGrades = students
+        .map((student) => {
+          const studentGrades = grades.filter(
+            (g) => g.student.student_id === student.student.student_id
+          );
+          const avgScore =
+            studentGrades.length > 0
+              ? studentGrades.reduce(
+                  (sum, g) => sum + (g.marks_obtained || 0),
+                  0
+                ) / studentGrades.length
+              : 0;
+
+          // Get attendance
+          const attendance = student.student.attendance_percentage || 0;
+
+          return {
+            name: student.student.full_name || student.student.first_name,
+            regNumber: student.student.university_reg_number,
+            gpa: student.student.current_gpa || 0,
+            attendance: Math.round(attendance),
+            avgScore,
+          };
+        })
+        .sort((a, b) => b.avgScore - a.avgScore);
+
+      const topPerformers = studentsWithGrades
+        .slice(0, 5)
+        .map((s, i) => [
+          i + 1,
+          s.name,
+          s.regNumber,
+          s.gpa.toFixed(2),
+          `${s.attendance}%`,
+        ]);
+
+      // Calculate statistics
+      const scores = studentsWithGrades.map((s) => s.avgScore);
+      const average =
+        scores.length > 0
+          ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)
+          : "0.00";
+      const sortedScores = [...scores].sort((a, b) => a - b);
+      const median =
+        sortedScores.length > 0
+          ? sortedScores[Math.floor(sortedScores.length / 2)].toFixed(2)
+          : "0.00";
+      const passRate =
+        scores.length > 0
+          ? (
+              (scores.filter((s) => s >= 50).length / scores.length) *
+              100
+            ).toFixed(2)
+          : "0.00";
+      const variance =
+        scores.length > 0
+          ? scores.reduce(
+              (acc, s) => acc + Math.pow(s - parseFloat(average), 2),
+              0
+            ) / scores.length
+          : 0;
+      const stdDev = Math.sqrt(variance).toFixed(2);
+
+      setReportData({
+        charts: [
+          {
+            type: "bar",
+            title: "Grade Distribution",
+            data: gradeDistData,
+          },
+        ],
+        table: {
+          title: "Top 5 Performers",
+          columns: ["Rank", "Student", "Reg #", "GPA", "Attendance %"],
+          rows: topPerformers,
+        },
+        stats: {
+          Average: `${average}%`,
+          Median: `${median}%`,
+          "Pass Rate": `${passRate}%`,
+          "Std Dev": stdDev,
+          "Total Students": students.length,
+        },
+      });
+    } catch (error) {
+      console.error("Error generating course performance report:", error);
+      throw error;
+    }
+  };
+
+  const generateAttendanceReport = async () => {
+    try {
+      // Get attendance records for the course
+      const attendanceResponse = await api.get("attendance/", {
+        params: { offering: selectedCourse },
+      });
+      const attendanceRecords =
+        attendanceResponse.data.results || attendanceResponse.data;
+
+      // Get students in the course
+      const studentsResponse = await facultyService.getCourseStudents(
+        selectedCourse
+      );
+      const students = studentsResponse.results || studentsResponse;
+
+      // Calculate attendance summary per student
+      const attendanceSummary = students.map((student) => {
+        const studentRecords = attendanceRecords.filter(
+          (r) => r.student.student_id === student.student.student_id
+        );
+        const present = studentRecords.filter(
+          (r) => r.status === "present"
+        ).length;
+        const absent = studentRecords.filter(
+          (r) => r.status === "absent"
+        ).length;
+        const late = studentRecords.filter((r) => r.status === "late").length;
+        const total = studentRecords.length;
+        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+        return [
+          student.student.full_name || student.student.first_name,
+          student.student.university_reg_number,
+          present,
+          absent,
+          late,
+          `${percentage}%`,
+        ];
+      });
+
+      // Calculate weekly trend (last 5 weeks)
+      const weeklyTrend = [];
+      for (let i = 4; i >= 0; i--) {
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - (i + 1) * 7);
+        const weekEnd = new Date();
+        weekEnd.setDate(weekEnd.getDate() - i * 7);
+
+        const weekRecords = attendanceRecords.filter((r) => {
+          const date = new Date(r.attendance_date);
+          return date >= weekStart && date <= weekEnd;
+        });
+
+        const weekPresent = weekRecords.filter(
+          (r) => r.status === "present"
+        ).length;
+        const weekPercentage =
+          weekRecords.length > 0
+            ? Math.round((weekPresent / weekRecords.length) * 100)
+            : 0;
+
+        weeklyTrend.push({
+          name: `Week ${5 - i}`,
+          Attendance: weekPercentage,
+        });
+      }
+
+      setReportData({
+        charts: [
+          {
+            type: "line",
+            title: "Attendance Trend (Last 5 Weeks)",
+            data: weeklyTrend,
+          },
+        ],
+        table: {
+          title: "Student Attendance Summary",
+          columns: [
+            "Student",
+            "Reg #",
+            "Present",
+            "Absent",
+            "Late",
+            "Percentage",
+          ],
+          rows: attendanceSummary,
+        },
+      });
+    } catch (error) {
+      console.error("Error generating attendance report:", error);
+      throw error;
+    }
+  };
+
+  const generateGradeDistributionReport = async () => {
+    try {
+      // Get grades for the course
+      const gradesResponse = await api.get("grades/", {
+        params: { offering: selectedCourse, is_finalized: true },
+      });
+      const grades = gradesResponse.data.results || gradesResponse.data;
+
+      // Calculate grade distribution
+      const gradeDistribution = {};
+      grades.forEach((grade) => {
+        const percentage =
+          grade.max_marks > 0
+            ? (grade.marks_obtained / grade.max_marks) * 100
+            : 0;
+        const letterGrade = getLetterGrade(percentage);
+        gradeDistribution[letterGrade] =
+          (gradeDistribution[letterGrade] || 0) + 1;
+      });
+
+      const pieData = Object.entries(gradeDistribution).map(
+        ([grade, count]) => ({
+          name: grade,
+          value: count,
+        })
+      );
+
+      // Calculate assessment-wise averages
+      const assessmentAverages = {};
+      grades.forEach((grade) => {
+        const assessmentName = grade.assessment_name || "Unknown";
+        if (!assessmentAverages[assessmentName]) {
+          assessmentAverages[assessmentName] = { total: 0, count: 0 };
+        }
+        assessmentAverages[assessmentName].total += grade.marks_obtained || 0;
+        assessmentAverages[assessmentName].count++;
+      });
+
+      const barData = Object.entries(assessmentAverages).map(
+        ([name, data]) => ({
+          name,
+          Average: Math.round(data.total / data.count),
+        })
+      );
+
+      // Calculate statistics
+      const allScores = grades.map((g) =>
+        g.max_marks > 0 ? (g.marks_obtained / g.max_marks) * 100 : 0
+      );
+      const average =
+        allScores.length > 0
+          ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(2)
+          : "0.00";
+      const sortedScores = [...allScores].sort((a, b) => a - b);
+      const median =
+        sortedScores.length > 0
+          ? sortedScores[Math.floor(sortedScores.length / 2)].toFixed(2)
+          : "0.00";
+      const passRate =
+        allScores.length > 0
+          ? (
+              (allScores.filter((s) => s >= 50).length / allScores.length) *
+              100
+            ).toFixed(2)
+          : "0.00";
+      const highest =
+        allScores.length > 0 ? Math.max(...allScores).toFixed(2) : "0.00";
+      const lowest =
+        allScores.length > 0 ? Math.min(...allScores).toFixed(2) : "0.00";
+
+      setReportData({
+        charts: [
+          {
+            type: "pie",
+            title: "Overall Grade Distribution",
+            data: pieData,
+          },
+          {
+            type: "bar",
+            title: "Assessment-wise Average Marks",
+            data: barData,
+          },
+        ],
+        stats: {
+          Average: `${average}%`,
+          Median: `${median}%`,
+          "Pass Rate": `${passRate}%`,
+          Highest: `${highest}%`,
+          Lowest: `${lowest}%`,
+        },
+      });
+    } catch (error) {
+      console.error("Error generating grade distribution report:", error);
+      throw error;
+    }
+  };
+
+  const generateStudentProgressReport = async () => {
+    try {
+      // Get students in the course
+      const studentsResponse = await facultyService.getCourseStudents(
+        selectedCourse
+      );
+      const students = studentsResponse.results || studentsResponse;
+
+      if (students.length === 0) {
+        setReportData({
+          charts: [],
+          table: null,
+          message: "No students enrolled in this course",
+        });
+        return;
+      }
+
+      // Get first student for demo
+      const firstStudent = students[0].student;
+
+      // Get grades for the first student
+      const gradesResponse = await api.get("grades/", {
+        params: {
+          student: firstStudent.student_id,
+          offering: selectedCourse,
+        },
+      });
+      const grades = gradesResponse.data.results || gradesResponse.data;
+
+      // Sort by graded date
+      const sortedGrades = grades.sort(
+        (a, b) => new Date(a.graded_at) - new Date(b.graded_at)
+      );
+
+      const trendData = sortedGrades.map((grade) => ({
+        name: grade.assessment_name || "Assessment",
+        Score:
+          grade.max_marks > 0
+            ? Math.round((grade.marks_obtained / grade.max_marks) * 100)
+            : 0,
+      }));
+
+      const tableData = sortedGrades.map((grade) => [
+        grade.assessment_name || "Assessment",
+        grade.marks_obtained || 0,
+        grade.max_marks || 0,
+        grade.max_marks > 0
+          ? `${Math.round((grade.marks_obtained / grade.max_marks) * 100)}%`
+          : "0%",
+        `${grade.weightage_percentage || 0}%`,
+      ]);
+
+      setReportData({
+        charts: [
+          {
+            type: "line",
+            title: `Individual Performance Trend - ${
+              firstStudent.full_name || firstStudent.first_name
+            }`,
+            data: trendData,
+          },
+        ],
+        table: {
+          title: "Assessment Breakdown",
+          columns: ["Assessment", "Score", "Max", "Percentage", "Weightage"],
+          rows: tableData,
+        },
+      });
+    } catch (error) {
+      console.error("Error generating student progress report:", error);
+      throw error;
+    }
+  };
+
+  const getLetterGrade = (percentage) => {
+    if (percentage >= 90) return "A";
+    if (percentage >= 85) return "A-";
+    if (percentage >= 80) return "B+";
+    if (percentage >= 75) return "B";
+    if (percentage >= 70) return "B-";
+    if (percentage >= 65) return "C+";
+    if (percentage >= 60) return "C";
+    if (percentage >= 50) return "D";
+    return "F";
+  };
+
+  const handleExport = async (format) => {
+    try {
+      // TODO: Implement actual export functionality
+      alert(`Exporting report as ${format.toUpperCase()}...`);
+    } catch (error) {
+      console.error("Error exporting report:", error);
+    }
   };
 
   const handlePrint = () => {
     window.print();
   };
+
+  if (loading && !reportData) {
+    return (
+      <div className="reports">
+        <Skeleton variant="text" width="300px" height="40px" />
+        <Skeleton
+          variant="rectangular"
+          height="600px"
+          style={{ marginTop: "24px" }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="reports">
@@ -281,11 +571,14 @@ const Reports = () => {
                 label="Course"
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                options={mockFacultyCourses.map((c) => ({
-                  value: c.id,
-                  label: `${c.code} - ${c.name}`,
-                }))}
-              />
+              >
+                <option value="">Select Course</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id.toString()}>
+                    {c.course?.course_code} - {c.course?.course_name}
+                  </option>
+                ))}
+              </Select>
               <DatePicker
                 label="From"
                 value={dateFrom}
@@ -310,49 +603,69 @@ const Reports = () => {
             </div>
           </Card>
 
-          <div className="reports__visualization">
-            {content.charts?.map((chart, idx) => (
-              <Card key={idx} className="reports__chart-card">
-                <h3>{chart.title}</h3>
-                {chart.type === "line" && (
-                  <LineChart data={chart.data} title={chart.title} />
-                )}
-                {chart.type === "bar" && (
-                  <BarChart data={chart.data} title={chart.title} />
-                )}
-                {chart.type === "pie" && (
-                  <PieChart data={chart.data} title={chart.title} />
-                )}
-              </Card>
-            ))}
+          {error && (
+            <Card>
+              <div style={{ padding: "2rem", textAlign: "center" }}>
+                <p style={{ color: "var(--error-500)" }}>{error}</p>
+                <Button onClick={generateReport} style={{ marginTop: "1rem" }}>
+                  Retry
+                </Button>
+              </div>
+            </Card>
+          )}
 
-            {content.stats && (
-              <Card className="reports__stats">
-                <h3>Statistics</h3>
-                <div className="reports__stats-grid">
-                  {Object.entries(content.stats).map(([key, value]) => (
-                    <div key={key} className="reports__stat-item">
-                      <span className="reports__stat-label">
-                        {key.charAt(0).toUpperCase() +
-                          key.slice(1).replace(/([A-Z])/g, " $1")}
-                      </span>
-                      <span className="reports__stat-value">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
+          {loading ? (
+            <Skeleton variant="rectangular" height="400px" />
+          ) : reportData ? (
+            <div className="reports__visualization">
+              {reportData.message && (
+                <Card>
+                  <div style={{ padding: "2rem", textAlign: "center" }}>
+                    <p>{reportData.message}</p>
+                  </div>
+                </Card>
+              )}
 
-            {content.table && (
-              <Card className="reports__table-card">
-                <h3>{content.table.title}</h3>
-                <Table
-                  columns={content.table.columns}
-                  data={content.table.rows}
-                />
-              </Card>
-            )}
-          </div>
+              {reportData.charts?.map((chart, idx) => (
+                <Card key={idx} className="reports__chart-card">
+                  <h3>{chart.title}</h3>
+                  {chart.type === "line" && (
+                    <LineChart data={chart.data} title={chart.title} />
+                  )}
+                  {chart.type === "bar" && (
+                    <BarChart data={chart.data} title={chart.title} />
+                  )}
+                  {chart.type === "pie" && (
+                    <PieChart data={chart.data} title={chart.title} />
+                  )}
+                </Card>
+              ))}
+
+              {reportData.stats && (
+                <Card className="reports__stats">
+                  <h3>Statistics</h3>
+                  <div className="reports__stats-grid">
+                    {Object.entries(reportData.stats).map(([key, value]) => (
+                      <div key={key} className="reports__stat-item">
+                        <span className="reports__stat-label">{key}</span>
+                        <span className="reports__stat-value">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {reportData.table && (
+                <Card className="reports__table-card">
+                  <h3>{reportData.table.title}</h3>
+                  <Table
+                    columns={reportData.table.columns}
+                    data={reportData.table.rows}
+                  />
+                </Card>
+              )}
+            </div>
+          ) : null}
         </section>
       </div>
     </div>

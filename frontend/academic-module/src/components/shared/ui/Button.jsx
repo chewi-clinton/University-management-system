@@ -12,25 +12,25 @@ const Button = ({
   loading = false,
   fullWidth = false,
   className = "",
-  leftIcon,
-  rightIcon,
+  leftIcon: LeftIcon,
+  rightIcon: RightIcon,
+  "aria-label": ariaLabel, // Recommended for icon-only buttons
   ...props
 }) => {
+  const hasChildren = children !== undefined && children !== null;
+  const isIconOnly = !hasChildren && (LeftIcon || RightIcon);
+
   const buttonClasses = [
     "btn",
     `btn--${variant}`,
     `btn--${size}`,
     fullWidth && "btn--full-width",
     loading && "btn--loading",
+    isIconOnly && "btn--icon-only", // Optional: add this CSS class for better icon-only styling
     className,
   ]
     .filter(Boolean)
     .join(" ");
-
-  const Icon = ({ icon, className }) => {
-    if (!icon) return null;
-    return <span className={className}>{icon}</span>;
-  };
 
   return (
     <motion.button
@@ -39,6 +39,9 @@ const Button = ({
       whileHover={{ scale: disabled || loading ? 1 : 1.02 }}
       whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
       transition={{ duration: 0.1 }}
+      aria-label={
+        ariaLabel || (typeof children === "string" ? children : undefined)
+      }
       {...props}
     >
       {loading && (
@@ -48,16 +51,20 @@ const Button = ({
       )}
 
       <div className={`btn__content ${loading ? "btn__content--loading" : ""}`}>
-        <Icon icon={leftIcon} className="btn__icon btn__icon--left" />
-        {children}
-        <Icon icon={rightIcon} className="btn__icon btn__icon--right" />
+        {LeftIcon && (
+          <span className="btn__icon btn__icon--left">{LeftIcon}</span>
+        )}
+        {hasChildren && children}
+        {RightIcon && (
+          <span className="btn__icon btn__icon--right">{RightIcon}</span>
+        )}
       </div>
     </motion.button>
   );
 };
 
 Button.propTypes = {
-  children: PropTypes.node.isRequired,
+  children: PropTypes.node, // Removed .isRequired
   variant: PropTypes.oneOf([
     "primary",
     "secondary",
@@ -74,6 +81,7 @@ Button.propTypes = {
   className: PropTypes.string,
   leftIcon: PropTypes.node,
   rightIcon: PropTypes.node,
+  "aria-label": PropTypes.string,
 };
 
 export default Button;
