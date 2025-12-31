@@ -12,6 +12,7 @@ import {
   Calendar,
   Paperclip,
   X,
+  AlertCircle,
 } from "lucide-react";
 import Container from "../components/shared/layout/Container.jsx";
 import Card from "../components/shared/layout/Card.jsx";
@@ -19,195 +20,173 @@ import Button from "../components/shared/ui/Button.jsx";
 import Badge from "../components/shared/ui/Badge.jsx";
 import Select from "../components/shared/ui/Select.jsx";
 import SearchInput from "../components/shared/ui/SearchInput.jsx";
-import Skeleton from "../components/shared/feedback/skeleton.jsx";
+import Skeleton from "../components/shared/feedback/Skeleton.jsx";
 import Modal from "../components/shared/feedback/Modal.jsx";
+import { studentService } from "../services/api/studentService.js";
 import "../styles/pages/Materials.css";
-
-const mockMaterials = [
-  {
-    id: 1,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Lecture Notes - Binary Trees",
-    type: "pdf",
-    size: "2.5 MB",
-    uploadedDate: "2025-01-20",
-    uploadedBy: "Dr. Jane Smith",
-    downloadUrl: "#",
-    description:
-      "Comprehensive notes covering binary trees, BST, and traversal algorithms",
-  },
-  {
-    id: 2,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Assignment 1 - Array Implementation",
-    type: "pdf",
-    size: "450 KB",
-    uploadedDate: "2025-01-18",
-    uploadedBy: "Dr. Jane Smith",
-    downloadUrl: "#",
-    description:
-      "Implementation exercises for dynamic arrays and circular buffers",
-  },
-  {
-    id: 3,
-    courseCode: "MA202",
-    courseName: "Calculus II",
-    title: "Integration Techniques Slides",
-    type: "ppt",
-    size: "5.2 MB",
-    uploadedDate: "2025-01-19",
-    uploadedBy: "Dr. Bob Johnson",
-    downloadUrl: "#",
-    description:
-      "PowerPoint slides covering integration by parts and substitution",
-  },
-  {
-    id: 4,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Graph Algorithms Tutorial",
-    type: "video",
-    size: "125 MB",
-    uploadedDate: "2025-01-15",
-    uploadedBy: "Dr. Jane Smith",
-    downloadUrl: "#",
-    description: "Video tutorial demonstrating BFS and DFS implementations",
-  },
-  {
-    id: 5,
-    courseCode: "EN101",
-    courseName: "English Composition",
-    title: "Essay Writing Guidelines",
-    type: "pdf",
-    size: "1.8 MB",
-    uploadedDate: "2025-01-17",
-    uploadedBy: "Prof. Sarah Lee",
-    downloadUrl: "#",
-    description:
-      "Complete guide to academic essay structure and citation formats",
-  },
-  {
-    id: 6,
-    courseCode: "MA202",
-    courseName: "Calculus II",
-    title: "Practice Problems Set 3",
-    type: "pdf",
-    size: "680 KB",
-    uploadedDate: "2025-01-16",
-    uploadedBy: "Dr. Bob Johnson",
-    downloadUrl: "#",
-    description:
-      "Additional practice problems for definite and indefinite integrals",
-  },
-  {
-    id: 7,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Sorting Algorithms Visualization",
-    type: "link",
-    size: null,
-    uploadedDate: "2025-01-14",
-    uploadedBy: "Dr. Jane Smith",
-    downloadUrl: "https://visualgo.net/sorting",
-    description:
-      "Interactive visualization tool for understanding sorting algorithms",
-  },
-  {
-    id: 8,
-    courseCode: "EN101",
-    courseName: "English Composition",
-    title: "Sample Research Papers",
-    type: "pdf",
-    size: "3.2 MB",
-    uploadedDate: "2025-01-13",
-    uploadedBy: "Prof. Sarah Lee",
-    downloadUrl: "#",
-    description:
-      "Collection of exemplary research papers from previous students",
-  },
-  {
-    id: 9,
-    courseCode: "MA202",
-    courseName: "Calculus II",
-    title: "Midterm Exam Review",
-    type: "video",
-    size: "98 MB",
-    uploadedDate: "2025-01-12",
-    uploadedBy: "Dr. Bob Johnson",
-    downloadUrl: "#",
-    description: "Recorded review session covering all midterm topics",
-  },
-  {
-    id: 10,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Lab Manual - Linked Lists",
-    type: "pdf",
-    size: "1.5 MB",
-    uploadedDate: "2025-01-11",
-    uploadedBy: "Dr. Jane Smith",
-    downloadUrl: "#",
-    description:
-      "Step-by-step lab exercises for implementing linked list operations",
-  },
-];
 
 const Materials = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [filteredMaterials, setFilteredMaterials] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("all");
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [previewModal, setPreviewModal] = useState(false);
   const [previewMaterial, setPreviewMaterial] = useState(null);
 
-  const courses = [
-    { value: "all", label: "All Courses" },
-    { value: "CS301", label: "CS301 - Data Structures" },
-    { value: "MA202", label: "MA202 - Calculus II" },
-    { value: "EN101", label: "EN101 - English Composition" },
-  ];
-
   const fileTypes = [
     { value: "pdf", label: "PDF Documents", icon: FileText, color: "#dc2626" },
     { value: "ppt", label: "Presentations", icon: File, color: "#ea580c" },
+    { value: "pptx", label: "Presentations", icon: File, color: "#ea580c" },
+    { value: "doc", label: "Documents", icon: File, color: "#2563eb" },
+    { value: "docx", label: "Documents", icon: File, color: "#2563eb" },
     { value: "video", label: "Videos", icon: Video, color: "#7c3aed" },
+    { value: "mp4", label: "Videos", icon: Video, color: "#7c3aed" },
     { value: "link", label: "Links", icon: LinkIcon, color: "#2563eb" },
+    { value: "zip", label: "Archives", icon: File, color: "#059669" },
   ];
 
   useEffect(() => {
-    setTimeout(() => {
-      setMaterials(mockMaterials);
-      setFilteredMaterials(mockMaterials);
-      setLoading(false);
-    }, 800);
+    fetchMaterials();
   }, []);
+
+  const fetchMaterials = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get student's registered courses
+      const coursesResponse = await studentService.getCourses();
+      console.log("Courses response:", coursesResponse);
+
+      if (!coursesResponse.success) {
+        throw new Error(coursesResponse.error || "Failed to load courses");
+      }
+
+      const registeredCourses = Array.isArray(coursesResponse.data)
+        ? coursesResponse.data
+        : coursesResponse.data?.results || [];
+
+      // Build courses dropdown options
+      const courseOptions = [
+        { value: "all", label: "All Courses" },
+        ...registeredCourses.map((course) => ({
+          value: course.offering?.id?.toString() || course.id?.toString(),
+          label: `${course.offering?.course?.course_code || "N/A"} - ${
+            course.offering?.course?.course_name || "Unknown Course"
+          }`,
+        })),
+      ];
+      setCourses(courseOptions);
+
+      // Fetch materials for all registered courses
+      const allMaterials = [];
+
+      for (const course of registeredCourses) {
+        const offeringId = course.offering?.id;
+
+        if (offeringId) {
+          try {
+            const materialsResponse = await studentService.getCourseMaterials(
+              offeringId
+            );
+            console.log(
+              `Materials for offering ${offeringId}:`,
+              materialsResponse
+            );
+
+            if (materialsResponse.success) {
+              const courseMaterials = Array.isArray(materialsResponse.data)
+                ? materialsResponse.data
+                : materialsResponse.data?.results || [];
+
+              // Add course information to each material
+              const materialsWithCourseInfo = courseMaterials.map(
+                (material) => ({
+                  ...material,
+                  courseInfo: course.offering,
+                  courseCode: course.offering?.course?.course_code || "N/A",
+                  courseName:
+                    course.offering?.course?.course_name || "Unknown Course",
+                })
+              );
+
+              allMaterials.push(...materialsWithCourseInfo);
+            }
+          } catch (err) {
+            console.error(
+              `Error fetching materials for offering ${offeringId}:`,
+              err
+            );
+          }
+        }
+      }
+
+      console.log("All materials:", allMaterials);
+
+      // Sort materials by upload date (most recent first)
+      allMaterials.sort((a, b) => {
+        const dateA = new Date(a.uploaded_at || a.created_at);
+        const dateB = new Date(b.uploaded_at || b.created_at);
+        return dateB - dateA;
+      });
+
+      setMaterials(allMaterials);
+      setFilteredMaterials(allMaterials);
+    } catch (err) {
+      console.error("Error fetching materials:", err);
+      setError(err.message || "Failed to load materials");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let filtered = materials;
 
     if (selectedCourse !== "all") {
-      filtered = filtered.filter((m) => m.courseCode === selectedCourse);
+      filtered = filtered.filter(
+        (m) => m.courseInfo?.id?.toString() === selectedCourse
+      );
     }
 
     if (selectedTypes.length > 0) {
-      filtered = filtered.filter((m) => selectedTypes.includes(m.type));
+      filtered = filtered.filter((m) => {
+        const fileType = getFileType(m.file_type || m.file_url);
+        return selectedTypes.includes(fileType);
+      });
     }
 
     if (searchQuery) {
       filtered = filtered.filter(
         (m) =>
-          m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          m.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          m.description.toLowerCase().includes(searchQuery.toLowerCase())
+          m.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.courseName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     setFilteredMaterials(filtered);
   }, [selectedCourse, selectedTypes, searchQuery, materials]);
+
+  const getFileType = (fileTypeOrUrl) => {
+    if (!fileTypeOrUrl) return "file";
+
+    // If it's a URL, extract file extension
+    if (fileTypeOrUrl.startsWith("http")) {
+      const extension = fileTypeOrUrl
+        .split(".")
+        .pop()
+        .split("?")[0]
+        .toLowerCase();
+      return extension;
+    }
+
+    return fileTypeOrUrl.toLowerCase();
+  };
 
   const handleTypeToggle = (type) => {
     setSelectedTypes((prev) =>
@@ -218,6 +197,13 @@ const Materials = () => {
   const handlePreview = (material) => {
     setPreviewMaterial(material);
     setPreviewModal(true);
+  };
+
+  const handleDownload = (material) => {
+    if (material.file_url || material.file) {
+      const url = material.file_url || material.file;
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
   };
 
   const getFileIcon = (type) => {
@@ -231,14 +217,24 @@ const Materials = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     const options = { month: "short", day: "numeric", year: "numeric" };
     return date.toLocaleDateString("en-US", options);
   };
 
-  const formatFileSize = (size) => {
-    if (!size) return "N/A";
-    return size;
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "N/A";
+
+    // If it's already formatted, return as-is
+    if (typeof bytes === "string" && bytes.includes("MB")) {
+      return bytes;
+    }
+
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    if (bytes === 0) return "0 Bytes";
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
   };
 
   const containerVariants = {
@@ -259,6 +255,21 @@ const Materials = () => {
       y: 0,
       transition: { duration: 0.4 },
     },
+  };
+
+  // Get unique file types from materials
+  const getUniqueFileTypes = () => {
+    const types = materials.map((m) => getFileType(m.file_type || m.file_url));
+    const uniqueTypes = [...new Set(types)];
+
+    return fileTypes
+      .filter((ft) => uniqueTypes.includes(ft.value))
+      .map((ft) => {
+        const count = materials.filter(
+          (m) => getFileType(m.file_type || m.file_url) === ft.value
+        ).length;
+        return { ...ft, count };
+      });
   };
 
   if (loading) {
@@ -291,6 +302,36 @@ const Materials = () => {
       </Container>
     );
   }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="materials">
+          <Card variant="flat" className="materials__error">
+            <AlertCircle
+              size={48}
+              style={{ color: "#ef4444", marginBottom: "16px" }}
+            />
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: "600",
+                marginBottom: "8px",
+              }}
+            >
+              Failed to Load Materials
+            </h3>
+            <p style={{ color: "#6b7280", marginBottom: "24px" }}>{error}</p>
+            <Button variant="primary" onClick={fetchMaterials}>
+              Retry
+            </Button>
+          </Card>
+        </div>
+      </Container>
+    );
+  }
+
+  const availableFileTypes = getUniqueFileTypes();
 
   return (
     <Container>
@@ -351,42 +392,41 @@ const Materials = () => {
                   />
                 </div>
 
-                <div className="materials__filter-group">
-                  <label className="materials__filter-label">File Type</label>
-                  <div className="materials__type-filters">
-                    {fileTypes.map((type) => {
-                      const Icon = type.icon;
-                      const isSelected = selectedTypes.includes(type.value);
-                      const count = materials.filter(
-                        (m) => m.type === type.value
-                      ).length;
+                {availableFileTypes.length > 0 && (
+                  <div className="materials__filter-group">
+                    <label className="materials__filter-label">File Type</label>
+                    <div className="materials__type-filters">
+                      {availableFileTypes.map((type) => {
+                        const Icon = type.icon;
+                        const isSelected = selectedTypes.includes(type.value);
 
-                      return (
-                        <button
-                          key={type.value}
-                          className={`materials__type-filter ${
-                            isSelected ? "materials__type-filter--active" : ""
-                          }`}
-                          onClick={() => handleTypeToggle(type.value)}
-                          style={{
-                            borderColor: isSelected ? type.color : undefined,
-                            backgroundColor: isSelected
-                              ? `${type.color}10`
-                              : undefined,
-                          }}
-                        >
-                          <Icon size={18} style={{ color: type.color }} />
-                          <span className="materials__type-filter-label">
-                            {type.label}
-                          </span>
-                          <Badge variant="secondary" size="sm">
-                            {count}
-                          </Badge>
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={type.value}
+                            className={`materials__type-filter ${
+                              isSelected ? "materials__type-filter--active" : ""
+                            }`}
+                            onClick={() => handleTypeToggle(type.value)}
+                            style={{
+                              borderColor: isSelected ? type.color : undefined,
+                              backgroundColor: isSelected
+                                ? `${type.color}10`
+                                : undefined,
+                            }}
+                          >
+                            <Icon size={18} style={{ color: type.color }} />
+                            <span className="materials__type-filter-label">
+                              {type.label}
+                            </span>
+                            <Badge variant="secondary" size="sm">
+                              {type.count}
+                            </Badge>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </Card>
           </motion.aside>
@@ -411,12 +451,15 @@ const Materials = () => {
             {filteredMaterials.length > 0 ? (
               <div className="materials__list">
                 {filteredMaterials.map((material, index) => {
-                  const FileIcon = getFileIcon(material.type);
-                  const fileColor = getFileColor(material.type);
+                  const fileType = getFileType(
+                    material.file_type || material.file_url
+                  );
+                  const FileIcon = getFileIcon(fileType);
+                  const fileColor = getFileColor(fileType);
 
                   return (
                     <motion.div
-                      key={material.id}
+                      key={material.material_id || material.id}
                       variants={itemVariants}
                       custom={index}
                     >
@@ -432,53 +475,72 @@ const Materials = () => {
                           <div className="materials__item-header">
                             <div className="materials__item-meta">
                               <h3 className="materials__item-title">
-                                {material.title}
+                                {material.title || "Untitled Material"}
                               </h3>
                               <div className="materials__item-tags">
                                 <Badge variant="primary" size="sm">
                                   {material.courseCode}
                                 </Badge>
                                 <Badge variant="secondary" size="sm">
-                                  {material.type.toUpperCase()}
+                                  {fileType.toUpperCase()}
                                 </Badge>
+                                {material.access_level && (
+                                  <Badge variant="success" size="sm">
+                                    {material.access_level}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           </div>
 
-                          <p className="materials__item-description">
-                            {material.description}
-                          </p>
+                          {material.description && (
+                            <p className="materials__item-description">
+                              {material.description}
+                            </p>
+                          )}
 
                           <div className="materials__item-footer">
                             <div className="materials__item-details">
                               <span className="materials__item-detail">
                                 <Calendar size={14} />
-                                {formatDate(material.uploadedDate)}
+                                {formatDate(
+                                  material.uploaded_at || material.created_at
+                                )}
                               </span>
-                              <span className="materials__item-detail">
-                                By {material.uploadedBy}
-                              </span>
-                              {material.size && (
+                              {material.uploaded_by_faculty && (
                                 <span className="materials__item-detail">
-                                  {formatFileSize(material.size)}
+                                  By{" "}
+                                  {
+                                    material.uploaded_by_faculty.user
+                                      ?.first_name
+                                  }{" "}
+                                  {material.uploaded_by_faculty.user?.last_name}
+                                </span>
+                              )}
+                              {material.file_size && (
+                                <span className="materials__item-detail">
+                                  {formatFileSize(material.file_size)}
                                 </span>
                               )}
                             </div>
 
                             <div className="materials__item-actions">
-                              {material.type !== "link" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handlePreview(material)}
-                                >
-                                  <Eye size={16} />
-                                  Preview
-                                </Button>
-                              )}
-                              <Button variant="primary" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handlePreview(material)}
+                              >
+                                <Eye size={16} />
+                                Preview
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleDownload(material)}
+                              >
                                 <Download size={16} />
-                                {material.type === "link"
+                                {material.file_url?.startsWith("http") &&
+                                !material.file_url?.includes("/media/")
                                   ? "Open Link"
                                   : "Download"}
                               </Button>
@@ -496,19 +558,22 @@ const Materials = () => {
                   <Search size={64} className="materials__empty-icon" />
                   <h3 className="materials__empty-title">No Materials Found</h3>
                   <p className="materials__empty-text">
-                    Try adjusting your filters or search query to find what
-                    you're looking for.
+                    {materials.length === 0
+                      ? "No study materials have been uploaded yet."
+                      : "Try adjusting your filters or search query to find what you're looking for."}
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedCourse("all");
-                      setSelectedTypes([]);
-                      setSearchQuery("");
-                    }}
-                  >
-                    Clear All Filters
-                  </Button>
+                  {materials.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedCourse("all");
+                        setSelectedTypes([]);
+                        setSearchQuery("");
+                      }}
+                    >
+                      Clear All Filters
+                    </Button>
+                  )}
                 </div>
               </Card>
             )}
@@ -520,21 +585,25 @@ const Materials = () => {
           <Modal
             isOpen={previewModal}
             onClose={() => setPreviewModal(false)}
-            title={previewMaterial.title}
+            title={previewMaterial.title || "Material Preview"}
             size="lg"
           >
             <div className="materials__preview">
               <div className="materials__preview-header">
                 <Badge variant="primary">{previewMaterial.courseCode}</Badge>
                 <Badge variant="secondary">
-                  {previewMaterial.type.toUpperCase()}
+                  {getFileType(
+                    previewMaterial.file_type || previewMaterial.file_url
+                  ).toUpperCase()}
                 </Badge>
               </div>
 
               <div className="materials__preview-info">
-                <p className="materials__preview-description">
-                  {previewMaterial.description}
-                </p>
+                {previewMaterial.description && (
+                  <p className="materials__preview-description">
+                    {previewMaterial.description}
+                  </p>
+                )}
 
                 <div className="materials__preview-details">
                   <div className="materials__preview-detail">
@@ -546,23 +615,41 @@ const Materials = () => {
                   <div className="materials__preview-detail">
                     <span className="materials__preview-label">Uploaded:</span>
                     <span className="materials__preview-value">
-                      {formatDate(previewMaterial.uploadedDate)}
+                      {formatDate(
+                        previewMaterial.uploaded_at ||
+                          previewMaterial.created_at
+                      )}
                     </span>
                   </div>
-                  <div className="materials__preview-detail">
-                    <span className="materials__preview-label">Size:</span>
-                    <span className="materials__preview-value">
-                      {formatFileSize(previewMaterial.size)}
-                    </span>
-                  </div>
-                  <div className="materials__preview-detail">
-                    <span className="materials__preview-label">
-                      Uploaded by:
-                    </span>
-                    <span className="materials__preview-value">
-                      {previewMaterial.uploadedBy}
-                    </span>
-                  </div>
+                  {previewMaterial.file_size && (
+                    <div className="materials__preview-detail">
+                      <span className="materials__preview-label">Size:</span>
+                      <span className="materials__preview-value">
+                        {formatFileSize(previewMaterial.file_size)}
+                      </span>
+                    </div>
+                  )}
+                  {previewMaterial.uploaded_by_faculty && (
+                    <div className="materials__preview-detail">
+                      <span className="materials__preview-label">
+                        Uploaded by:
+                      </span>
+                      <span className="materials__preview-value">
+                        {previewMaterial.uploaded_by_faculty.user?.first_name}{" "}
+                        {previewMaterial.uploaded_by_faculty.user?.last_name}
+                      </span>
+                    </div>
+                  )}
+                  {previewMaterial.access_level && (
+                    <div className="materials__preview-detail">
+                      <span className="materials__preview-label">
+                        Access Level:
+                      </span>
+                      <span className="materials__preview-value">
+                        {previewMaterial.access_level}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -583,9 +670,15 @@ const Materials = () => {
                 >
                   Close
                 </Button>
-                <Button variant="primary">
+                <Button
+                  variant="primary"
+                  onClick={() => handleDownload(previewMaterial)}
+                >
                   <Download size={16} />
-                  Download File
+                  {previewMaterial.file_url?.startsWith("http") &&
+                  !previewMaterial.file_url?.includes("/media/")
+                    ? "Open Link"
+                    : "Download File"}
                 </Button>
               </div>
             </div>

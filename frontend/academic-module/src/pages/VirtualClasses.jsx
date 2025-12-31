@@ -8,154 +8,163 @@ import {
   Play,
   ExternalLink,
   Users,
+  AlertCircle,
 } from "lucide-react";
 import Container from "../components/shared/layout/Container.jsx";
 import Card from "../components/shared/layout/Card.jsx";
 import Badge from "../components/shared/ui/Badge.jsx";
 import Button from "../components/shared/ui/Button.jsx";
 import Skeleton from "../components/shared/feedback/Skeleton.jsx";
+import { studentService } from "../services/api/studentService.js";
 import "../styles/pages/virtual-classes.css";
-
-const mockVirtualClasses = [
-  {
-    id: 1,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Lecture 12: Binary Search Trees",
-    date: "2025-01-22",
-    time: "9:00 AM",
-    duration: 90,
-    platform: "Zoom",
-    platformColor: "#2D8CFF",
-    meetingLink: "https://zoom.us/j/123456789",
-    meetingId: "123 456 789",
-    passcode: "ds2025",
-    instructor: "Dr. Jane Smith",
-    instructorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-    status: "upcoming",
-    recordingUrl: null,
-    thumbnail: null,
-  },
-  {
-    id: 2,
-    courseCode: "MA202",
-    courseName: "Calculus II",
-    title: "Lecture 8: Integration Techniques",
-    date: "2025-01-22",
-    time: "2:00 PM",
-    duration: 60,
-    platform: "Google Meet",
-    platformColor: "#0F9D58",
-    meetingLink: "https://meet.google.com/abc-defg-hij",
-    meetingId: "abc-defg-hij",
-    passcode: null,
-    instructor: "Dr. Bob Johnson",
-    instructorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob",
-    status: "upcoming",
-    recordingUrl: null,
-    thumbnail: null,
-  },
-  {
-    id: 3,
-    courseCode: "EN101",
-    courseName: "English Composition",
-    title: "Lecture 15: Persuasive Writing",
-    date: "2025-01-23",
-    time: "10:00 AM",
-    duration: 75,
-    platform: "Zoom",
-    platformColor: "#2D8CFF",
-    meetingLink: "https://zoom.us/j/987654321",
-    meetingId: "987 654 321",
-    passcode: "eng101",
-    instructor: "Prof. Sarah Lee",
-    instructorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    status: "upcoming",
-    recordingUrl: null,
-    thumbnail: null,
-  },
-  {
-    id: 4,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    title: "Lecture 11: AVL Trees",
-    date: "2025-01-20",
-    time: "9:00 AM",
-    duration: 90,
-    platform: "Zoom",
-    platformColor: "#2D8CFF",
-    meetingLink: null,
-    meetingId: null,
-    passcode: null,
-    instructor: "Dr. Jane Smith",
-    instructorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-    status: "recorded",
-    recordingUrl: "https://zoom.us/rec/share/example1",
-    thumbnail: "https://api.dicebear.com/7.x/shapes/svg?seed=lecture11",
-  },
-  {
-    id: 5,
-    courseCode: "MA202",
-    courseName: "Calculus II",
-    title: "Lecture 7: Definite Integrals",
-    date: "2025-01-19",
-    time: "2:00 PM",
-    duration: 60,
-    platform: "Google Meet",
-    platformColor: "#0F9D58",
-    meetingLink: null,
-    meetingId: null,
-    passcode: null,
-    instructor: "Dr. Bob Johnson",
-    instructorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob",
-    status: "recorded",
-    recordingUrl: "https://meet.google.com/rec/example2",
-    thumbnail: "https://api.dicebear.com/7.x/shapes/svg?seed=lecture7",
-  },
-  {
-    id: 6,
-    courseCode: "EN101",
-    courseName: "English Composition",
-    title: "Lecture 14: Research Methods",
-    date: "2025-01-18",
-    time: "10:00 AM",
-    duration: 75,
-    platform: "Zoom",
-    platformColor: "#2D8CFF",
-    meetingLink: null,
-    meetingId: null,
-    passcode: null,
-    instructor: "Prof. Sarah Lee",
-    instructorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    status: "recorded",
-    recordingUrl: "https://zoom.us/rec/share/example3",
-    thumbnail: "https://api.dicebear.com/7.x/shapes/svg?seed=lecture14",
-  },
-];
 
 const VirtualClasses = () => {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [nextClass, setNextClass] = useState(null);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
   const [recordedClasses, setRecordedClasses] = useState([]);
   const [timeLeft, setTimeLeft] = useState({});
+  const [courses, setCourses] = useState([]);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const upcoming = mockVirtualClasses.filter(
-        (c) => c.status === "upcoming"
-      );
-      const recorded = mockVirtualClasses.filter(
-        (c) => c.status === "recorded"
-      );
-
-      setNextClass(upcoming[0] || null);
-      setUpcomingClasses(upcoming.slice(1));
-      setRecordedClasses(recorded);
-      setLoading(false);
-    }, 800);
+    fetchVirtualClasses();
   }, []);
+
+  const fetchVirtualClasses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get student's registered courses
+      const coursesResponse = await studentService.getCourses();
+      console.log("Courses response:", coursesResponse);
+
+      if (!coursesResponse.success) {
+        throw new Error(coursesResponse.error || "Failed to load courses");
+      }
+
+      const registeredCourses = Array.isArray(coursesResponse.data)
+        ? coursesResponse.data
+        : coursesResponse.data?.results || [];
+
+      setCourses(registeredCourses);
+
+      // Fetch Zoom classes for all registered courses
+      const allZoomClasses = [];
+
+      for (const course of registeredCourses) {
+        const offeringId = course.offering?.id;
+
+        if (offeringId) {
+          try {
+            const zoomResponse = await studentService.getZoomClasses(
+              offeringId
+            );
+            console.log(
+              `Zoom classes for offering ${offeringId}:`,
+              zoomResponse
+            );
+
+            if (zoomResponse.success) {
+              const classes = Array.isArray(zoomResponse.data)
+                ? zoomResponse.data
+                : zoomResponse.data?.results || [];
+
+              // Add course information to each class
+              const classesWithCourseInfo = classes.map((zoomClass) => ({
+                ...zoomClass,
+                courseInfo: course.offering,
+              }));
+
+              allZoomClasses.push(...classesWithCourseInfo);
+            }
+          } catch (err) {
+            console.error(
+              `Error fetching zoom classes for offering ${offeringId}:`,
+              err
+            );
+          }
+        }
+      }
+
+      console.log("All Zoom classes:", allZoomClasses);
+
+      // Process and categorize classes
+      processVirtualClasses(allZoomClasses);
+    } catch (err) {
+      console.error("Error fetching virtual classes:", err);
+      setError(err.message || "Failed to load virtual classes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processVirtualClasses = (zoomClasses) => {
+    const now = new Date();
+
+    // Separate upcoming and recorded classes
+    const upcoming = [];
+    const recorded = [];
+
+    zoomClasses.forEach((zoomClass) => {
+      const classDateTime = new Date(
+        `${zoomClass.schedule_date} ${zoomClass.start_time}`
+      );
+      const isUpcoming = classDateTime > now && zoomClass.is_active;
+
+      const processedClass = {
+        id: zoomClass.zoom_class_id,
+        courseCode: zoomClass.courseInfo?.course?.course_code || "N/A",
+        courseName:
+          zoomClass.courseInfo?.course?.course_name || "Unknown Course",
+        title: zoomClass.topic,
+        date: zoomClass.schedule_date,
+        time: zoomClass.start_time,
+        duration: zoomClass.duration_minutes,
+        platform: zoomClass.platform === "zoom" ? "Zoom" : "Google Meet",
+        platformColor: zoomClass.platform === "zoom" ? "#2D8CFF" : "#0F9D58",
+        meetingLink: zoomClass.join_link,
+        meetingId: zoomClass.meeting_id,
+        passcode: zoomClass.passcode || null,
+        instructor: zoomClass.courseInfo?.faculty?.user?.first_name
+          ? `${zoomClass.courseInfo.faculty.user.first_name} ${zoomClass.courseInfo.faculty.user.last_name}`
+          : zoomClass.created_by_faculty?.user?.first_name
+          ? `${zoomClass.created_by_faculty.user.first_name} ${zoomClass.created_by_faculty.user.last_name}`
+          : "Instructor",
+        instructorAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${
+          zoomClass.courseInfo?.faculty?.user?.email || "instructor"
+        }`,
+        status: isUpcoming ? "upcoming" : "recorded",
+        recordingUrl: zoomClass.recording_url || null,
+        thumbnail: `https://api.dicebear.com/7.x/shapes/svg?seed=${zoomClass.zoom_class_id}`,
+      };
+
+      if (isUpcoming) {
+        upcoming.push(processedClass);
+      } else if (zoomClass.recording_url) {
+        recorded.push(processedClass);
+      }
+    });
+
+    // Sort upcoming classes by date/time
+    upcoming.sort((a, b) => {
+      const dateA = new Date(`${a.date} ${a.time}`);
+      const dateB = new Date(`${b.date} ${b.time}`);
+      return dateA - dateB;
+    });
+
+    // Sort recorded classes by date (most recent first)
+    recorded.sort((a, b) => {
+      const dateA = new Date(`${a.date} ${a.time}`);
+      const dateB = new Date(`${b.date} ${b.time}`);
+      return dateB - dateA;
+    });
+
+    setNextClass(upcoming[0] || null);
+    setUpcomingClasses(upcoming.slice(1));
+    setRecordedClasses(recorded);
+  };
 
   useEffect(() => {
     if (!nextClass) return;
@@ -219,6 +228,18 @@ const VirtualClasses = () => {
     return minutesDiff <= 10 && minutesDiff >= -30;
   };
 
+  const handleJoinClass = (meetingLink) => {
+    if (meetingLink) {
+      window.open(meetingLink, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleDownloadRecording = (recordingUrl) => {
+    if (recordingUrl) {
+      window.open(recordingUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -238,6 +259,34 @@ const VirtualClasses = () => {
             style={{ marginBottom: "24px" }}
           />
           <Skeleton variant="rectangular" height="200px" />
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="virtual-classes">
+          <Card variant="flat" className="virtual-classes__error">
+            <AlertCircle
+              size={48}
+              style={{ color: "#ef4444", marginBottom: "16px" }}
+            />
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: "600",
+                marginBottom: "8px",
+              }}
+            >
+              Failed to Load Virtual Classes
+            </h3>
+            <p style={{ color: "#6b7280", marginBottom: "24px" }}>{error}</p>
+            <Button variant="primary" onClick={fetchVirtualClasses}>
+              Retry
+            </Button>
+          </Card>
         </div>
       </Container>
     );
@@ -385,6 +434,7 @@ const VirtualClasses = () => {
                     size="lg"
                     className="virtual-classes__join-button"
                     disabled={!canJoinClass(nextClass.date, nextClass.time)}
+                    onClick={() => handleJoinClass(nextClass.meetingLink)}
                   >
                     <ExternalLink size={20} />
                     Join Class
@@ -437,6 +487,7 @@ const VirtualClasses = () => {
                         variant="outline"
                         size="sm"
                         disabled={!canJoinClass(classItem.date, classItem.time)}
+                        onClick={() => handleJoinClass(classItem.meetingLink)}
                       >
                         <ExternalLink size={16} />
                         Join
@@ -508,7 +559,13 @@ const VirtualClasses = () => {
                         className="virtual-classes__recording-image"
                       />
                       <div className="virtual-classes__recording-overlay">
-                        <div className="virtual-classes__recording-play">
+                        <div
+                          className="virtual-classes__recording-play"
+                          onClick={() =>
+                            handleDownloadRecording(recording.recordingUrl)
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
                           <Play size={32} />
                         </div>
                         <div className="virtual-classes__recording-duration">
@@ -554,7 +611,13 @@ const VirtualClasses = () => {
                           />
                           <span>{recording.instructor}</span>
                         </div>
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadRecording(recording.recordingUrl)
+                          }
+                        >
                           <Download size={16} />
                         </Button>
                       </div>
