@@ -8,8 +8,20 @@ import Button from "../components/shared/ui/Button.jsx";
 import ProgressBar from "../components/shared/ui/ProgressBar.jsx";
 import Tabs from "../components/shared/navigation/Tabs.jsx";
 import Skeleton from "../components/shared/feedback/Skeleton.jsx";
-import { User, Lock, Bell, Camera, BookOpen, AlertCircle } from "lucide-react";
+import Modal from "../components/shared/feedback/Modal.jsx";
+import {
+  User,
+  Lock,
+  Bell,
+  Camera,
+  BookOpen,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  CheckCircle,
+} from "lucide-react";
 import { studentService } from "../services/api/studentService.js";
+import authService from "../services/api/authService.js";
 
 const Profile = () => {
   const { user: authUser } = useAuth();
@@ -17,6 +29,22 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("personal");
+
+  // Password change modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
 
   useEffect(() => {
     fetchStudentProfile();
@@ -41,6 +69,77 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    // Validation
+    if (
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
+      setPasswordError("All fields are required");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters long");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setPasswordError("New password must be different from current password");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const result = await authService.changePassword({
+        old_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+        new_password_confirm: passwordData.confirmPassword,
+      });
+
+      if (result.success) {
+        setPasswordSuccess("Password changed successfully!");
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setPasswordSuccess("");
+        }, 2000);
+      } else {
+        setPasswordError(result.error || "Failed to change password");
+      }
+    } catch (err) {
+      setPasswordError(
+        err.message || "An error occurred while changing password"
+      );
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
   const calculateProfileCompletion = () => {
@@ -507,7 +606,12 @@ const Profile = () => {
                   <div className="settings__section">
                     <h3 className="section__title">Security</h3>
                     <div className="settings__actions">
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowPasswordModal(true)}
+                      >
+                        <Lock size={16} />
                         Change Password
                       </Button>
                       <Button variant="outline" size="sm">
@@ -540,6 +644,267 @@ const Profile = () => {
             )}
           </div>
         </div>
+
+        {/* Password Change Modal */}
+        <Modal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setPasswordData({
+              currentPassword: "",
+              newPassword: "",
+              confirmPassword: "",
+            });
+            setPasswordError("");
+            setPasswordSuccess("");
+          }}
+          title="Change Password"
+          size="md"
+        >
+          <form onSubmit={handlePasswordChange}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+            >
+              {/* Current Password */}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <label
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#374151",
+                  }}
+                >
+                  Current Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPasswords.current ? "text" : "password"}
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        currentPassword: e.target.value,
+                      })
+                    }
+                    placeholder="Enter current password"
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("current")}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {showPasswords.current ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <label
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#374151",
+                  }}
+                >
+                  New Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    placeholder="Enter new password (min 8 characters)"
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("new")}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {showPasswords.new ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <label
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#374151",
+                  }}
+                >
+                  Confirm New Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData({
+                        ...passwordData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    placeholder="Re-enter new password"
+                    style={{
+                      width: "100%",
+                      padding: "10px 40px 10px 12px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility("confirm")}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {showPasswords.confirm ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {passwordError && (
+                <div
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#dc2626",
+                  }}
+                >
+                  <AlertCircle size={18} />
+                  <span style={{ fontSize: "14px" }}>{passwordError}</span>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {passwordSuccess && (
+                <div
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#16a34a",
+                  }}
+                >
+                  <CheckCircle size={18} />
+                  <span style={{ fontSize: "14px" }}>{passwordSuccess}</span>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                  marginTop: "8px",
+                }}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordData({
+                      currentPassword: "",
+                      newPassword: "",
+                      confirmPassword: "",
+                    });
+                    setPasswordError("");
+                    setPasswordSuccess("");
+                  }}
+                  disabled={passwordLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? "Changing..." : "Change Password"}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </Modal>
       </motion.div>
     </Container>
   );
