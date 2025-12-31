@@ -12,109 +12,162 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { studentService } from "../services/api/studentService.js";
 import "../styles/pages/Exams.css";
 
-// Mock Data
-const mockExams = [
-  {
-    id: 1,
-    courseCode: "CS301",
-    courseName: "Data Structures",
-    type: "Midterm",
-    date: "2025-01-15",
-    time: "9:00 AM - 12:00 PM",
-    duration: "3 hours",
-    room: "Engineering Block A-101",
-    seat: "45",
-    syllabus: [
-      "Arrays and Strings",
-      "Linked Lists",
-      "Stacks and Queues",
-      "Trees",
-      "Graphs and Traversals",
-    ],
-    status: "upcoming",
-    color: "#3b82f6",
-    instructor: "Dr. Jane Smith",
-  },
-  {
-    id: 2,
-    courseCode: "MA202",
-    courseName: "Calculus II",
-    type: "Final",
-    date: "2025-01-18",
-    time: "2:00 PM - 5:00 PM",
-    duration: "3 hours",
-    room: "Mathematics Building B-205",
-    seat: "28",
-    syllabus: [
-      "Integration Techniques",
-      "Differential Equations",
-      "Series and Sequences",
-      "Multivariable Calculus",
-      "Vector Calculus",
-    ],
-    status: "upcoming",
-    color: "#8b5cf6",
-    instructor: "Dr. Bob Johnson",
-  },
-  {
-    id: 3,
-    courseCode: "EN101",
-    courseName: "English Composition",
-    type: "Final",
-    date: "2025-01-22",
-    time: "10:00 AM - 1:00 PM",
-    duration: "3 hours",
-    room: "Humanities Building C-301",
-    seat: "12",
-    syllabus: [
-      "Essay Writing",
-      "Literary Analysis",
-      "Research Methods",
-      "Citation Styles",
-      "Critical Thinking",
-    ],
-    status: "upcoming",
-    color: "#10b981",
-    instructor: "Prof. Sarah Lee",
-  },
-  {
-    id: 4,
-    courseCode: "PH201",
-    courseName: "Physics I",
-    type: "Midterm",
-    date: "2024-12-10",
-    time: "9:00 AM - 11:00 AM",
-    duration: "2 hours",
-    room: "Science Block D-102",
-    seat: "33",
-    syllabus: ["Mechanics", "Thermodynamics", "Waves", "Optics"],
-    status: "completed",
-    color: "#f59e0b",
-    instructor: "Dr. Michael Chen",
-    score: 88,
-    grade: "A-",
-  },
-];
-
 const Exams = () => {
+  const [exams, setExams] = useState([]);
+  const [admitCards, setAdmitCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedExam, setSelectedExam] = useState(null);
   const [showAdmitCard, setShowAdmitCard] = useState(false);
   const [expandedExam, setExpandedExam] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState({});
+  const [studentProfile, setStudentProfile] = useState(null);
+
+  useEffect(() => {
+    const fetchExamsData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch student profile
+        const profileResponse = await studentService.getMyProfile();
+        if (profileResponse.success) {
+          setStudentProfile(profileResponse.data);
+        }
+
+        // Fetch exam schedules
+        const examsResponse = await studentService.getExamSchedules();
+        console.log("Exams response:", examsResponse); // Debug log
+
+        if (examsResponse.success) {
+          // Handle both paginated and non-paginated responses
+          const examSchedules = Array.isArray(examsResponse.data)
+            ? examsResponse.data
+            : examsResponse.data?.results || [];
+
+          console.log("Exam schedules:", examSchedules); // Debug log
+          processExamsData(examSchedules);
+        } else {
+          // If the API call failed but didn't throw an error
+          setError(examsResponse.error || "Failed to load exam schedules");
+        }
+
+        // Fetch admit cards
+        const admitCardsResponse = await studentService.getAdmitCards();
+        console.log("Admit cards response:", admitCardsResponse); // Debug log
+
+        if (admitCardsResponse.success) {
+          // Handle both paginated and non-paginated responses
+          const cards = Array.isArray(admitCardsResponse.data)
+            ? admitCardsResponse.data
+            : admitCardsResponse.data?.results || [];
+
+          setAdmitCards(cards);
+        }
+      } catch (err) {
+        console.error("Error fetching exams:", err);
+        setError(err.message || "Failed to load exams data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExamsData();
+  }, []);
+
+  const processExamsData = (examSchedules) => {
+    // Ensure examSchedules is an array
+    if (!Array.isArray(examSchedules)) {
+      console.error("examSchedules is not an array:", examSchedules);
+      setExams([]);
+      return;
+    }
+
+    const processedExams = examSchedules.map((schedule) => {
+      const exam = schedule.exam;
+      const offering = exam?.offering;
+      const course = offering?.course;
+
+      // Determine status based on exam date
+      const examDate = new Date(schedule.exam_date);
+      const now = new Date();
+      const isPast = examDate < now;
+
+      return {
+        id: schedule.schedule_id,
+        scheduleId: schedule.schedule_id,
+        examId: exam?.exam_id,
+        courseCode: course?.course_code || "N/A",
+        courseName: course?.course_name || "Unknown Course",
+        type: exam?.exam_type || "Exam",
+        date: schedule.exam_date,
+        startTime: schedule.start_time,
+        endTime: schedule.end_time,
+        time: `${schedule.start_time} - ${schedule.end_time}`,
+        duration: calculateDuration(schedule.start_time, schedule.end_time),
+        room: `${schedule.room?.building || "Building"} ${
+          schedule.room?.room_number || "Room"
+        }`,
+        seat: schedule.seating_plan?.seat_number || "TBA",
+        syllabus: exam?.syllabus_portion
+          ? exam.syllabus_portion.split("\n").filter((s) => s.trim())
+          : [],
+        status: isPast ? "completed" : "upcoming",
+        color: getRandomColor(),
+        instructor: offering?.faculty?.full_name || "TBA",
+        invigilator: schedule.invigilator?.full_name || "TBA",
+        totalMarks: exam?.total_marks || 100,
+        weightage: exam?.weightage || 0,
+      };
+    });
+
+    setExams(processedExams);
+  };
+
+  const calculateDuration = (startTime, endTime) => {
+    if (!startTime || !endTime) return "TBA";
+
+    const start = new Date(`2000-01-01 ${startTime}`);
+    const end = new Date(`2000-01-01 ${endTime}`);
+    const diffMs = end - start;
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours} hours`;
+    } else {
+      return `${minutes} minutes`;
+    }
+  };
+
+  const getRandomColor = () => {
+    const colors = [
+      "#3b82f6",
+      "#8b5cf6",
+      "#10b981",
+      "#f59e0b",
+      "#ec4899",
+      "#06b6d4",
+      "#f97316",
+      "#6366f1",
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
 
   useEffect(() => {
     // Calculate time remaining for upcoming exams
     const timer = setInterval(() => {
       const remaining = {};
-      mockExams.forEach((exam) => {
+      exams.forEach((exam) => {
         if (exam.status === "upcoming") {
-          const examDate = new Date(
-            exam.date + " " + exam.time.split(" - ")[0]
-          );
+          const examDateTime = new Date(`${exam.date}T${exam.startTime}`);
           const now = new Date();
-          const diff = examDate - now;
+          const diff = examDateTime - now;
 
           if (diff > 0) {
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -132,7 +185,7 @@ const Exams = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [exams]);
 
   const containerVariants = {
     initial: { opacity: 0 },
@@ -150,19 +203,42 @@ const Exams = () => {
     animate: { opacity: 1, y: 0 },
   };
 
-  const upcomingExams = mockExams.filter((e) => e.status === "upcoming");
-  const completedExams = mockExams.filter((e) => e.status === "completed");
+  const upcomingExams = exams.filter((e) => e.status === "upcoming");
+  const completedExams = exams.filter((e) => e.status === "completed");
 
   const toggleSyllabus = (examId) => {
     setExpandedExam(expandedExam === examId ? null : examId);
   };
 
   const openAdmitCard = (exam) => {
-    setSelectedExam(exam);
+    // Find matching admit card if available
+    const admitCard = admitCards.find(
+      (card) => card.exam?.exam_id === exam.examId
+    );
+    setSelectedExam({ ...exam, admitCard });
     setShowAdmitCard(true);
   };
 
+  const downloadAdmitCard = async (exam) => {
+    try {
+      const admitCard = admitCards.find(
+        (card) => card.exam?.exam_id === exam.examId
+      );
+      if (admitCard) {
+        // In a real implementation, this would download the PDF
+        console.log("Downloading admit card:", admitCard);
+        alert("Admit card download functionality will be implemented soon!");
+      } else {
+        alert("Admit card not yet available for this exam");
+      }
+    } catch (err) {
+      console.error("Error downloading admit card:", err);
+      alert("Failed to download admit card");
+    }
+  };
+
   const formatDate = (dateString) => {
+    if (!dateString) return "TBA";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       weekday: "long",
@@ -171,6 +247,88 @@ const Exams = () => {
       day: "numeric",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="exams">
+        <div className="exams__container">
+          <div
+            className="skeleton"
+            style={{ height: "80px", marginBottom: "24px" }}
+          />
+          <div
+            className="skeleton"
+            style={{
+              height: "400px",
+              marginBottom: "24px",
+              borderRadius: "12px",
+            }}
+          />
+          <div
+            className="skeleton"
+            style={{ height: "300px", borderRadius: "12px" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="exams">
+        <div className="exams__container">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              textAlign: "center",
+              padding: "48px",
+              backgroundColor: "var(--color-error-light, #fef2f2)",
+              borderRadius: "12px",
+            }}
+          >
+            <AlertCircle
+              size={48}
+              style={{
+                color: "var(--color-error, #ef4444)",
+                marginBottom: "16px",
+              }}
+            />
+            <h3
+              style={{
+                fontSize: "20px",
+                fontWeight: "600",
+                marginBottom: "8px",
+              }}
+            >
+              Failed to Load Exams
+            </h3>
+            <p
+              style={{
+                color: "var(--color-text-secondary, #6b7280)",
+                marginBottom: "24px",
+              }}
+            >
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "var(--color-primary, #6366f1)",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="exams">
@@ -278,44 +436,49 @@ const Exams = () => {
                     </div>
 
                     {/* Syllabus */}
-                    <div className="exams__syllabus-section">
-                      <button
-                        className="exams__syllabus-toggle"
-                        onClick={() => toggleSyllabus(exam.id)}
-                      >
-                        <FileText size={18} />
-                        <span>Syllabus Coverage</span>
-                        {expandedExam === exam.id ? (
-                          <ChevronUp size={18} />
-                        ) : (
-                          <ChevronDown size={18} />
-                        )}
-                      </button>
+                    {exam.syllabus.length > 0 && (
+                      <div className="exams__syllabus-section">
+                        <button
+                          className="exams__syllabus-toggle"
+                          onClick={() => toggleSyllabus(exam.id)}
+                        >
+                          <FileText size={18} />
+                          <span>Syllabus Coverage</span>
+                          {expandedExam === exam.id ? (
+                            <ChevronUp size={18} />
+                          ) : (
+                            <ChevronDown size={18} />
+                          )}
+                        </button>
 
-                      <AnimatePresence>
-                        {expandedExam === exam.id && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="exams__syllabus-content"
-                          >
-                            <ul className="exams__syllabus-list">
-                              {exam.syllabus.map((topic, idx) => (
-                                <li key={idx} className="exams__syllabus-item">
-                                  <CheckCircle
-                                    size={16}
-                                    className="exams__syllabus-icon"
-                                  />
-                                  {topic}
-                                </li>
-                              ))}
-                            </ul>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                        <AnimatePresence>
+                          {expandedExam === exam.id && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="exams__syllabus-content"
+                            >
+                              <ul className="exams__syllabus-list">
+                                {exam.syllabus.map((topic, idx) => (
+                                  <li
+                                    key={idx}
+                                    className="exams__syllabus-item"
+                                  >
+                                    <CheckCircle
+                                      size={16}
+                                      className="exams__syllabus-icon"
+                                    />
+                                    {topic}
+                                  </li>
+                                ))}
+                              </ul>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
 
                     <button
                       className="exams__admit-btn"
@@ -352,15 +515,19 @@ const Exams = () => {
                     style={{ backgroundColor: exam.color }}
                   >
                     <div className="exams__completed-badge">{exam.type}</div>
-                    <div className="exams__completed-grade">{exam.grade}</div>
+                    <div className="exams__completed-grade">
+                      {exam.grade || "Pending"}
+                    </div>
                   </div>
                   <div className="exams__completed-body">
                     <h3 className="exams__completed-title">
                       {exam.courseCode} - {exam.courseName}
                     </h3>
-                    <div className="exams__completed-score">
-                      Score: {exam.score}/100
-                    </div>
+                    {exam.score && (
+                      <div className="exams__completed-score">
+                        Score: {exam.score}/{exam.totalMarks}
+                      </div>
+                    )}
                     <div className="exams__completed-date">
                       <Calendar size={16} />
                       {formatDate(exam.date)}
@@ -417,11 +584,13 @@ const Exams = () => {
                   <div className="exams__admit-row">
                     <div className="exams__admit-field">
                       <label>Student Name:</label>
-                      <span>John Doe</span>
+                      <span>
+                        {studentProfile?.first_name} {studentProfile?.last_name}
+                      </span>
                     </div>
                     <div className="exams__admit-field">
-                      <label>Roll Number:</label>
-                      <span>UNI-2024-0123</span>
+                      <label>Registration Number:</label>
+                      <span>{studentProfile?.university_reg_number}</span>
                     </div>
                   </div>
 
@@ -471,12 +640,14 @@ const Exams = () => {
                     </div>
                   </div>
 
-                  <div className="exams__admit-qr">
-                    <div className="exams__admit-qr-placeholder">
-                      <div className="exams__admit-qr-code">QR Code</div>
-                      <p>Scan for verification</p>
+                  {selectedExam.admitCard?.qr_code_data && (
+                    <div className="exams__admit-qr">
+                      <div className="exams__admit-qr-placeholder">
+                        <div className="exams__admit-qr-code">QR Code</div>
+                        <p>Scan for verification</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="exams__admit-instructions">
                     <h4>Important Instructions:</h4>
@@ -492,11 +663,17 @@ const Exams = () => {
                 </div>
 
                 <div className="exams__admit-footer">
-                  <button className="exams__admit-download">
+                  <button
+                    className="exams__admit-download"
+                    onClick={() => downloadAdmitCard(selectedExam)}
+                  >
                     <Download size={18} />
                     Download PDF
                   </button>
-                  <button className="exams__admit-print">
+                  <button
+                    className="exams__admit-print"
+                    onClick={() => window.print()}
+                  >
                     <FileText size={18} />
                     Print
                   </button>

@@ -571,20 +571,86 @@ class ExamRoomViewSet(viewsets.ModelViewSet):
 class ExamScheduleViewSet(viewsets.ModelViewSet):
     queryset = ExamSchedule.objects.select_related('exam', 'room', 'invigilator').all()
     serializer_class = ExamScheduleSerializer
-    permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
+    # FIXED: Changed base permissions to allow students
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['exam__exam_type', 'room', 'invigilator']
     search_fields = ['exam__exam_name', 'room__room_number']
     ordering_fields = ['exam_date', 'start_time']
+   
+    def get_permissions(self):
+        """
+        Customize permissions per action:
+        - Students can: list, retrieve (to view exam schedules)
+        - Faculty/Admin can: everything
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsFacultyOrAdmin()]
+        return [IsAuthenticated()]
+   
+    def get_queryset(self):
+        """
+        Filter queryset based on user role:
+        - Students can only see schedules for exams they're enrolled in
+        - Faculty/Admin can see all schedules
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+       
+        # If student, only show schedules for their enrolled courses
+        if user.role == 'student':
+            try:
+                student = user.student_profile
+                # Get exam schedules for courses the student is registered in
+                enrolled_offerings = StudentCourseRegistration.objects.filter(
+                    student=student,
+                    status='registered'
+                ).values_list('offering', flat=True)
+               
+                return queryset.filter(exam__offering__in=enrolled_offerings)
+            except:
+                return queryset.none()
+       
+        # Faculty and admin can see all schedules
+        return queryset
 
 class AdmitCardViewSet(viewsets.ModelViewSet):
     queryset = AdmitCard.objects.select_related('student', 'exam').all()
     serializer_class = AdmitCardSerializer
-    permission_classes = [IsAuthenticated, IsFacultyOrAdmin]
+    # FIXED: Changed base permissions to allow students
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['exam', 'eligibility_status', 'is_downloaded']
     search_fields = ['student__university_reg_number', 'student__first_name', 'seat_number']
-
+    def get_permissions(self):
+        """
+        Customize permissions per action:
+        - Students can: list (own cards), retrieve (own cards)
+        - Faculty/Admin can: everything
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'generate_qr', 'verify_qr']:
+            return [IsAuthenticated(), IsFacultyOrAdmin()]
+        return [IsAuthenticated()]
+   
+    def get_queryset(self):
+        """
+        Filter queryset based on user role:
+        - Students can only see their own admit cards
+        - Faculty/Admin can see all admit cards
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+       
+        # If student, only show their own admit cards
+        if user.role == 'student':
+            try:
+                student = user.student_profile
+                return queryset.filter(student=student)
+            except:
+                return queryset.none()
+       
+        # Faculty and admin can see all
+        return queryset
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def generate_qr(self, request, pk=None):
         admit_card = self.get_object()
@@ -605,7 +671,6 @@ class AdmitCardViewSet(viewsets.ModelViewSet):
             'student_name': f"{admit_card.student.first_name} {admit_card.student.last_name}",
             'exam_name': admit_card.exam.exam_name
         })
-
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def verify_qr(self, request):
         qr_data = request.data.get('qr_data')
