@@ -85,6 +85,7 @@ urlpatterns = [
     path('enrollments/<int:pk>/confirm/', EnrollmentViewSet.as_view({'post': 'confirm'}), name='enrollment-confirm'),
     
     # Grade endpoints
+    path('grades/my-grades/', GradeViewSet.as_view({'get': 'my_grades'}), name='grade-my-grades'),
     path('grades/<int:pk>/finalize/', GradeViewSet.as_view({'post': 'finalize'}), name='grade-finalize'),
     
     # Course registration endpoints

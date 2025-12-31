@@ -178,7 +178,7 @@ const studentService = {
   getGrades: async (filters = {}) => {
     try {
       const params = new URLSearchParams(filters);
-      const response = await api.get(`/grades/?${params}`);
+      const response = await api.get(`/grades/my-grades/?${params}`);
       return {
         success: true,
         data: response.data,

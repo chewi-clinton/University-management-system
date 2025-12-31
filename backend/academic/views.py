@@ -461,15 +461,85 @@ class GradeViewSet(viewsets.ModelViewSet):
     serializer_class = GradeSerializer
     permission_classes = [IsAuthenticated, CanViewGrades]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['offering', 'assessment_type', 'grade', 'is_finalized']
+    # Fixed: Removed 'grade' from filterset_fields as it's not in the Grade model
+    filterset_fields = ['offering', 'assessment_type', 'is_finalized']
     search_fields = ['student__university_reg_number', 'student__first_name', 'assessment_name']
     ordering_fields = ['graded_at', 'marks_obtained']
-
     def get_permissions(self):
+        """
+        Allow students to access their own grades via my_grades action
+        """
+        if self.action == 'my_grades':
+            return [IsAuthenticated()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanModifyGrades()]
         return [IsAuthenticated(), CanViewGrades()]
-
+    def get_queryset(self):
+        """
+        Filter queryset based on user role:
+        - Students can only see their own grades
+        - Faculty can see grades for courses they teach
+        - Admins can see all grades
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+       
+        # If student, only show their own grades
+        if user.role == 'student':
+            try:
+                student = user.student_profile
+                return queryset.filter(student=student)
+            except:
+                return queryset.none()
+       
+        # If faculty, show grades for courses they teach
+        if user.role == 'faculty':
+            try:
+                faculty = user.faculty_profile
+                return queryset.filter(offering__faculty=faculty)
+            except:
+                return queryset.none()
+       
+        # Admins can see all
+        return queryset
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_grades(self, request):
+        """
+        Get current student's grades
+        GET /api/grades/my-grades/
+        """
+        try:
+            student = Student.objects.get(user=request.user)
+        except Student.DoesNotExist:
+            return Response(
+                {'detail': 'Student profile not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+       
+        # Get all grades for this student
+        grades = Grade.objects.filter(
+            student=student
+        ).select_related(
+            'offering__course',
+            'offering__semester',
+            'graded_by_faculty__user'
+        ).order_by('-graded_at')
+       
+        # Apply filters if provided
+        offering_id = request.query_params.get('offering')
+        if offering_id:
+            grades = grades.filter(offering_id=offering_id)
+       
+        assessment_type = request.query_params.get('assessment_type')
+        if assessment_type:
+            grades = grades.filter(assessment_type=assessment_type)
+       
+        is_finalized = request.query_params.get('is_finalized')
+        if is_finalized is not None:
+            grades = grades.filter(is_finalized=is_finalized.lower() == 'true')
+       
+        serializer = GradeSerializer(grades, many=True)
+        return Response(serializer.data)
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanModifyGrades])
     def finalize(self, request, pk=None):
         grade = self.get_object()
