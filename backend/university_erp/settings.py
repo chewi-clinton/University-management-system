@@ -509,3 +509,4 @@ LOGGING = {
         },
     },
 }
+APPEND_SLASH = True  # This is usually the default

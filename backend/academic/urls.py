@@ -47,28 +47,58 @@ router.register(r'admission-inquiries', AdmissionInquiryViewSet, basename='admis
 router.register(r'applicants', ApplicantViewSet, basename='applicant')
 
 urlpatterns = [
+    # Auth endpoints
     path('auth/login/', login_view, name='login'),
     path('auth/me/', current_user_view, name='current-user'),
     path('auth/logout/', logout_view, name='logout'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
 
-    path('', include(router.urls)),
-
+    # GPA endpoints
     path('gpa/calculate/', GPAViewSet.as_view({'post': 'calculate'}), name='gpa-calculate'),
     path('gpa/class-performance/', GPAViewSet.as_view({'get': 'class_performance'}), name='gpa-class-performance'),
+    
+    # Attendance endpoints
     path('attendance/mark-by-qr/', AttendanceViewSet.as_view({'post': 'mark_by_qr'}), name='attendance-mark-by-qr'),
     path('attendance/generate-qr/', AttendanceViewSet.as_view({'post': 'generate_qr'}), name='attendance-generate-qr'),
+    
+    # Admit card endpoints
     path('admit-cards/verify-qr/', AdmitCardViewSet.as_view({'post': 'verify_qr'}), name='admitcard-verify-qr'),
+    path('admit-cards/<int:pk>/generate-qr/', AdmitCardViewSet.as_view({'post': 'generate_qr'}), name='admitcard-generate-qr'),
+    
+    # Zoom class endpoints
     path('zoom-classes/create-meeting/', ZoomClassViewSet.as_view({'post': 'create'}), name='zoomclass-create-meeting'),
-    path('notices/my-notices/', NoticeViewSet.as_view({'get': 'my_notices'}), name='notice-my-notices'),
-    path('admission-inquiries/<int:pk>/assign/', AdmissionInquiryViewSet.as_view({'post': 'assign'}), name='admissioninquiry-assign'),
-    path('applicants/<int:pk>/accept/', ApplicantViewSet.as_view({'post': 'accept'}), name='applicant-accept'),
-    path('sessions/<int:pk>/activate/', AcademicSessionViewSet.as_view({'post': 'activate'}), name='session-activate'),
-    path('enrollments/<int:pk>/confirm/', EnrollmentViewSet.as_view({'post': 'confirm'}), name='enrollment-confirm'),
-    path('grades/<int:pk>/finalize/', GradeViewSet.as_view({'post': 'finalize'}), name='grade-finalize'),
-    path('course-registrations/<int:pk>/withdraw/', StudentCourseRegistrationViewSet.as_view({'post': 'withdraw'}), name='courseregistration-withdraw'),
     path('zoom-classes/<int:pk>/start-meeting/', ZoomClassViewSet.as_view({'post': 'start_meeting'}), name='zoomclass-start-meeting'),
     path('zoom-classes/<int:pk>/send-reminder/', ZoomClassViewSet.as_view({'post': 'send_reminder'}), name='zoomclass-send-reminder'),
+    
+    # Notice endpoints
+    path('notices/my-notices/', NoticeViewSet.as_view({'get': 'my_notices'}), name='notice-my-notices'),
+    
+    # Admission endpoints
+    path('admission-inquiries/<int:pk>/assign/', AdmissionInquiryViewSet.as_view({'post': 'assign'}), name='admissioninquiry-assign'),
+    path('applicants/<int:pk>/accept/', ApplicantViewSet.as_view({'post': 'accept'}), name='applicant-accept'),
+    
+    # Session endpoints
+    path('sessions/<int:pk>/activate/', AcademicSessionViewSet.as_view({'post': 'activate'}), name='session-activate'),
+    
+    # Enrollment endpoints
+    path('enrollments/<int:pk>/confirm/', EnrollmentViewSet.as_view({'post': 'confirm'}), name='enrollment-confirm'),
+    
+    # Grade endpoints
+    path('grades/<int:pk>/finalize/', GradeViewSet.as_view({'post': 'finalize'}), name='grade-finalize'),
+    
+    # Course registration endpoints
+    path('course-registrations/my-courses/', StudentCourseRegistrationViewSet.as_view({'get': 'my_courses'}), name='courseregistration-my-courses'),
+    path('course-registrations/<int:pk>/withdraw/', StudentCourseRegistrationViewSet.as_view({'post': 'withdraw'}), name='courseregistration-withdraw'),
+    
+    # Result publication endpoints
     path('result-publications/<int:pk>/publish/', ResultPublicationViewSet.as_view({'post': 'publish'}), name='resultpublication-publish'),
-    path('admit-cards/<int:pk>/generate-qr/', AdmitCardViewSet.as_view({'post': 'generate_qr'}), name='admitcard-generate-qr'),
+
+    # PERSONAL STUDENT ENDPOINTS — DEDICATED PREFIX
+    path('my/dashboard/', StudentViewSet.as_view({'get': 'dashboard'}), name='student-dashboard'),
+    path('my/profile/', StudentViewSet.as_view({'get': 'me'}), name='student-me'),
+    path('my/transcript/<int:pk>/', StudentViewSet.as_view({'get': 'transcript'}), name='student-transcript'),
+    path('my/attendance_summary/<int:pk>/', StudentViewSet.as_view({'get': 'attendance_summary'}), name='student-attendance-summary'),
+
+    # Router URLs
+    path('', include(router.urls)),
 ]
