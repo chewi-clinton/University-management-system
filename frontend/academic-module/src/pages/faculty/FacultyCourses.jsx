@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,7 +8,10 @@ import {
   Users,
   Clock,
   FileText,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
+import facultyService from "../../services/api/facultyService";
 import Card from "../../components/shared/layout/Card";
 import SearchInput from "../../components/shared/ui/SearchInput";
 import Select from "../../components/shared/ui/Select";
@@ -17,94 +20,47 @@ import ProgressBar from "../../components/shared/ui/ProgressBar";
 import Button from "../../components/shared/ui/Button";
 import "../../styles/pages/FacultyCourses.css";
 
-// Mock data
-const mockFacultyCourses = [
-  {
-    id: 1,
-    code: "CS301",
-    name: "Data Structures",
-    section: "A",
-    enrolled: 45,
-    capacity: 50,
-    avgGrade: 78,
-    avgAttendance: 85,
-    schedule: "Mon, Wed, Fri 9:00-10:30 AM",
-    room: "A-101",
-    color: "#3b82f6",
-    semester: "Fall 2024",
-    credits: 3,
-    pendingGrades: 12,
-    description:
-      "Introduction to fundamental data structures including arrays, linked lists, stacks, queues, trees, and graphs.",
-  },
-  {
-    id: 2,
-    code: "CS201",
-    name: "Programming Fundamentals",
-    section: "B",
-    enrolled: 38,
-    capacity: 40,
-    avgGrade: 82,
-    avgAttendance: 90,
-    schedule: "Tue, Thu 2:00-3:30 PM",
-    room: "B-205",
-    color: "#8b5cf6",
-    semester: "Fall 2024",
-    credits: 4,
-    pendingGrades: 5,
-    description:
-      "Basic programming concepts, problem-solving techniques, and introduction to programming languages.",
-  },
-  {
-    id: 3,
-    code: "CS401",
-    name: "Advanced Algorithms",
-    section: "A",
-    enrolled: 32,
-    capacity: 35,
-    avgGrade: 75,
-    avgAttendance: 88,
-    schedule: "Mon, Wed 11:00-12:30 PM",
-    room: "A-203",
-    color: "#10b981",
-    semester: "Fall 2024",
-    credits: 3,
-    pendingGrades: 8,
-    description:
-      "Advanced algorithm design and analysis including dynamic programming, greedy algorithms, and complexity theory.",
-  },
-  {
-    id: 4,
-    code: "CS205",
-    name: "Database Systems",
-    section: "A",
-    enrolled: 42,
-    capacity: 45,
-    avgGrade: 80,
-    avgAttendance: 92,
-    schedule: "Wed, Fri 1:00-2:30 PM",
-    room: "C-301",
-    color: "#f59e0b",
-    semester: "Fall 2024",
-    credits: 3,
-    pendingGrades: 3,
-    description:
-      "Database design, SQL, normalization, and database management systems.",
-  },
-];
-
 const FacultyCourses = () => {
   const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("all");
   const [sortBy, setSortBy] = useState("name");
-
-  const semesters = [
+  const [semesters, setSemesters] = useState([
     { value: "all", label: "All Semesters" },
-    { value: "Fall 2024", label: "Fall 2024" },
-    { value: "Spring 2024", label: "Spring 2024" },
-    { value: "Summer 2024", label: "Summer 2024" },
-  ];
+  ]);
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await facultyService.getCoursesWithStats({
+        is_visible: true,
+      });
+
+      setCourses(data.results || []);
+
+      // Extract unique semesters from courses
+      const uniqueSemesters = [...new Set(data.results.map((c) => c.semester))];
+      const semesterOptions = [
+        { value: "all", label: "All Semesters" },
+        ...uniqueSemesters.map((sem) => ({ value: sem, label: sem })),
+      ];
+      setSemesters(semesterOptions);
+    } catch (error) {
+      console.error("Failed to fetch courses:", error);
+      setError(error.message || "Failed to load courses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sortOptions = [
     { value: "name", label: "Course Name" },
@@ -114,7 +70,7 @@ const FacultyCourses = () => {
   ];
 
   const filteredAndSortedCourses = useMemo(() => {
-    let filtered = mockFacultyCourses;
+    let filtered = [...courses];
 
     // Filter by semester
     if (selectedSemester !== "all") {
@@ -149,7 +105,7 @@ const FacultyCourses = () => {
     });
 
     return filtered;
-  }, [searchTerm, selectedSemester, sortBy]);
+  }, [courses, searchTerm, selectedSemester, sortBy]);
 
   const getEnrollmentPercentage = (enrolled, capacity) => {
     return Math.round((enrolled / capacity) * 100);
@@ -160,6 +116,50 @@ const FacultyCourses = () => {
     if (grade >= 70) return "warning";
     return "error";
   };
+
+  if (loading) {
+    return (
+      <div className="faculty-courses">
+        <div className="faculty-courses__header">
+          <h1>My Courses</h1>
+          <p>Loading your courses...</p>
+        </div>
+        <div className="faculty-courses__loading">
+          <div className="skeleton-grid">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton faculty-course-card__skeleton" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="faculty-courses">
+        <div className="faculty-courses__header">
+          <h1>My Courses</h1>
+        </div>
+        <Card className="faculty-courses__error">
+          <Card.Body>
+            <div className="error__content">
+              <AlertCircle size={48} className="error__icon" />
+              <h2>Failed to Load Courses</h2>
+              <p>{error}</p>
+              <Button
+                onClick={fetchCourses}
+                variant="primary"
+                leftIcon={<RefreshCw size={16} />}
+              >
+                Try Again
+              </Button>
+            </div>
+          </Card.Body>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="faculty-courses">
@@ -205,111 +205,34 @@ const FacultyCourses = () => {
           options={sortOptions}
           className="faculty-courses__filter"
         />
+        <Button
+          onClick={fetchCourses}
+          variant="outline"
+          size="sm"
+          leftIcon={<RefreshCw size={16} />}
+          className="faculty-courses__refresh"
+        >
+          Refresh
+        </Button>
       </motion.div>
 
-      <motion.div
-        className="faculty-courses__grid"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-      >
-        {filteredAndSortedCourses.map((course, index) => {
-          const enrollmentPercentage = getEnrollmentPercentage(
-            course.enrolled,
-            course.capacity
-          );
+      {courses.length === 0 && !loading && (
+        <motion.div
+          className="faculty-courses__empty"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <FileText size={48} />
+          <h3>No courses assigned</h3>
+          <p>
+            You don't have any courses assigned yet. Contact administration for
+            more information.
+          </p>
+        </motion.div>
+      )}
 
-          return (
-            <motion.div
-              key={course.id}
-              className="faculty-course-card"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1, duration: 0.5 }}
-              whileHover={{ y: -4, boxShadow: "var(--shadow-lg)" }}
-            >
-              <div
-                className="faculty-course-card__header"
-                style={{ backgroundColor: course.color }}
-              >
-                <div className="faculty-course-card__title">
-                  <h3>
-                    {course.code} - {course.section}
-                  </h3>
-                  <h4>{course.name}</h4>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="faculty-course-card__badge"
-                >
-                  {course.semester}
-                </Badge>
-              </div>
-
-              <div className="faculty-course-card__content">
-                <div className="faculty-course-card__schedule">
-                  <Clock size={16} />
-                  <span>{course.schedule}</span>
-                </div>
-                <div className="faculty-course-card__room">
-                  <span>Room: {course.room}</span>
-                </div>
-
-                <div className="faculty-course-card__enrollment">
-                  <div className="faculty-course-card__enrollment-header">
-                    <Users size={16} />
-                    <span>
-                      {course.enrolled}/{course.capacity} students
-                    </span>
-                  </div>
-                  <ProgressBar
-                    value={enrollmentPercentage}
-                    size="sm"
-                    color={enrollmentPercentage > 90 ? "success" : "primary"}
-                  />
-                </div>
-
-                <div className="faculty-course-card__stats">
-                  <div className="faculty-course-card__stat-item">
-                    <span className="label">Avg Grade:</span>
-                    <Badge variant={getGradeColor(course.avgGrade)}>
-                      {course.avgGrade}%
-                    </Badge>
-                  </div>
-                  <div className="faculty-course-card__stat-item">
-                    <span className="label">Attendance:</span>
-                    <span className="value">{course.avgAttendance}%</span>
-                  </div>
-                  <div className="faculty-course-card__stat-item">
-                    <span className="label">Pending:</span>
-                    <Badge
-                      variant={course.pendingGrades > 10 ? "error" : "warning"}
-                    >
-                      {course.pendingGrades} grades
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="faculty-course-card__actions">
-                  <Button
-                    onClick={() =>
-                      navigate(`/faculty/course-management/${course.id}`)
-                    }
-                    variant="primary"
-                    size="sm"
-                    fullWidth
-                    icon={<ArrowRight size={16} />}
-                  >
-                    Manage Course
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-
-      {filteredAndSortedCourses.length === 0 && (
+      {filteredAndSortedCourses.length === 0 && courses.length > 0 && (
         <motion.div
           className="faculty-courses__empty"
           initial={{ opacity: 0 }}
@@ -319,6 +242,112 @@ const FacultyCourses = () => {
           <Filter size={48} />
           <h3>No courses found</h3>
           <p>Try adjusting your search criteria or filters</p>
+        </motion.div>
+      )}
+
+      {filteredAndSortedCourses.length > 0 && (
+        <motion.div
+          className="faculty-courses__grid"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+        >
+          {filteredAndSortedCourses.map((course, index) => {
+            const enrollmentPercentage = getEnrollmentPercentage(
+              course.enrolled,
+              course.capacity
+            );
+
+            return (
+              <motion.div
+                key={course.id}
+                className="faculty-course-card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1, duration: 0.5 }}
+                whileHover={{ y: -4, boxShadow: "var(--shadow-lg)" }}
+              >
+                <div
+                  className="faculty-course-card__header"
+                  style={{ backgroundColor: course.color }}
+                >
+                  <div className="faculty-course-card__title">
+                    <h3>
+                      {course.code} - {course.section}
+                    </h3>
+                    <h4>{course.name}</h4>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className="faculty-course-card__badge"
+                  >
+                    {course.semester}
+                  </Badge>
+                </div>
+
+                <div className="faculty-course-card__content">
+                  <div className="faculty-course-card__schedule">
+                    <Clock size={16} />
+                    <span>{course.schedule}</span>
+                  </div>
+                  <div className="faculty-course-card__room">
+                    <span>Room: {course.room}</span>
+                  </div>
+
+                  <div className="faculty-course-card__enrollment">
+                    <div className="faculty-course-card__enrollment-header">
+                      <Users size={16} />
+                      <span>
+                        {course.enrolled}/{course.capacity} students
+                      </span>
+                    </div>
+                    <ProgressBar
+                      value={enrollmentPercentage}
+                      size="sm"
+                      color={enrollmentPercentage > 90 ? "success" : "primary"}
+                    />
+                  </div>
+
+                  <div className="faculty-course-card__stats">
+                    <div className="faculty-course-card__stat-item">
+                      <span className="label">Avg Grade:</span>
+                      <Badge variant={getGradeColor(course.avgGrade)}>
+                        {course.avgGrade}%
+                      </Badge>
+                    </div>
+                    <div className="faculty-course-card__stat-item">
+                      <span className="label">Attendance:</span>
+                      <span className="value">{course.avgAttendance}%</span>
+                    </div>
+                    <div className="faculty-course-card__stat-item">
+                      <span className="label">Pending:</span>
+                      <Badge
+                        variant={
+                          course.pendingGrades > 10 ? "error" : "warning"
+                        }
+                      >
+                        {course.pendingGrades} grades
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="faculty-course-card__actions">
+                    <Button
+                      onClick={() =>
+                        navigate(`/faculty/course-management/${course.id}`)
+                      }
+                      variant="primary"
+                      size="sm"
+                      fullWidth
+                      icon={<ArrowRight size={16} />}
+                    >
+                      Manage Course
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
         </motion.div>
       )}
     </div>

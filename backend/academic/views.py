@@ -1,3 +1,4 @@
+
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -77,11 +78,51 @@ class UserViewSet(viewsets.ModelViewSet):
 class FacultyMemberViewSet(viewsets.ModelViewSet):
     queryset = FacultyMember.objects.select_related('user', 'department').all()
     serializer_class = FacultyMemberSerializer
-    permission_classes = [IsAuthenticated, IsAcademicAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['department', 'designation']
     search_fields = ['user__email', 'user__first_name', 'user__last_name', 'employee_id']
     ordering_fields = ['hire_date', 'user__first_name']
+    ordering = ['user__first_name']
+    def get_permissions(self):
+        """
+        - Academic admins (including super_admin) have full access (create/update/delete/list/retrieve)
+        - Faculty members have read-only access to their own record only
+        - Other roles (students, etc.) have no access
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsAcademicAdmin()]
+        # For list/retrieve actions (and the new 'me' action)
+        return [IsAuthenticated()]
+    def get_queryset(self):
+        """
+        - Admins see all faculty members
+        - Faculty users see only their own FacultyMember record
+        - Other users see nothing (empty queryset)
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.role in ['super_admin', 'academic_admin']:
+            return queryset
+        if user.role == 'faculty':
+            return queryset.filter(user=user)
+        # Students or unauthenticated → empty
+        return queryset.none()
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        """
+        Dedicated endpoint for the authenticated faculty member to get their own profile.
+        GET /api/faculty-members/me/
+        This is cleaner than using ?user=<id> filters and avoids exposing the filter to other users.
+        """
+        try:
+            faculty = FacultyMember.objects.select_related('user', 'department').get(user=request.user)
+            serializer = self.get_serializer(faculty)
+            return Response(serializer.data)
+        except FacultyMember.DoesNotExist:
+            return Response(
+                {'detail': 'Faculty profile not found for the authenticated user.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.select_related('faculty', 'head').all()

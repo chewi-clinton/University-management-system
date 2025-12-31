@@ -1,18 +1,12 @@
 import api from "./api";
 
-/**
- * Faculty Service
- * Handles all faculty-related API calls
- */
-
 const facultyService = {
-  /**
-   * Get faculty dashboard data
-   * Aggregates multiple endpoints to build complete dashboard
-   */
   async getDashboardData() {
     try {
-      // Fetch all required data in parallel
+      const profileResponse = await api.get("/faculty-members/me/");
+      const facultyProfile = profileResponse.data;
+      const facultyId = facultyProfile.id;
+
       const [
         coursesResponse,
         attendanceResponse,
@@ -21,27 +15,28 @@ const facultyService = {
         noticesResponse,
       ] = await Promise.all([
         api.get("course-offerings/", {
-          params: { is_visible: true },
+          params: { faculty: facultyId, is_visible: true },
         }),
-        api.get("attendance/"),
+        api.get("attendance/", {
+          params: { offering__faculty: facultyId },
+        }),
         api.get("grades/", {
-          params: { is_finalized: false },
+          params: { offering__faculty: facultyId, is_finalized: false },
         }),
-        api.get("exam-schedules/"),
+        api.get("exam-schedules/", {
+          params: { exam__offering__faculty: facultyId },
+        }),
         api.get("notices/my-notices/"),
       ]);
 
-      // Process courses data
       const courses = coursesResponse.data.results || coursesResponse.data;
       const totalCourses = courses.length;
 
-      // Calculate total students across all courses
       const totalStudents = courses.reduce(
         (sum, course) => sum + (course.current_enrollment || 0),
         0
       );
 
-      // Calculate attendance rate
       const attendanceRecords =
         attendanceResponse.data.results || attendanceResponse.data;
       const presentCount = attendanceRecords.filter(
@@ -52,11 +47,9 @@ const facultyService = {
           ? (presentCount / attendanceRecords.length) * 100
           : 0;
 
-      // Count pending grading
       const pendingGrades = gradesResponse.data.results || gradesResponse.data;
       const pendingGrading = pendingGrades.length;
 
-      // Process today's schedule from exam schedules
       const today = new Date().toISOString().split("T")[0];
       const schedules = scheduleResponse.data.results || scheduleResponse.data;
       const todaySchedule = schedules
@@ -69,7 +62,6 @@ const facultyService = {
           studentCount: schedule.exam?.offering?.current_enrollment || 0,
         }));
 
-      // Process upcoming deadlines from exam schedules
       const upcomingDeadlines = schedules
         .filter((schedule) => new Date(schedule.exam_date) >= new Date())
         .sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date))
@@ -82,7 +74,6 @@ const facultyService = {
           priority: this.calculatePriority(schedule.exam_date),
         }));
 
-      // Process recent notices
       const notices = noticesResponse.data.results || noticesResponse.data;
       const recentNotices = notices.slice(0, 5).map((notice) => ({
         id: notice.notice_id,
@@ -93,10 +84,9 @@ const facultyService = {
           : "Administration",
         postedDate: notice.post_date,
         priority: notice.priority || "normal",
-        isRead: false, // You might want to track this separately
+        isRead: false,
       }));
 
-      // Get recent activities (last 10 attendance records)
       const recentActivities = attendanceRecords
         .sort((a, b) => new Date(b.marked_at) - new Date(a.marked_at))
         .slice(0, 10)
@@ -127,12 +117,9 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get faculty member profile
-   */
   async getProfile() {
     try {
-      const response = await api.get("auth/me/");
+      const response = await api.get("/faculty-members/me/");
       return response.data;
     } catch (error) {
       console.error("Error fetching faculty profile:", error);
@@ -140,9 +127,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get all courses taught by faculty
-   */
   async getCourses(params = {}) {
     try {
       const response = await api.get("course-offerings/", { params });
@@ -153,9 +137,112 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get course details by ID
-   */
+  async getCoursesWithStats(params = {}) {
+    try {
+      const coursesResponse = await api.get("course-offerings/", { params });
+      const courses = coursesResponse.data.results || coursesResponse.data;
+
+      const enrichedCourses = await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const registrationsResponse = await api.get(
+              "course-registrations/",
+              {
+                params: { offering: course.id, status: "registered" },
+              }
+            );
+            const registrations =
+              registrationsResponse.data.results || registrationsResponse.data;
+
+            const gradesResponse = await api.get("grades/", {
+              params: { offering: course.id, is_finalized: false },
+            });
+            const pendingGrades =
+              gradesResponse.data.results || gradesResponse.data;
+
+            const finalizedGradesResponse = await api.get("grades/", {
+              params: { offering: course.id, is_finalized: true },
+            });
+            const finalizedGrades =
+              finalizedGradesResponse.data.results ||
+              finalizedGradesResponse.data;
+
+            const avgGrade =
+              finalizedGrades.length > 0
+                ? finalizedGrades.reduce(
+                    (sum, g) => sum + (g.marks_obtained || 0),
+                    0
+                  ) / finalizedGrades.length
+                : 0;
+
+            const attendanceResponse = await api.get("attendance/", {
+              params: { offering: course.id },
+            });
+            const attendanceRecords =
+              attendanceResponse.data.results || attendanceResponse.data;
+
+            const presentCount = attendanceRecords.filter(
+              (r) => r.status === "present"
+            ).length;
+            const avgAttendance =
+              attendanceRecords.length > 0
+                ? (presentCount / attendanceRecords.length) * 100
+                : 0;
+
+            return {
+              id: course.id,
+              code: course.course?.course_code || "N/A",
+              name: course.course?.course_name || "Untitled Course",
+              section: course.section || "A",
+              enrolled: course.current_enrollment || registrations.length,
+              capacity: course.max_capacity || 50,
+              avgGrade: Math.round(avgGrade),
+              avgAttendance: Math.round(avgAttendance),
+              schedule: this.formatSchedule(course.schedule),
+              room: course.room_number || "TBA",
+              color: this.getRandomColor(),
+              semester: course.semester?.semester_name || "Current",
+              credits: course.course?.credit_hours || 3,
+              pendingGrades: pendingGrades.length,
+              description:
+                course.course?.description || "No description available",
+            };
+          } catch (error) {
+            console.error(`Error enriching course ${course.id}:`, error);
+            return {
+              id: course.id,
+              code: course.course?.course_code || "N/A",
+              name: course.course?.course_name || "Untitled Course",
+              section: course.section || "A",
+              enrolled: course.current_enrollment || 0,
+              capacity: course.max_capacity || 50,
+              avgGrade: 0,
+              avgAttendance: 0,
+              schedule: this.formatSchedule(course.schedule),
+              room: course.room_number || "TBA",
+              color: this.getRandomColor(),
+              semester: course.semester?.semester_name || "Current",
+              credits: course.course?.credit_hours || 3,
+              pendingGrades: 0,
+              description:
+                course.course?.description || "No description available",
+            };
+          }
+        })
+      );
+
+      return {
+        results: enrichedCourses,
+        count: coursesResponse.data.count,
+        next: coursesResponse.data.next,
+        previous: coursesResponse.data.previous,
+      };
+    } catch (error) {
+      console.error("Error fetching courses with stats:", error);
+      throw error;
+    }
+  },
+
   async getCourseById(courseId) {
     try {
       const response = await api.get(`course-offerings/${courseId}/`);
@@ -166,9 +253,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get students enrolled in a course
-   */
   async getCourseStudents(offeringId) {
     try {
       const response = await api.get("course-registrations/", {
@@ -181,9 +265,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Mark attendance
-   */
   async markAttendance(attendanceData) {
     try {
       const response = await api.post("attendance/", attendanceData);
@@ -194,9 +275,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get attendance records
-   */
   async getAttendance(params = {}) {
     try {
       const response = await api.get("attendance/", { params });
@@ -207,9 +285,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Generate QR code for attendance
-   */
   async generateAttendanceQR(offeringId, date) {
     try {
       const response = await api.post("attendance/generate-qr/", {
@@ -223,9 +298,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Create or update grade
-   */
   async submitGrade(gradeData) {
     try {
       const response = await api.post("grades/", gradeData);
@@ -236,9 +308,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get grades
-   */
   async getGrades(params = {}) {
     try {
       const response = await api.get("grades/", { params });
@@ -249,9 +318,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Finalize grade
-   */
   async finalizeGrade(gradeId) {
     try {
       const response = await api.post(`grades/${gradeId}/finalize/`);
@@ -262,9 +328,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Create Zoom class
-   */
   async createZoomClass(classData) {
     try {
       const response = await api.post("zoom-classes/", classData);
@@ -275,9 +338,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Start Zoom meeting
-   */
   async startZoomMeeting(classId) {
     try {
       const response = await api.post(`zoom-classes/${classId}/start-meeting/`);
@@ -288,9 +348,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Upload study material
-   */
   async uploadMaterial(materialData) {
     try {
       const formData = new FormData();
@@ -310,9 +367,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get study materials
-   */
   async getMaterials(params = {}) {
     try {
       const response = await api.get("study-materials/", { params });
@@ -323,9 +377,6 @@ const facultyService = {
     }
   },
 
-  /**
-   * Get class performance analytics
-   */
   async getClassPerformance(offeringId) {
     try {
       const response = await api.get("gpa/class-performance/", {
@@ -338,7 +389,6 @@ const facultyService = {
     }
   },
 
-  // Helper methods
   calculatePriority(dateString) {
     const date = new Date(dateString);
     const today = new Date();
@@ -362,6 +412,42 @@ const facultyService = {
     if (diffHours < 24)
       return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
     return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  },
+
+  formatSchedule(scheduleJson) {
+    if (!scheduleJson) return "Schedule TBA";
+
+    try {
+      const schedule =
+        typeof scheduleJson === "string"
+          ? JSON.parse(scheduleJson)
+          : scheduleJson;
+
+      if (schedule.days && schedule.time) {
+        const days = Array.isArray(schedule.days)
+          ? schedule.days.join(", ")
+          : schedule.days;
+        return `${days} ${schedule.time}`;
+      }
+
+      return "Schedule TBA";
+    } catch (error) {
+      return "Schedule TBA";
+    }
+  },
+
+  getRandomColor() {
+    const colors = [
+      "#3b82f6",
+      "#8b5cf6",
+      "#10b981",
+      "#f59e0b",
+      "#ef4444",
+      "#06b6d4",
+      "#ec4899",
+      "#14b8a6",
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
   },
 };
 
