@@ -275,6 +275,19 @@ const facultyService = {
     }
   },
 
+  async updateAttendance(attendanceId, attendanceData) {
+    try {
+      const response = await api.patch(
+        `attendance/${attendanceId}/`,
+        attendanceData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      throw error;
+    }
+  },
+
   async getAttendance(params = {}) {
     try {
       const response = await api.get("attendance/", { params });

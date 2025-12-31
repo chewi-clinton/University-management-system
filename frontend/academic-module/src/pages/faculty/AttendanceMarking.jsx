@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Clock, QrCode, CheckSquare, Smartphone } from "lucide-react";
+import {
+  Users,
+  Clock,
+  QrCode,
+  CheckSquare,
+  Smartphone,
+  Loader,
+} from "lucide-react";
 import Card from "../../components/shared/layout/Card";
 import Button from "../../components/shared/ui/Button";
 import Select from "../../components/shared/ui/Select";
@@ -10,100 +17,132 @@ import AttendanceToggle from "../../components/shared/ui/AttendanceToggle";
 import QRCodeDisplay from "../../components/shared/ui/QRCodeDisplay";
 import Modal from "../../components/shared/feedback/Modal";
 import Toast from "../../components/shared/feedback/Toast";
+import facultyService from "../../services/api/facultyService";
 import "../../styles/pages/AttendanceMarking.css";
 
-// Mock data
-const mockFacultyCourses = [
-  {
-    id: 1,
-    code: "CS301",
-    name: "Data Structures",
-    section: "A",
-    enrolled: 45,
-    schedule: "Mon, Wed, Fri 9:00-10:30 AM",
-    color: "#3b82f6",
-  },
-  {
-    id: 2,
-    code: "CS201",
-    name: "Programming Fundamentals",
-    section: "B",
-    enrolled: 38,
-    schedule: "Tue, Thu 2:00-3:30 PM",
-    color: "#8b5cf6",
-  },
-  {
-    id: 3,
-    code: "CS401",
-    name: "Advanced Algorithms",
-    section: "A",
-    enrolled: 32,
-    schedule: "Mon, Wed 11:00-12:30 PM",
-    color: "#10b981",
-  },
-];
-
-const mockStudents = [
-  {
-    id: 1,
-    name: "John Doe",
-    regNumber: "UNI-2024-0123",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    attendance: "present",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    regNumber: "UNI-2024-0124",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=JaneS",
-    attendance: "present",
-  },
-  {
-    id: 3,
-    name: "Mike Chen",
-    regNumber: "UNI-2024-0125",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
-    attendance: "absent",
-  },
-  {
-    id: 4,
-    name: "Sarah Johnson",
-    regNumber: "UNI-2024-0126",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-    attendance: "late",
-  },
-  {
-    id: 5,
-    name: "David Lee",
-    regNumber: "UNI-2024-0127",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
-    attendance: "present",
-  },
-];
-
 const AttendanceMarking = () => {
-  const [mode, setMode] = useState("manual"); // 'manual' or 'qr'
+  const [mode, setMode] = useState("manual");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [attendance, setAttendance] = useState({});
   const [showQRModal, setShowQRModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
 
+  // API data states
+  const [courses, setCourses] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [existingAttendance, setExistingAttendance] = useState([]);
+  const [qrData, setQrData] = useState(null);
+  const [loading, setLoading] = useState({
+    courses: false,
+    students: false,
+    attendance: false,
+    saving: false,
+    qr: false,
+  });
+
+  // Fetch faculty courses on mount
   useEffect(() => {
-    // Initialize attendance data
-    const initialAttendance = {};
-    mockStudents.forEach((student) => {
-      initialAttendance[student.id] = student.attendance;
-    });
-    setAttendance(initialAttendance);
+    fetchFacultyCourses();
   }, []);
 
+  // Fetch students when course or date changes
   useEffect(() => {
-    if (mockFacultyCourses.length > 0 && !selectedCourse) {
-      setSelectedCourse(mockFacultyCourses[0].id.toString());
+    if (selectedCourse) {
+      fetchCourseStudents();
+      fetchExistingAttendance();
     }
-  }, [selectedCourse]);
+  }, [selectedCourse, selectedDate]);
+
+  const fetchFacultyCourses = async () => {
+    setLoading((prev) => ({ ...prev, courses: true }));
+    try {
+      const profileResponse = await facultyService.getProfile();
+      const facultyId = profileResponse.id;
+
+      const response = await facultyService.getCourses({
+        faculty: facultyId,
+        is_visible: true,
+      });
+
+      const coursesData = response.results || response;
+      setCourses(coursesData);
+
+      if (coursesData.length > 0) {
+        setSelectedCourse(coursesData[0].id.toString());
+      }
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      showToastMessage("Failed to load courses", "error");
+    } finally {
+      setLoading((prev) => ({ ...prev, courses: false }));
+    }
+  };
+
+  const fetchCourseStudents = async () => {
+    setLoading((prev) => ({ ...prev, students: true }));
+    try {
+      const response = await facultyService.getCourseStudents(selectedCourse);
+      const registrations = response.results || response;
+
+      const studentsData = registrations.map((reg) => ({
+        id: reg.student.student_id,
+        name:
+          reg.student.full_name ||
+          `${reg.student.first_name} ${reg.student.last_name}`,
+        regNumber: reg.student.university_reg_number,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${reg.student.student_id}`,
+        registrationId: reg.id,
+      }));
+
+      setStudents(studentsData);
+
+      // Initialize attendance state for new students
+      const initialAttendance = {};
+      studentsData.forEach((student) => {
+        initialAttendance[student.id] = "absent";
+      });
+      setAttendance(initialAttendance);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      showToastMessage("Failed to load students", "error");
+    } finally {
+      setLoading((prev) => ({ ...prev, students: false }));
+    }
+  };
+
+  const fetchExistingAttendance = async () => {
+    setLoading((prev) => ({ ...prev, attendance: true }));
+    try {
+      const dateString = selectedDate.toISOString().split("T")[0];
+      const response = await facultyService.getAttendance({
+        offering: selectedCourse,
+        attendance_date: dateString,
+      });
+
+      const attendanceRecords = response.results || response;
+      setExistingAttendance(attendanceRecords);
+
+      // Update attendance state with existing records
+      const updatedAttendance = { ...attendance };
+      attendanceRecords.forEach((record) => {
+        if (record.student?.student_id) {
+          updatedAttendance[record.student.student_id] = record.status;
+        }
+      });
+      setAttendance(updatedAttendance);
+    } catch (error) {
+      console.error("Error fetching existing attendance:", error);
+      // Don't show error toast for 404 (no existing attendance)
+      if (error.response?.status !== 404) {
+        showToastMessage("Failed to load existing attendance", "error");
+      }
+    } finally {
+      setLoading((prev) => ({ ...prev, attendance: false }));
+    }
+  };
 
   const handleAttendanceChange = (studentId, status) => {
     setAttendance((prev) => ({
@@ -111,29 +150,93 @@ const AttendanceMarking = () => {
       [studentId]: status,
     }));
 
-    // Show toast notification
-    const student = mockStudents.find((s) => s.id === studentId);
-    setToastMessage(`Attendance marked for ${student?.name}: ${status}`);
-    setShowToast(true);
+    const student = students.find((s) => s.id === studentId);
+    showToastMessage(
+      `Attendance marked for ${student?.name}: ${status}`,
+      "success"
+    );
   };
 
   const markAllPresent = () => {
     const allPresent = {};
-    mockStudents.forEach((student) => {
+    students.forEach((student) => {
       allPresent[student.id] = "present";
     });
     setAttendance(allPresent);
-    setToastMessage("All students marked as present");
-    setShowToast(true);
+    showToastMessage("All students marked as present", "success");
   };
 
-  const generateQRCode = () => {
-    const qrData = {
-      courseId: selectedCourse,
-      date: selectedDate.toISOString().split("T")[0],
-      timestamp: Date.now(),
-    };
-    return JSON.stringify(qrData);
+  const saveAttendance = async () => {
+    setLoading((prev) => ({ ...prev, saving: true }));
+    try {
+      const dateString = selectedDate.toISOString().split("T")[0];
+      const attendancePromises = [];
+
+      for (const student of students) {
+        const status = attendance[student.id] || "absent";
+
+        // Check if attendance already exists for this student
+        const existingRecord = existingAttendance.find(
+          (record) => record.student?.student_id === student.id
+        );
+
+        if (existingRecord) {
+          // Update existing attendance
+          attendancePromises.push(
+            facultyService.updateAttendance(existingRecord.attendance_id, {
+              status: status,
+            })
+          );
+        } else {
+          // Create new attendance record
+          attendancePromises.push(
+            facultyService.markAttendance({
+              student_id: student.id,
+              offering_id: parseInt(selectedCourse),
+              attendance_date: dateString,
+              status: status,
+            })
+          );
+        }
+      }
+
+      await Promise.all(attendancePromises);
+      showToastMessage("Attendance saved successfully!", "success");
+
+      // Refresh attendance data
+      await fetchExistingAttendance();
+    } catch (error) {
+      console.error("Error saving attendance:", error);
+      showToastMessage("Failed to save attendance. Please try again.", "error");
+    } finally {
+      setLoading((prev) => ({ ...prev, saving: false }));
+    }
+  };
+
+  const generateQRCode = async () => {
+    setLoading((prev) => ({ ...prev, qr: true }));
+    try {
+      const dateString = selectedDate.toISOString().split("T")[0];
+      const response = await facultyService.generateAttendanceQR(
+        selectedCourse,
+        dateString
+      );
+
+      setQrData(response);
+      setShowQRModal(true);
+      showToastMessage("QR Code generated successfully", "success");
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      showToastMessage("Failed to generate QR code", "error");
+    } finally {
+      setLoading((prev) => ({ ...prev, qr: false }));
+    }
+  };
+
+  const showToastMessage = (message, type = "success") => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
   };
 
   const getMarkedCount = () => {
@@ -142,13 +245,23 @@ const AttendanceMarking = () => {
   };
 
   const getProgressPercentage = () => {
+    if (students.length === 0) return 0;
     const marked = getMarkedCount();
-    return Math.round((marked / mockStudents.length) * 100);
+    return Math.round((marked / students.length) * 100);
   };
 
-  const course = mockFacultyCourses.find(
-    (c) => c.id.toString() === selectedCourse
-  );
+  const course = courses.find((c) => c.id.toString() === selectedCourse);
+
+  if (loading.courses) {
+    return (
+      <div className="attendance-marking">
+        <div className="loading-state">
+          <Loader className="spinner" size={48} />
+          <p>Loading courses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="attendance-marking">
@@ -204,31 +317,43 @@ const AttendanceMarking = () => {
         <Select
           value={selectedCourse}
           onChange={(e) => setSelectedCourse(e.target.value)}
-          options={mockFacultyCourses.map((course) => ({
+          options={courses.map((course) => ({
             value: course.id.toString(),
-            label: `${course.code} - ${course.name} (${course.section})`,
+            label: `${course.course?.course_code || "N/A"} - ${
+              course.course?.course_name || "Untitled"
+            } (${course.section || "A"})`,
           }))}
           className="attendance-marking__course-select"
+          disabled={loading.students}
         />
         <DatePicker
           selected={selectedDate}
           onChange={setSelectedDate}
           className="attendance-marking__date-picker"
+          disabled={loading.students}
         />
         {mode === "manual" && (
           <Button
             onClick={markAllPresent}
             variant="secondary"
             icon={<Users size={16} />}
+            disabled={loading.students || students.length === 0}
           >
             Mark All Present
           </Button>
         )}
         {mode === "qr" && (
           <Button
-            onClick={() => setShowQRModal(true)}
+            onClick={generateQRCode}
             variant="primary"
-            icon={<QrCode size={16} />}
+            icon={
+              loading.qr ? (
+                <Loader className="spinner" size={16} />
+              ) : (
+                <QrCode size={16} />
+              )
+            }
+            disabled={loading.qr || !selectedCourse}
           >
             Generate QR Code
           </Button>
@@ -242,66 +367,83 @@ const AttendanceMarking = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          <div className="attendance-marking__progress">
-            <div className="attendance-marking__progress-info">
-              <Users size={20} />
-              <span>
-                Progress: {getMarkedCount()}/{mockStudents.length} students
-                marked
-              </span>
-              <Badge variant="primary">{getProgressPercentage()}%</Badge>
+          {loading.students ? (
+            <div className="loading-state">
+              <Loader className="spinner" size={32} />
+              <p>Loading students...</p>
             </div>
-            <div className="attendance-marking__progress-bar">
-              <div
-                className="attendance-marking__progress-fill"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
+          ) : students.length === 0 ? (
+            <div className="empty-state">
+              <Users size={48} />
+              <p>No students enrolled in this course</p>
             </div>
-          </div>
-
-          <div className="attendance-marking__student-list">
-            {mockStudents.map((student, index) => (
-              <motion.div
-                key={student.id}
-                className="student-attendance-item"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + index * 0.05 }}
-              >
-                <div className="student-attendance-item__info">
-                  <img
-                    src={student.avatar}
-                    alt={student.name}
-                    className="student-attendance-item__avatar"
-                  />
-                  <div>
-                    <h4>{student.name}</h4>
-                    <p>{student.regNumber}</p>
-                  </div>
+          ) : (
+            <>
+              <div className="attendance-marking__progress">
+                <div className="attendance-marking__progress-info">
+                  <Users size={20} />
+                  <span>
+                    Progress: {getMarkedCount()}/{students.length} students
+                    marked
+                  </span>
+                  <Badge variant="primary">{getProgressPercentage()}%</Badge>
                 </div>
-                <AttendanceToggle
-                  value={attendance[student.id] || "absent"}
-                  onChange={(status) =>
-                    handleAttendanceChange(student.id, status)
-                  }
-                />
-              </motion.div>
-            ))}
-          </div>
+                <div className="attendance-marking__progress-bar">
+                  <div
+                    className="attendance-marking__progress-fill"
+                    style={{ width: `${getProgressPercentage()}%` }}
+                  />
+                </div>
+              </div>
 
-          <div className="attendance-marking__actions">
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={() => {
-                setToastMessage("Attendance saved successfully!");
-                setShowToast(true);
-              }}
-            >
-              Save Attendance
-            </Button>
-          </div>
+              <div className="attendance-marking__student-list">
+                {students.map((student, index) => (
+                  <motion.div
+                    key={student.id}
+                    className="student-attendance-item"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + index * 0.05 }}
+                  >
+                    <div className="student-attendance-item__info">
+                      <img
+                        src={student.avatar}
+                        alt={student.name}
+                        className="student-attendance-item__avatar"
+                      />
+                      <div>
+                        <h4>{student.name}</h4>
+                        <p>{student.regNumber}</p>
+                      </div>
+                    </div>
+                    <AttendanceToggle
+                      value={attendance[student.id] || "absent"}
+                      onChange={(status) =>
+                        handleAttendanceChange(student.id, status)
+                      }
+                    />
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="attendance-marking__actions">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={saveAttendance}
+                  disabled={loading.saving}
+                  icon={
+                    loading.saving ? (
+                      <Loader className="spinner" size={20} />
+                    ) : null
+                  }
+                >
+                  {loading.saving ? "Saving..." : "Save Attendance"}
+                </Button>
+              </div>
+            </>
+          )}
         </motion.div>
       )}
 
@@ -318,7 +460,8 @@ const AttendanceMarking = () => {
               <div>
                 <h3>QR Code Attendance</h3>
                 <p>
-                  {course?.name} ({course?.section})
+                  {course?.course?.course_name || "Course"} (
+                  {course?.section || "A"})
                 </p>
               </div>
             </div>
@@ -327,7 +470,21 @@ const AttendanceMarking = () => {
               <div className="qr-mode__phone-mockup">
                 <div className="qr-mode__phone-screen">
                   <Smartphone size={64} />
-                  <p>Scan QR Code with your phone</p>
+                  <p>Generate and display QR Code for students to scan</p>
+                  <Button
+                    onClick={generateQRCode}
+                    variant="primary"
+                    disabled={loading.qr}
+                    icon={
+                      loading.qr ? (
+                        <Loader className="spinner" size={16} />
+                      ) : (
+                        <QrCode size={16} />
+                      )
+                    }
+                  >
+                    {loading.qr ? "Generating..." : "Generate QR Code"}
+                  </Button>
                 </div>
               </div>
 
@@ -336,7 +493,7 @@ const AttendanceMarking = () => {
                   <Users size={24} />
                   <div>
                     <span className="qr-mode__stat-value">
-                      {getMarkedCount()}/{mockStudents.length}
+                      {getMarkedCount()}/{students.length}
                     </span>
                     <span className="qr-mode__stat-label">Students Marked</span>
                   </div>
@@ -351,27 +508,34 @@ const AttendanceMarking = () => {
 
                 <div className="qr-mode__live-feed">
                   <h4>Recent Check-ins</h4>
-                  <div className="qr-mode__feed-item">
-                    <span>Jane Smith</span>
-                    <Badge variant="success">Just now</Badge>
-                  </div>
-                  <div className="qr-mode__feed-item">
-                    <span>John Doe</span>
-                    <Badge variant="secondary">5s ago</Badge>
-                  </div>
-                  <div className="qr-mode__feed-item">
-                    <span>Mike Chen</span>
-                    <Badge variant="secondary">12s ago</Badge>
-                  </div>
+                  {existingAttendance.length === 0 ? (
+                    <p className="qr-mode__empty">No check-ins yet</p>
+                  ) : (
+                    existingAttendance
+                      .filter((record) => record.status === "present")
+                      .slice(0, 5)
+                      .map((record, index) => (
+                        <div key={index} className="qr-mode__feed-item">
+                          <span>{record.student?.full_name || "Student"}</span>
+                          <Badge variant="success">
+                            {new Date(record.marked_at).toLocaleTimeString()}
+                          </Badge>
+                        </div>
+                      ))
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="qr-mode__actions">
-              <Button variant="secondary" onClick={() => setShowQRModal(true)}>
+              <Button
+                variant="secondary"
+                onClick={generateQRCode}
+                disabled={loading.qr}
+              >
                 Regenerate QR
               </Button>
-              <Button variant="error" onClick={() => setMode("manual")}>
+              <Button variant="danger" onClick={() => setMode("manual")}>
                 Close Session
               </Button>
             </div>
@@ -380,7 +544,7 @@ const AttendanceMarking = () => {
       )}
 
       <AnimatePresence>
-        {showQRModal && (
+        {showQRModal && qrData && (
           <Modal
             isOpen={showQRModal}
             onClose={() => setShowQRModal(false)}
@@ -388,12 +552,9 @@ const AttendanceMarking = () => {
             size="lg"
           >
             <QRCodeDisplay
-              qrData={generateQRCode()}
-              expiresIn={300} // 5 minutes
-              onRegenerate={() => {
-                setToastMessage("QR Code regenerated");
-                setShowToast(true);
-              }}
+              qrData={qrData.qr_code || qrData.payload}
+              expiresIn={300}
+              onRegenerate={generateQRCode}
             />
           </Modal>
         )}
@@ -403,7 +564,7 @@ const AttendanceMarking = () => {
         {showToast && (
           <Toast
             message={toastMessage}
-            type="success"
+            type={toastType}
             onClose={() => setShowToast(false)}
           />
         )}
