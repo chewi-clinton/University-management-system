@@ -58,6 +58,7 @@ urlpatterns = [
     path('gpa/class-performance/', GPAViewSet.as_view({'get': 'class_performance'}), name='gpa-class-performance'),
     
     # Attendance endpoints
+    path('attendance/my-attendance/', AttendanceViewSet.as_view({'get': 'my_attendance'}), name='attendance-my-attendance'),
     path('attendance/mark-by-qr/', AttendanceViewSet.as_view({'post': 'mark_by_qr'}), name='attendance-mark-by-qr'),
     path('attendance/generate-qr/', AttendanceViewSet.as_view({'post': 'generate_qr'}), name='attendance-generate-qr'),
     

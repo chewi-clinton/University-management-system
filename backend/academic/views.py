@@ -359,7 +359,51 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     filterset_fields = ['offering', 'attendance_date', 'status']
     search_fields = ['student__university_reg_number', 'student__first_name']
     ordering_fields = ['attendance_date', 'marked_at']
-
+    def get_permissions(self):
+        """
+        Allow students to access their own attendance records via my_attendance action
+        """
+        if self.action == 'my_attendance':
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), CanMarkAttendance()]
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_attendance(self, request):
+        """
+        Get current student's attendance records
+        GET /api/attendance/my-attendance/
+        """
+        try:
+            student = Student.objects.get(user=request.user)
+        except Student.DoesNotExist:
+            return Response(
+                {'detail': 'Student profile not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+       
+        # Get all attendance records for this student
+        attendance_records = Attendance.objects.filter(
+            student=student
+        ).select_related(
+            'offering__course',
+            'offering__semester',
+            'marked_by_faculty__user'
+        ).order_by('-attendance_date')
+       
+        # Apply filters if provided
+        offering_id = request.query_params.get('offering')
+        if offering_id:
+            attendance_records = attendance_records.filter(offering_id=offering_id)
+       
+        attendance_date = request.query_params.get('attendance_date')
+        if attendance_date:
+            attendance_records = attendance_records.filter(attendance_date=attendance_date)
+       
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            attendance_records = attendance_records.filter(status=status_filter)
+       
+        serializer = AttendanceSerializer(attendance_records, many=True)
+        return Response(serializer.data)
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, CanMarkAttendance])
     def mark_by_qr(self, request):
         serializer = QRAttendanceSerializer(data=request.data)
@@ -371,7 +415,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 attendance_date=data['attendance_date']
             ).first()
             if existing_attendance:
-                return Response({'error': 'Attendance already marked for today'}, 
+                return Response({'error': 'Attendance already marked for today'},
                                 status=status.HTTP_400_BAD_REQUEST)
             attendance = Attendance.objects.create(
                 student_id=data['student_id'],
@@ -385,7 +429,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             attendance_serializer = AttendanceSerializer(attendance)
             return Response(attendance_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, IsFaculty])
     def generate_qr(self, request):
         offering_id = request.data.get('offering_id')

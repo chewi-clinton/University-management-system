@@ -226,11 +226,11 @@ const studentService = {
     }
   },
 
-  // Get attendance records
+  // Get attendance records - IMPORTANT FOR ATTENDANCE PAGE
   getAttendanceRecords: async (filters = {}) => {
     try {
       const params = new URLSearchParams(filters);
-      const response = await api.get(`/attendance/?${params}`);
+      const response = await api.get(`/attendance/my-attendance/?${params}`);
       return {
         success: true,
         data: response.data,
