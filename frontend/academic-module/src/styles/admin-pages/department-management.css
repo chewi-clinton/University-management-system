@@ -1,0 +1,286 @@
+/* Department Management Styles */
+
+department-management {
+  padding: 0;
+}
+
+.department-management__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+}
+
+.department-management__header h1 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-3xl);
+  font-weight: 700;
+  color: var(--admin-gray-900);
+}
+
+.department-management__header p {
+  margin: 0;
+  color: var(--admin-gray-600);
+  font-size: var(--font-lg);
+}
+
+.department-management__header-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.department-management__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.department-management__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.department-management__search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: white;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  flex: 1;
+  max-width: 400px;
+}
+
+.department-management__search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: var(--font-sm);
+  color: var(--admin-gray-700);
+}
+
+.department-management__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.department-management__table-wrapper {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+/* Department Cell */
+dept-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+dept-cell__color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+dept-cell__name {
+  font-weight: 600;
+  color: var(--admin-gray-900);
+  margin-bottom: var(--space-1);
+}
+
+dept-cell__code {
+  font-size: var(--font-xs);
+  color: var(--admin-gray-500);
+}
+
+/* Stat Cell */
+.stat-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--admin-gray-700);
+}
+
+/* Attendance Cell */
+.attendance-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+}
+
+.attendance-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--admin-gray-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  max-width: 60px;
+}
+
+.attendance-bar__fill {
+  height: 100%;
+  background: var(--admin-success);
+  transition: width var(--transition-normal);
+}
+
+/* GPA Display */
+gpa-display {
+  font-weight: 600;
+  color: var(--admin-gray-900);
+}
+
+gpa-display--high {
+  color: var(--admin-success);
+}
+
+/* Department Details */
+department-details {
+  padding: var(--space-4);
+}
+
+department-details__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+
+department-details__color {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+department-details__header h3 {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--admin-gray-900);
+}
+
+department-details__header p {
+  margin: 0;
+  color: var(--admin-gray-600);
+  font-size: var(--font-lg);
+  font-weight: 500;
+}
+
+department-details__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+department-details__section {
+  padding: var(--space-4);
+  background: var(--admin-gray-50);
+  border-radius: var(--radius-lg);
+}
+
+department-details__section h4 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--admin-gray-900);
+}
+
+department-details__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+department-details__grid div {
+  font-size: var(--font-sm);
+  color: var(--admin-gray-700);
+}
+
+department-details__grid strong {
+  color: var(--admin-gray-900);
+  font-weight: 600;
+}
+
+department-details__stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-3);
+}
+
+.stat-item {
+  text-align: center;
+  padding: var(--space-3);
+  background: white;
+  border-radius: var(--radius-md);
+}
+
+.stat-value {
+  display: block;
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--admin-gray-900);
+  margin-bottom: var(--space-1);
+}
+
+.stat-label {
+  font-size: var(--font-xs);
+  color: var(--admin-gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .department-management__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .department-management__header {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  
+  .department-management__header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .department-management__toolbar {
+    flex-direction: column;
+  }
+  
+  .department-management__search {
+    max-width: 100%;
+  }
+  
+  .department-management__stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .department-details__header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .department-details__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .department-details__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
