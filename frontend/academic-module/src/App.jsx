@@ -11,8 +11,6 @@ import ErrorBoundary from "./components/shared/feedback/ErrorBoundary";
 import ToastContainer from "./components/shared/feedback/ToastContainer.jsx";
 import Spinner from "./components/shared/feedback/Spinner";
 
-// ... (all your CSS imports remain unchanged)
-
 // Lazy load student pages
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const Courses = lazy(() => import("./pages/Courses.jsx"));
@@ -44,7 +42,7 @@ const VirtualClassSetup = lazy(() =>
 );
 const Reports = lazy(() => import("./pages/faculty/Reports"));
 
-// Lazy load admin pages (with renamed conflicting components)
+// Lazy load admin pages
 const AdminDashboard = lazy(() => import("./admin-pages/AdminDashboard"));
 const UserManagement = lazy(() => import("./admin-pages/UserManagement"));
 const StudentManagement = lazy(() => import("./admin-pages/StudentManagement"));
@@ -125,7 +123,12 @@ const LoadingFallback = () => (
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true, // Eliminates the startTransition warning
+          v7_relativeSplatPath: true, // Eliminates the relative splat path warning
+        }}
+      >
         <AuthProvider>
           <ToastContainer>
             <div className="app">

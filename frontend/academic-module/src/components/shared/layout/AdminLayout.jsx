@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import AdminSidebar from "../admin/AdminSidebar";
 import AdminHeader from "../admin/AdminHeader";
+import "../../../styles/admin-pages/admin-styles.css";
 
 // Create a motion-enabled aside
 const MotionAside = motion("aside");
