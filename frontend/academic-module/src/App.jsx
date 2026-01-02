@@ -125,8 +125,8 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter
         future={{
-          v7_startTransition: true, // Eliminates the startTransition warning
-          v7_relativeSplatPath: true, // Eliminates the relative splat path warning
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
         }}
       >
         <AuthProvider>
@@ -206,8 +206,17 @@ function App() {
                     <Route path="reports" element={<Reports />} />
                   </Route>
 
-                  {/* TEMPORARILY UNAUTHENTICATED Admin routes */}
-                  <Route path="/admin/*" element={<AdminRoutes />} />
+                  {/* Protected Admin routes - Now secured with correct backend roles */}
+                  <Route
+                    path="/admin/*"
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={["super_admin", "academic_admin"]}
+                      >
+                        <AdminRoutes />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* 404 - Catch all */}
                   <Route path="*" element={<NotFound />} />

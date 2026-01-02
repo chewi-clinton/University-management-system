@@ -27,192 +27,146 @@ import {
   FileText,
   BarChart3,
 } from "lucide-react";
-
-// Mock Data
-const mockDashboardData = {
-  stats: {
-    totalStudents: 1247,
-    totalFaculty: 89,
-    totalCourses: 156,
-    attendanceRate: 87.5,
-    trends: {
-      students: { value: "+12%", isPositive: true },
-      faculty: { value: "+5", isPositive: true },
-      courses: { value: "+8", isPositive: true },
-      attendance: { value: "+3.1%", isPositive: true },
-    },
-  },
-  enrollmentTrends: {
-    labels: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
-    data: [850, 920, 980, 1050, 1100, 1150, 1180, 1210, 1230, 1245, 1247, 1250],
-  },
-  departments: [
-    {
-      id: 1,
-      code: "CS",
-      name: "Computer Science",
-      students: 385,
-      faculty: 24,
-      courses: 45,
-      avgAttendance: 92,
-      avgGPA: 3.65,
-      color: "#3b82f6",
-    },
-    {
-      id: 2,
-      code: "BUS",
-      name: "Business Administration",
-      students: 312,
-      faculty: 18,
-      courses: 38,
-      avgAttendance: 87,
-      avgGPA: 3.42,
-      color: "#10b981",
-    },
-    {
-      id: 3,
-      code: "ENG",
-      name: "Engineering",
-      students: 298,
-      faculty: 22,
-      courses: 42,
-      avgAttendance: 89,
-      avgGPA: 3.58,
-      color: "#f59e0b",
-    },
-    {
-      id: 4,
-      code: "MATH",
-      name: "Mathematics",
-      students: 156,
-      faculty: 15,
-      courses: 28,
-      avgAttendance: 91,
-      avgGPA: 3.51,
-      color: "#8b5cf6",
-    },
-    {
-      id: 5,
-      code: "ARTS",
-      name: "Arts & Sciences",
-      students: 96,
-      faculty: 10,
-      courses: 23,
-      avgAttendance: 85,
-      avgGPA: 3.38,
-      color: "#ec4899",
-    },
-  ],
-  recentActivities: [
-    {
-      id: 1,
-      type: "student_registered",
-      message: "45 new students registered for Fall 2026",
-      time: "2 hours ago",
-    },
-    {
-      id: 2,
-      type: "grade_updated",
-      message: "Grades published for CS301 - Data Structures",
-      time: "4 hours ago",
-    },
-    {
-      id: 3,
-      type: "attendance_marked",
-      message: "Attendance marked for 23 classes today",
-      time: "5 hours ago",
-    },
-    {
-      id: 4,
-      type: "exam_scheduled",
-      message: "Mid-term examinations scheduled for next week",
-      time: "1 day ago",
-    },
-    {
-      id: 5,
-      type: "notice_published",
-      message: "New notice published: Holiday Announcement",
-      time: "1 day ago",
-    },
-    {
-      id: 6,
-      type: "course_added",
-      message: "New course added: AI & Machine Learning",
-      time: "2 days ago",
-    },
-  ],
-  systemNotifications: [
-    {
-      id: 1,
-      type: "warning",
-      title: "Low Attendance Alert",
-      message: "12 students have attendance below 75% threshold",
-      timestamp: "1 hour ago",
-      isRead: false,
-    },
-    {
-      id: 2,
-      type: "info",
-      title: "Grade Submission Reminder",
-      message: "15 courses have pending grade submissions",
-      timestamp: "3 hours ago",
-      isRead: false,
-    },
-    {
-      id: 3,
-      type: "success",
-      title: "Backup Completed",
-      message: "System backup completed successfully",
-      timestamp: "1 day ago",
-      isRead: true,
-    },
-  ],
-  gradeDistribution: [
-    { grade: "A", count: 245, percentage: 28 },
-    { grade: "B", count: 312, percentage: 36 },
-    { grade: "C", count: 198, percentage: 23 },
-    { grade: "D", count: 89, percentage: 10 },
-    { grade: "F", count: 45, percentage: 3 },
-  ],
-  upcomingEvents: [
-    { id: 1, title: "Mid-Term Examinations", date: "2026-01-15", type: "exam" },
-    { id: 2, title: "Faculty Meeting", date: "2026-01-08", type: "meeting" },
-    { id: 3, title: "Student Orientation", date: "2026-01-20", type: "event" },
-    {
-      id: 4,
-      title: "Grade Submission Deadline",
-      date: "2026-01-25",
-      type: "deadline",
-    },
-  ],
-};
+import { adminService } from "../services/api/adminService";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("month");
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  // State for dashboard data
+  const [dashboardData, setDashboardData] = useState({
+    stats: {
+      totalStudents: 0,
+      totalFaculty: 0,
+      totalCourses: 0,
+      attendanceRate: 0,
+      trends: {
+        students: { value: "+0%", isPositive: true },
+        faculty: { value: "+0", isPositive: true },
+        courses: { value: "+0", isPositive: true },
+        attendance: { value: "+0%", isPositive: true },
+      },
+    },
+    enrollmentTrends: {
+      labels: [],
+      data: [],
+    },
+    departments: [],
+    recentActivities: [],
+    systemNotifications: [],
+    gradeDistribution: [],
+    upcomingEvents: [],
+  });
+
+  // Fetch all dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      setError(null);
+
+      // Fetch all data in parallel
+      const [
+        statsResult,
+        departmentsResult,
+        enrollmentTrendsResult,
+        gradeDistributionResult,
+        noticesResult,
+        upcomingEventsResult,
+        systemNotificationsResult,
+      ] = await Promise.all([
+        adminService.getDashboardStats(),
+        adminService.getDepartments(),
+        adminService.getEnrollmentTrends(),
+        adminService.getGradeDistribution(),
+        adminService.getRecentNotices(5),
+        adminService.getUpcomingEvents(),
+        adminService.getSystemNotifications(),
+      ]);
+
+      // Check for errors
+      if (!statsResult.success) throw new Error(statsResult.error);
+      if (!departmentsResult.success) throw new Error(departmentsResult.error);
+      if (!enrollmentTrendsResult.success)
+        throw new Error(enrollmentTrendsResult.error);
+      if (!gradeDistributionResult.success)
+        throw new Error(gradeDistributionResult.error);
+
+      // Build recent activities from notices
+      const recentActivities = noticesResult.success
+        ? noticesResult.data.map((notice, index) => ({
+            id: notice.notice_id || index,
+            type: getNoticeType(notice.priority),
+            message: notice.title,
+            time: formatTimeAgo(notice.post_date),
+          }))
+        : [];
+
+      // Update state with fetched data
+      setDashboardData({
+        stats: {
+          ...statsResult.data,
+          trends: {
+            students: { value: "+12%", isPositive: true },
+            faculty: { value: "+5", isPositive: true },
+            courses: { value: "+8", isPositive: true },
+            attendance: { value: "+3.1%", isPositive: true },
+          },
+        },
+        enrollmentTrends: enrollmentTrendsResult.data,
+        departments: departmentsResult.data || [],
+        recentActivities,
+        systemNotifications: systemNotificationsResult.data || [],
+        gradeDistribution: gradeDistributionResult.data || [],
+        upcomingEvents: upcomingEventsResult.data || [],
+      });
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError(err.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
+    fetchDashboardData();
   }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
+    await fetchDashboardData();
     setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  // Helper function to get notice type for activity icon
+  const getNoticeType = (priority) => {
+    switch (priority) {
+      case "high":
+        return "notice_published";
+      case "medium":
+        return "exam_scheduled";
+      case "low":
+        return "course_added";
+      default:
+        return "notice_published";
+    }
+  };
+
+  // Helper function to format time ago
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Recently";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600)
+      return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800)
+      return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    return date.toLocaleDateString();
   };
 
   const SimpleLineChart = ({
@@ -221,6 +175,21 @@ export default function AdminDashboard() {
     color = "#3b82f6",
     height = 200,
   }) => {
+    if (!data || data.length === 0) {
+      return (
+        <div
+          style={{
+            height,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <p style={{ color: "var(--gray-500)" }}>No data available</p>
+        </div>
+      );
+    }
+
     const max = Math.max(...data);
     const min = Math.min(...data);
     const range = max - min || 1;
@@ -265,6 +234,21 @@ export default function AdminDashboard() {
   };
 
   const SimpleBarChart = ({ data, labels, colors, height = 200 }) => {
+    if (!data || data.length === 0) {
+      return (
+        <div
+          style={{
+            height,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <p style={{ color: "var(--gray-500)" }}>No data available</p>
+        </div>
+      );
+    }
+
     const max = Math.max(...data);
 
     return (
@@ -295,6 +279,21 @@ export default function AdminDashboard() {
   };
 
   const SimplePieChart = ({ data, colors, height = 200 }) => {
+    if (!data || data.length === 0) {
+      return (
+        <div
+          style={{
+            height,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <p style={{ color: "var(--gray-500)" }}>No data available</p>
+        </div>
+      );
+    }
+
     const total = data.reduce((sum, item) => sum + item.percentage, 0);
     let currentAngle = -90;
 
@@ -353,6 +352,31 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="dashboard">
+        <div
+          style={{
+            padding: "2rem",
+            textAlign: "center",
+            color: "var(--danger)",
+          }}
+        >
+          <AlertTriangle size={48} style={{ marginBottom: "1rem" }} />
+          <h2>Error Loading Dashboard</h2>
+          <p>{error}</p>
+          <button
+            onClick={handleRefresh}
+            className="btn-secondary"
+            style={{ marginTop: "1rem" }}
+          >
+            <RefreshCw size={18} /> Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -402,11 +426,11 @@ export default function AdminDashboard() {
           <div className="stat-content">
             <div className="stat-label">Total Students</div>
             <div className="stat-value">
-              {mockDashboardData.stats.totalStudents.toLocaleString()}
+              {dashboardData.stats.totalStudents.toLocaleString()}
             </div>
             <div className="stat-trend stat-trend--up">
               <TrendingUp size={14} />
-              {mockDashboardData.stats.trends.students.value}
+              {dashboardData.stats.trends.students.value}
             </div>
           </div>
         </motion.div>
@@ -423,12 +447,10 @@ export default function AdminDashboard() {
           </div>
           <div className="stat-content">
             <div className="stat-label">Faculty Members</div>
-            <div className="stat-value">
-              {mockDashboardData.stats.totalFaculty}
-            </div>
+            <div className="stat-value">{dashboardData.stats.totalFaculty}</div>
             <div className="stat-trend stat-trend--up">
               <TrendingUp size={14} />
-              {mockDashboardData.stats.trends.faculty.value}
+              {dashboardData.stats.trends.faculty.value}
             </div>
           </div>
         </motion.div>
@@ -445,12 +467,10 @@ export default function AdminDashboard() {
           </div>
           <div className="stat-content">
             <div className="stat-label">Active Courses</div>
-            <div className="stat-value">
-              {mockDashboardData.stats.totalCourses}
-            </div>
+            <div className="stat-value">{dashboardData.stats.totalCourses}</div>
             <div className="stat-trend stat-trend--up">
               <TrendingUp size={14} />
-              {mockDashboardData.stats.trends.courses.value}
+              {dashboardData.stats.trends.courses.value}
             </div>
           </div>
         </motion.div>
@@ -468,11 +488,11 @@ export default function AdminDashboard() {
           <div className="stat-content">
             <div className="stat-label">Attendance Rate</div>
             <div className="stat-value">
-              {mockDashboardData.stats.attendanceRate}%
+              {dashboardData.stats.attendanceRate}%
             </div>
             <div className="stat-trend stat-trend--up">
               <TrendingUp size={14} />
-              {mockDashboardData.stats.trends.attendance.value}
+              {dashboardData.stats.trends.attendance.value}
             </div>
           </div>
         </motion.div>
@@ -496,8 +516,8 @@ export default function AdminDashboard() {
             </button>
           </div>
           <SimpleLineChart
-            data={mockDashboardData.enrollmentTrends.data}
-            labels={mockDashboardData.enrollmentTrends.labels}
+            data={dashboardData.enrollmentTrends.data}
+            labels={dashboardData.enrollmentTrends.labels}
             color="#3b82f6"
             height={250}
           />
@@ -519,9 +539,9 @@ export default function AdminDashboard() {
             </button>
           </div>
           <SimpleBarChart
-            data={mockDashboardData.departments.map((d) => d.avgGPA)}
-            labels={mockDashboardData.departments.map((d) => d.code)}
-            colors={mockDashboardData.departments.map((d) => d.color)}
+            data={dashboardData.departments.map((d) => parseFloat(d.avgGPA))}
+            labels={dashboardData.departments.map((d) => d.code)}
+            colors={dashboardData.departments.map((d) => d.color)}
             height={250}
           />
         </motion.div>
@@ -542,12 +562,12 @@ export default function AdminDashboard() {
             </button>
           </div>
           <SimplePieChart
-            data={mockDashboardData.gradeDistribution}
+            data={dashboardData.gradeDistribution}
             colors={["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#991b1b"]}
             height={250}
           />
           <div className="pie-legend">
-            {mockDashboardData.gradeDistribution.map((item, index) => (
+            {dashboardData.gradeDistribution.map((item, index) => (
               <div key={index} className="legend-item">
                 <span
                   className="legend-color"
@@ -601,48 +621,58 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {mockDashboardData.departments.map((dept) => (
-                  <tr key={dept.id}>
-                    <td>
-                      <div className="dept-name">
-                        <span
-                          className="dept-badge"
-                          style={{ backgroundColor: dept.color }}
-                        ></span>
-                        <div>
-                          <div className="dept-code">{dept.code}</div>
-                          <div className="dept-fullname">{dept.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{dept.students}</td>
-                    <td>{dept.faculty}</td>
-                    <td>{dept.courses}</td>
-                    <td>
-                      <div className="attendance-cell">
-                        <div className="progress-bar">
-                          <div
-                            className="progress-fill"
-                            style={{ width: `${dept.avgAttendance}%` }}
-                          ></div>
-                        </div>
-                        <span>{dept.avgAttendance}%</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className={`gpa-badge ${
-                          dept.avgGPA >= 3.5 ? "gpa-badge--high" : ""
-                        }`}
-                      >
-                        {dept.avgGPA}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="action-btn">View Details</button>
+                {dashboardData.departments.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: "center" }}>
+                      No departments found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  dashboardData.departments.map((dept) => (
+                    <tr key={dept.id}>
+                      <td>
+                        <div className="dept-name">
+                          <span
+                            className="dept-badge"
+                            style={{ backgroundColor: dept.color }}
+                          ></span>
+                          <div>
+                            <div className="dept-code">{dept.code}</div>
+                            <div className="dept-fullname">{dept.name}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{dept.students}</td>
+                      <td>{dept.faculty}</td>
+                      <td>{dept.courses}</td>
+                      <td>
+                        <div className="attendance-cell">
+                          <div className="progress-bar">
+                            <div
+                              className="progress-fill"
+                              style={{ width: `${dept.avgAttendance}%` }}
+                            ></div>
+                          </div>
+                          <span>{dept.avgAttendance}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          className={`gpa-badge ${
+                            parseFloat(dept.avgGPA) >= 3.5
+                              ? "gpa-badge--high"
+                              : ""
+                          }`}
+                        >
+                          {dept.avgGPA}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="action-btn">View Details</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -662,30 +692,36 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="activities-list">
-            {mockDashboardData.recentActivities.map((activity) => (
-              <div key={activity.id} className="activity-item">
-                <div
-                  className={`activity-icon activity-icon--${activity.type}`}
-                >
-                  {activity.type === "student_registered" && (
-                    <UserPlus size={16} />
-                  )}
-                  {activity.type === "grade_updated" && (
-                    <TrendingUp size={16} />
-                  )}
-                  {activity.type === "attendance_marked" && (
-                    <Calendar size={16} />
-                  )}
-                  {activity.type === "exam_scheduled" && <Award size={16} />}
-                  {activity.type === "notice_published" && <Bell size={16} />}
-                  {activity.type === "course_added" && <BookOpen size={16} />}
+            {dashboardData.recentActivities.length === 0 ? (
+              <p style={{ textAlign: "center", color: "var(--gray-500)" }}>
+                No recent activities
+              </p>
+            ) : (
+              dashboardData.recentActivities.map((activity) => (
+                <div key={activity.id} className="activity-item">
+                  <div
+                    className={`activity-icon activity-icon--${activity.type}`}
+                  >
+                    {activity.type === "student_registered" && (
+                      <UserPlus size={16} />
+                    )}
+                    {activity.type === "grade_updated" && (
+                      <TrendingUp size={16} />
+                    )}
+                    {activity.type === "attendance_marked" && (
+                      <Calendar size={16} />
+                    )}
+                    {activity.type === "exam_scheduled" && <Award size={16} />}
+                    {activity.type === "notice_published" && <Bell size={16} />}
+                    {activity.type === "course_added" && <BookOpen size={16} />}
+                  </div>
+                  <div className="activity-content">
+                    <p>{activity.message}</p>
+                    <span>{activity.time}</span>
+                  </div>
                 </div>
-                <div className="activity-content">
-                  <p>{activity.message}</p>
-                  <span>{activity.time}</span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </motion.div>
       </div>
@@ -705,26 +741,34 @@ export default function AdminDashboard() {
           <button className="btn-link">Mark all as read</button>
         </div>
         <div className="notifications-list">
-          {mockDashboardData.systemNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`notification-item notification-item--${notification.type}`}
-            >
-              <div className="notification-icon">
-                {notification.type === "warning" && <AlertTriangle size={18} />}
-                {notification.type === "info" && <Activity size={18} />}
-                {notification.type === "success" && <CheckCircle size={18} />}
+          {dashboardData.systemNotifications.length === 0 ? (
+            <p style={{ textAlign: "center", color: "var(--gray-500)" }}>
+              No notifications
+            </p>
+          ) : (
+            dashboardData.systemNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`notification-item notification-item--${notification.type}`}
+              >
+                <div className="notification-icon">
+                  {notification.type === "warning" && (
+                    <AlertTriangle size={18} />
+                  )}
+                  {notification.type === "info" && <Activity size={18} />}
+                  {notification.type === "success" && <CheckCircle size={18} />}
+                </div>
+                <div className="notification-content">
+                  <h4>{notification.title}</h4>
+                  <p>{notification.message}</p>
+                  <span>{notification.timestamp}</span>
+                </div>
+                {!notification.isRead && (
+                  <div className="notification-badge"></div>
+                )}
               </div>
-              <div className="notification-content">
-                <h4>{notification.title}</h4>
-                <p>{notification.message}</p>
-                <span>{notification.timestamp}</span>
-              </div>
-              {!notification.isRead && (
-                <div className="notification-badge"></div>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </motion.div>
     </motion.div>
