@@ -1,157 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Static data for testing
-const STATIC_PROGRAMS = [
-  {
-    program_id: 1,
-    program_code: "BSC-CS",
-    program_name: "Bachelor of Science in Computer Science",
-    program_type: "undergraduate",
-    duration_years: 4,
-    total_credits: 120,
-    department: {
-      department_id: 1,
-      department_name: "Computer Science",
-      faculty: { faculty_name: "Faculty of Science & Technology" },
-    },
-    description:
-      "Comprehensive program covering fundamental and advanced topics in computer science.",
-    admission_requirements: "High school diploma with mathematics and physics",
-    created_at: "2023-01-15",
-    is_active: true,
-  },
-  {
-    program_id: 2,
-    program_code: "MSC-DS",
-    program_name: "Master of Science in Data Science",
-    program_type: "postgraduate",
-    duration_years: 2,
-    total_credits: 60,
-    department: {
-      department_id: 1,
-      department_name: "Computer Science",
-      faculty: { faculty_name: "Faculty of Science & Technology" },
-    },
-    description:
-      "Advanced program focusing on data analytics, machine learning, and big data technologies.",
-    admission_requirements:
-      "Bachelor's degree in Computer Science or related field",
-    created_at: "2023-02-20",
-    is_active: true,
-  },
-  {
-    program_id: 3,
-    program_code: "BSC-EE",
-    program_name: "Bachelor of Science in Electrical Engineering",
-    program_type: "undergraduate",
-    duration_years: 4,
-    total_credits: 128,
-    department: {
-      department_id: 2,
-      department_name: "Electrical Engineering",
-      faculty: { faculty_name: "Faculty of Engineering" },
-    },
-    description:
-      "Program covering circuits, electronics, power systems, and telecommunications.",
-    admission_requirements:
-      "High school diploma with strong mathematics and physics background",
-    created_at: "2023-01-10",
-    is_active: true,
-  },
-  {
-    program_id: 4,
-    program_code: "MBA",
-    program_name: "Master of Business Administration",
-    program_type: "postgraduate",
-    duration_years: 2,
-    total_credits: 48,
-    department: {
-      department_id: 3,
-      department_name: "Business Administration",
-      faculty: { faculty_name: "Faculty of Business & Economics" },
-    },
-    description:
-      "Executive MBA program for working professionals and business leaders.",
-    admission_requirements: "Bachelor's degree and 2+ years work experience",
-    created_at: "2023-03-05",
-    is_active: true,
-  },
-  {
-    program_id: 5,
-    program_code: "BSC-ME",
-    program_name: "Bachelor of Science in Mechanical Engineering",
-    program_type: "undergraduate",
-    duration_years: 4,
-    total_credits: 130,
-    department: {
-      department_id: 4,
-      department_name: "Mechanical Engineering",
-      faculty: { faculty_name: "Faculty of Engineering" },
-    },
-    description:
-      "Comprehensive mechanical engineering program with hands-on lab experience.",
-    admission_requirements: "High school diploma with mathematics and physics",
-    created_at: "2023-01-12",
-    is_active: false,
-  },
-  {
-    program_id: 6,
-    program_code: "PHD-CS",
-    program_name: "Doctor of Philosophy in Computer Science",
-    program_type: "doctoral",
-    duration_years: 4,
-    total_credits: 90,
-    department: {
-      department_id: 1,
-      department_name: "Computer Science",
-      faculty: { faculty_name: "Faculty of Science & Technology" },
-    },
-    description: "Research-intensive doctoral program in computer science.",
-    admission_requirements: "Master's degree with research experience",
-    created_at: "2023-04-10",
-    is_active: true,
-  },
-];
-
-const STATIC_DEPARTMENTS = [
-  {
-    department_id: 1,
-    department_name: "Computer Science",
-    faculty_name: "Faculty of Science & Technology",
-  },
-  {
-    department_id: 2,
-    department_name: "Electrical Engineering",
-    faculty_name: "Faculty of Engineering",
-  },
-  {
-    department_id: 3,
-    department_name: "Business Administration",
-    faculty_name: "Faculty of Business & Economics",
-  },
-  {
-    department_id: 4,
-    department_name: "Mechanical Engineering",
-    faculty_name: "Faculty of Engineering",
-  },
-  {
-    department_id: 5,
-    department_name: "Mathematics",
-    faculty_name: "Faculty of Science & Technology",
-  },
-];
-
-const PROGRAM_TYPES = [
-  "undergraduate",
-  "postgraduate",
-  "doctoral",
-  "certificate",
-  "diploma",
-];
+import { adminService } from "../services/api/adminService";
 
 export default function ProgramManagement() {
-  const [programs, setPrograms] = useState(STATIC_PROGRAMS);
+  const [programs, setPrograms] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -160,6 +14,8 @@ export default function ProgramManagement() {
   const [filterType, setFilterType] = useState("all");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -173,6 +29,47 @@ export default function ProgramManagement() {
     admission_requirements: "",
     is_active: true,
   });
+
+  const PROGRAM_TYPES = [
+    "undergraduate",
+    "postgraduate",
+    "doctoral",
+    "certificate",
+    "diploma",
+  ];
+
+  // Load initial data
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [programsRes, departmentsRes] = await Promise.all([
+        adminService.getPrograms(),
+        adminService.getDepartments(),
+      ]);
+
+      if (programsRes.success) {
+        setPrograms(programsRes.data);
+      } else {
+        setError(programsRes.error);
+      }
+
+      if (departmentsRes.success) {
+        setDepartments(departmentsRes.data);
+      } else {
+        setError(departmentsRes.error);
+      }
+    } catch (err) {
+      setError("Failed to load data");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Statistics
   const stats = {
@@ -194,7 +91,7 @@ export default function ProgramManagement() {
       filterType === "all" || program.program_type === filterType;
     const matchesDepartment =
       filterDepartment === "all" ||
-      program.department.department_id === parseInt(filterDepartment);
+      program.department?.department_id === parseInt(filterDepartment);
     const matchesStatus =
       filterStatus === "all" ||
       (filterStatus === "active" && program.is_active) ||
@@ -203,52 +100,96 @@ export default function ProgramManagement() {
     return matchesSearch && matchesType && matchesDepartment && matchesStatus;
   });
 
-  const handleCreateProgram = (e) => {
-    e.preventDefault();
-    const newProgram = {
-      program_id: Math.max(...programs.map((p) => p.program_id)) + 1,
-      ...formData,
-      department: STATIC_DEPARTMENTS.find(
-        (d) => d.department_id === parseInt(formData.department_id)
-      ),
-      created_at: new Date().toISOString().split("T")[0],
-    };
-    setPrograms([...programs, newProgram]);
-    setShowCreateModal(false);
-    resetForm();
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleEditProgram = (e) => {
+  const handleCreateProgram = async (e) => {
     e.preventDefault();
-    setPrograms(
-      programs.map((p) =>
-        p.program_id === selectedProgram.program_id
-          ? {
-              ...p,
-              ...formData,
-              department: STATIC_DEPARTMENTS.find(
-                (d) => d.department_id === parseInt(formData.department_id)
-              ),
-            }
-          : p
-      )
-    );
-    setShowEditModal(false);
-    resetForm();
-  };
+    setError(null);
 
-  const handleDeleteProgram = (programId) => {
-    if (window.confirm("Are you sure you want to delete this program?")) {
-      setPrograms(programs.filter((p) => p.program_id !== programId));
+    try {
+      const result = await adminService.createProgram(formData);
+
+      if (result.success) {
+        showSuccess("Program created successfully");
+        setShowCreateModal(false);
+        resetForm();
+        await loadData();
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to create program");
+      console.error(err);
     }
   };
 
-  const toggleProgramStatus = (programId) => {
-    setPrograms(
-      programs.map((p) =>
-        p.program_id === programId ? { ...p, is_active: !p.is_active } : p
-      )
-    );
+  const handleEditProgram = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      const result = await adminService.updateProgram(
+        selectedProgram.program_id,
+        formData
+      );
+
+      if (result.success) {
+        showSuccess("Program updated successfully");
+        setShowEditModal(false);
+        resetForm();
+        await loadData();
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to update program");
+      console.error(err);
+    }
+  };
+
+  const handleDeleteProgram = async (programId) => {
+    if (window.confirm("Are you sure you want to delete this program?")) {
+      setError(null);
+
+      try {
+        const result = await adminService.deleteProgram(programId);
+
+        if (result.success) {
+          showSuccess("Program deleted successfully");
+          await loadData();
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError("Failed to delete program");
+        console.error(err);
+      }
+    }
+  };
+
+  const toggleProgramStatus = async (program) => {
+    setError(null);
+
+    try {
+      const result = await adminService.updateProgram(program.program_id, {
+        is_active: !program.is_active,
+      });
+
+      if (result.success) {
+        showSuccess(
+          `Program ${result.data.is_active ? "activated" : "deactivated"}`
+        );
+        await loadData();
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to update program status");
+      console.error(err);
+    }
   };
 
   const openEditModal = (program) => {
@@ -259,9 +200,9 @@ export default function ProgramManagement() {
       program_type: program.program_type,
       duration_years: program.duration_years,
       total_credits: program.total_credits,
-      department_id: program.department.department_id,
-      description: program.description,
-      admission_requirements: program.admission_requirements,
+      department_id: program.department?.department_id || "",
+      description: program.description || "",
+      admission_requirements: program.admission_requirements || "",
       is_active: program.is_active,
     });
     setShowEditModal(true);
@@ -285,6 +226,7 @@ export default function ProgramManagement() {
       is_active: true,
     });
     setSelectedProgram(null);
+    setError(null);
   };
 
   const getProgramTypeColor = (type) => {
@@ -298,12 +240,102 @@ export default function ProgramManagement() {
     return colors[type] || "#6b7280";
   };
 
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "4px solid #f3f4f6",
+              borderTop: "4px solid #1e40af",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <p style={{ color: "#6b7280" }}>Loading programs...</p>
+        </div>
+        <style>
+          {`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       style={{ padding: "24px" }}
     >
+      {/* Success Message */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              position: "fixed",
+              top: "20px",
+              right: "20px",
+              backgroundColor: "#10b981",
+              color: "white",
+              padding: "16px 24px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              zIndex: 1000,
+            }}
+          >
+            ✓ {successMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Message */}
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fee",
+            border: "1px solid #fcc",
+            color: "#c33",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c33",
+              cursor: "pointer",
+              fontSize: "18px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: "32px" }}>
         <h1
@@ -462,9 +494,9 @@ export default function ProgramManagement() {
               }}
             >
               <option value="all">All Departments</option>
-              {STATIC_DEPARTMENTS.map((dept) => (
-                <option key={dept.department_id} value={dept.department_id}>
-                  {dept.department_name}
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
                 </option>
               ))}
             </select>
@@ -534,269 +566,290 @@ export default function ProgramManagement() {
           overflow: "hidden",
         }}
       >
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead
-              style={{
-                backgroundColor: "#f9fafb",
-                borderBottom: "1px solid #e5e7eb",
-              }}
-            >
-              <tr>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Program Code
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Program Name
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Type
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Department
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Duration
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Credits
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Status
-                </th>
-                <th
-                  style={{
-                    padding: "12px 16px",
-                    textAlign: "left",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPrograms.map((program) => (
-                <tr
-                  key={program.program_id}
-                  style={{ borderBottom: "1px solid #f3f4f6" }}
-                >
-                  <td
+        {filteredPrograms.length === 0 ? (
+          <div
+            style={{
+              padding: "60px 20px",
+              textAlign: "center",
+              color: "#6b7280",
+            }}
+          >
+            <p style={{ fontSize: "18px", marginBottom: "8px" }}>
+              No programs found
+            </p>
+            <p style={{ fontSize: "14px" }}>
+              {searchTerm || filterType !== "all" || filterDepartment !== "all"
+                ? "Try adjusting your filters"
+                : "Create your first program to get started"}
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead
+                style={{
+                  backgroundColor: "#f9fafb",
+                  borderBottom: "1px solid #e5e7eb",
+                }}
+              >
+                <tr>
+                  <th
                     style={{
-                      padding: "16px",
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "#1e40af",
-                    }}
-                  >
-                    {program.program_code}
-                  </td>
-                  <td
-                    style={{
-                      padding: "16px",
-                      fontSize: "14px",
-                      color: "#111827",
-                    }}
-                  >
-                    {program.program_name}
-                  </td>
-                  <td style={{ padding: "16px" }}>
-                    <span
-                      style={{
-                        padding: "4px 12px",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        fontWeight: "500",
-                        backgroundColor: `${getProgramTypeColor(
-                          program.program_type
-                        )}20`,
-                        color: getProgramTypeColor(program.program_type),
-                      }}
-                    >
-                      {program.program_type.charAt(0).toUpperCase() +
-                        program.program_type.slice(1)}
-                    </span>
-                  </td>
-                  <td
-                    style={{
-                      padding: "16px",
-                      fontSize: "14px",
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
                       color: "#6b7280",
+                      textTransform: "uppercase",
                     }}
                   >
-                    {program.department.department_name}
-                  </td>
-                  <td
+                    Program Code
+                  </th>
+                  <th
                     style={{
-                      padding: "16px",
-                      fontSize: "14px",
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
                       color: "#6b7280",
+                      textTransform: "uppercase",
                     }}
                   >
-                    {program.duration_years} years
-                  </td>
-                  <td
+                    Program Name
+                  </th>
+                  <th
                     style={{
-                      padding: "16px",
-                      fontSize: "14px",
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
                       color: "#6b7280",
+                      textTransform: "uppercase",
                     }}
                   >
-                    {program.total_credits}
-                  </td>
-                  <td style={{ padding: "16px" }}>
-                    <span
-                      style={{
-                        padding: "4px 12px",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        fontWeight: "500",
-                        backgroundColor: program.is_active
-                          ? "#10b98120"
-                          : "#6b728020",
-                        color: program.is_active ? "#10b981" : "#6b7280",
-                      }}
-                    >
-                      {program.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "16px" }}>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        onClick={() => openDetailsModal(program)}
-                        style={{
-                          padding: "6px 12px",
-                          backgroundColor: "#3b82f6",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                        }}
-                        title="View Details"
-                      >
-                        👁️
-                      </button>
-                      <button
-                        onClick={() => openEditModal(program)}
-                        style={{
-                          padding: "6px 12px",
-                          backgroundColor: "#f59e0b",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                        }}
-                        title="Edit"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => toggleProgramStatus(program.program_id)}
-                        style={{
-                          padding: "6px 12px",
-                          backgroundColor: program.is_active
-                            ? "#6b7280"
-                            : "#10b981",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                        }}
-                        title={program.is_active ? "Deactivate" : "Activate"}
-                      >
-                        {program.is_active ? "⏸️" : "▶️"}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProgram(program.program_id)}
-                        style={{
-                          padding: "6px 12px",
-                          backgroundColor: "#dc2626",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                        }}
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
+                    Type
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Department
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Duration
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Credits
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Status
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredPrograms.map((program) => (
+                  <tr
+                    key={program.program_id}
+                    style={{ borderBottom: "1px solid #f3f4f6" }}
+                  >
+                    <td
+                      style={{
+                        padding: "16px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#1e40af",
+                      }}
+                    >
+                      {program.program_code}
+                    </td>
+                    <td
+                      style={{
+                        padding: "16px",
+                        fontSize: "14px",
+                        color: "#111827",
+                      }}
+                    >
+                      {program.program_name}
+                    </td>
+                    <td style={{ padding: "16px" }}>
+                      <span
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: "12px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          backgroundColor: `${getProgramTypeColor(
+                            program.program_type
+                          )}20`,
+                          color: getProgramTypeColor(program.program_type),
+                        }}
+                      >
+                        {program.program_type.charAt(0).toUpperCase() +
+                          program.program_type.slice(1)}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        padding: "16px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {program.department?.department_name || "N/A"}
+                    </td>
+                    <td
+                      style={{
+                        padding: "16px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {program.duration_years} years
+                    </td>
+                    <td
+                      style={{
+                        padding: "16px",
+                        fontSize: "14px",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {program.total_credits}
+                    </td>
+                    <td style={{ padding: "16px" }}>
+                      <span
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: "12px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          backgroundColor: program.is_active
+                            ? "#10b98120"
+                            : "#6b728020",
+                          color: program.is_active ? "#10b981" : "#6b7280",
+                        }}
+                      >
+                        {program.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "16px" }}>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          onClick={() => openDetailsModal(program)}
+                          style={{
+                            padding: "6px 12px",
+                            backgroundColor: "#3b82f6",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                          title="View Details"
+                        >
+                          👁️
+                        </button>
+                        <button
+                          onClick={() => openEditModal(program)}
+                          style={{
+                            padding: "6px 12px",
+                            backgroundColor: "#f59e0b",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => toggleProgramStatus(program)}
+                          style={{
+                            padding: "6px 12px",
+                            backgroundColor: program.is_active
+                              ? "#6b7280"
+                              : "#10b981",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                          title={program.is_active ? "Deactivate" : "Activate"}
+                        >
+                          {program.is_active ? "⏸️" : "▶️"}
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleDeleteProgram(program.program_id)
+                          }
+                          style={{
+                            padding: "6px 12px",
+                            backgroundColor: "#dc2626",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Create Modal */}
@@ -821,7 +874,8 @@ export default function ProgramManagement() {
               <ProgramForm
                 formData={formData}
                 setFormData={setFormData}
-                departments={STATIC_DEPARTMENTS}
+                departments={departments}
+                programTypes={PROGRAM_TYPES}
               />
               <div
                 style={{
@@ -891,7 +945,8 @@ export default function ProgramManagement() {
               <ProgramForm
                 formData={formData}
                 setFormData={setFormData}
-                departments={STATIC_DEPARTMENTS}
+                departments={departments}
+                programTypes={PROGRAM_TYPES}
               />
               <div
                 style={{
@@ -991,19 +1046,24 @@ export default function ProgramManagement() {
               />
               <DetailRow
                 label="Department"
-                value={selectedProgram.department.department_name}
+                value={selectedProgram.department?.department_name || "N/A"}
               />
               <DetailRow
                 label="Faculty"
-                value={selectedProgram.department.faculty.faculty_name}
+                value={
+                  selectedProgram.department?.faculty?.faculty_name || "N/A"
+                }
               />
               <DetailRow
                 label="Description"
-                value={selectedProgram.description}
+                value={selectedProgram.description || "No description"}
               />
               <DetailRow
                 label="Admission Requirements"
-                value={selectedProgram.admission_requirements}
+                value={
+                  selectedProgram.admission_requirements ||
+                  "No requirements specified"
+                }
               />
               <DetailRow
                 label="Status"
@@ -1026,9 +1086,11 @@ export default function ProgramManagement() {
               />
               <DetailRow
                 label="Created Date"
-                value={new Date(
+                value={
                   selectedProgram.created_at
-                ).toLocaleDateString()}
+                    ? new Date(selectedProgram.created_at).toLocaleDateString()
+                    : "N/A"
+                }
               />
             </div>
             <div
@@ -1096,7 +1158,7 @@ function StatCard({ title, value, icon, color }) {
   );
 }
 
-function ProgramForm({ formData, setFormData, departments }) {
+function ProgramForm({ formData, setFormData, departments, programTypes }) {
   return (
     <div style={{ display: "grid", gap: "16px" }}>
       <div
@@ -1156,7 +1218,7 @@ function ProgramForm({ formData, setFormData, departments }) {
               fontSize: "14px",
             }}
           >
-            {PROGRAM_TYPES.map((type) => (
+            {programTypes.map((type) => (
               <option key={type} value={type}>
                 {type.charAt(0).toUpperCase() + type.slice(1)}
               </option>
@@ -1222,8 +1284,8 @@ function ProgramForm({ formData, setFormData, departments }) {
         >
           <option value="">Select Department</option>
           {departments.map((dept) => (
-            <option key={dept.department_id} value={dept.department_id}>
-              {dept.department_name}
+            <option key={dept.id} value={dept.id}>
+              {dept.name}
             </option>
           ))}
         </select>
