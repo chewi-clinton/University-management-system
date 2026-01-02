@@ -616,6 +616,273 @@ const adminService = {
     }
   },
 
+  // ==================== Examinations ====================
+  getExaminations: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/examinations/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching examinations:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load examinations",
+      };
+    }
+  },
+
+  createExamination: async (examinationData) => {
+    try {
+      const response = await api.post("/examinations/", examinationData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating examination:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create examination",
+      };
+    }
+  },
+
+  updateExamination: async (examinationId, examinationData) => {
+    try {
+      const response = await api.patch(
+        `/examinations/${examinationId}/`,
+        examinationData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating examination:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update examination",
+      };
+    }
+  },
+
+  deleteExamination: async (examinationId) => {
+    try {
+      await api.delete(`/examinations/${examinationId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting examination:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete examination",
+      };
+    }
+  },
+
+  // ==================== Exam Schedules ====================
+  createExamSchedule: async (scheduleData) => {
+    try {
+      const response = await api.post("/exam-schedules/", scheduleData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating exam schedule:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create exam schedule",
+      };
+    }
+  },
+
+  updateExamSchedule: async (scheduleId, scheduleData) => {
+    try {
+      const response = await api.patch(
+        `/exam-schedules/${scheduleId}/`,
+        scheduleData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating exam schedule:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update exam schedule",
+      };
+    }
+  },
+
+  deleteExamSchedule: async (scheduleId) => {
+    try {
+      await api.delete(`/exam-schedules/${scheduleId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting exam schedule:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete exam schedule",
+      };
+    }
+  },
+
+  // ==================== Admit Cards ====================
+  getAdmitCards: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/admit-cards/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching admit cards:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load admit cards",
+      };
+    }
+  },
+
+  generateAdmitCards: async (scheduleId) => {
+    try {
+      const response = await api.post(
+        `/exam-schedules/${scheduleId}/generate-admit-cards/`
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error generating admit cards:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to generate admit cards",
+      };
+    }
+  },
+
+  downloadAdmitCard: async (admitCardId) => {
+    try {
+      const response = await api.get(`/admit-cards/${admitCardId}/download/`, {
+        responseType: "blob",
+      });
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error downloading admit card:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to download admit card",
+      };
+    }
+  },
+
+  // ==================== Exam Rooms ====================
+  getExamRooms: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/exam-rooms/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching exam rooms:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load exam rooms",
+      };
+    }
+  },
+
+  createExamRoom: async (roomData) => {
+    try {
+      const response = await api.post("/exam-rooms/", roomData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating exam room:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create exam room",
+      };
+    }
+  },
+
+  updateExamRoom: async (roomId, roomData) => {
+    try {
+      const response = await api.patch(`/exam-rooms/${roomId}/`, roomData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating exam room:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update exam room",
+      };
+    }
+  },
+
+  deleteExamRoom: async (roomId) => {
+    try {
+      await api.delete(`/exam-rooms/${roomId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting exam room:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete exam room",
+      };
+    }
+  },
+
+  // ==================== Faculty Members (for Invigilators) ====================
+  getInvigilators: async () => {
+    try {
+      const response = await api.get("/faculty-members/");
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching invigilators:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load invigilators",
+      };
+    }
+  },
+
   // ==================== Notices ====================
   getAllNotices: async (filters = {}) => {
     try {

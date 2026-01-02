@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
@@ -18,190 +18,228 @@ import {
   QrCode,
   UserCheck,
   AlertCircle,
-  Filter,
   Building,
-  ClipboardCheck,
+  RefreshCw,
 } from "lucide-react";
-import {
-  mockExaminations,
-  mockExamSchedules,
-  mockAdmitCards,
-  mockExamRooms,
-  mockInvigilators,
-} from "../mock-data/examsMock";
-import "../styles/admin-pages/AdminExamManagement.css";
+import { adminService } from "../services/api/adminService";
 
 export default function AdminExamManagement() {
-  const [examinations, setExaminations] = useState(mockExaminations);
-  const [schedules, setSchedules] = useState(mockExamSchedules);
-  const [admitCards, setAdmitCards] = useState(mockAdmitCards);
-  const [activeTab, setActiveTab] = useState("examinations"); // examinations, schedules, admit-cards, rooms
+  const [examinations, setExaminations] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [admitCards, setAdmitCards] = useState([]);
+  const [examRooms, setExamRooms] = useState([]);
+  const [courseOfferings, setCourseOfferings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("examinations");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  // Form state for creating examination
   const [examForm, setExamForm] = useState({
-    examName: "",
-    courseCode: "",
-    courseName: "",
-    instructor: "",
-    examType: "final",
-    totalMarks: 100,
-    weightage: 40,
-    duration: 180,
+    offering_id: "",
+    exam_name: "",
+    exam_type: "final",
+    total_marks: 100,
+    duration_minutes: 180,
     instructions: "",
-    syllabus: "",
-    isActive: true,
+    passing_marks: 40,
   });
 
-  // Form state for scheduling
   const [scheduleForm, setScheduleForm] = useState({
-    examId: "",
-    date: "",
-    startTime: "",
-    endTime: "",
-    roomId: "",
-    invigilatorId: "",
+    exam_id: "",
+    exam_date: "",
+    start_time: "",
+    end_time: "",
+    room_id: "",
+    invigilator_id: "",
   });
 
-  // Calculate statistics
+  const examTypes = [
+    { value: "final", label: "Final Exam" },
+    { value: "midterm", label: "Midterm Exam" },
+    { value: "quiz", label: "Quiz" },
+    { value: "practical", label: "Practical" },
+  ];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [examsRes, schedulesRes, admitCardsRes, roomsRes, offeringsRes] =
+        await Promise.all([
+          adminService.getExaminations?.() ||
+            Promise.resolve({ success: true, data: [] }),
+          adminService.getExamSchedules(),
+          adminService.getAdmitCards?.() ||
+            Promise.resolve({ success: true, data: [] }),
+          adminService.getExamRooms?.() ||
+            Promise.resolve({ success: true, data: [] }),
+          adminService.getCourseOfferings(),
+        ]);
+
+      if (examsRes.success) setExaminations(examsRes.data);
+      if (schedulesRes.success) setSchedules(schedulesRes.data);
+      if (admitCardsRes.success) setAdmitCards(admitCardsRes.data);
+      if (roomsRes.success) setExamRooms(roomsRes.data);
+      if (offeringsRes.success) setCourseOfferings(offeringsRes.data);
+    } catch (err) {
+      setError("Failed to load data");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = {
     totalExams: examinations.length,
-    activeExams: examinations.filter((e) => e.isActive).length,
     scheduledExams: schedules.length,
     totalAdmitCards: admitCards.length,
-    downloadedCards: admitCards.filter((a) => a.isDownloaded).length,
     eligibleStudents: admitCards.filter(
-      (a) => a.eligibilityStatus === "eligible"
+      (a) => a.eligibility_status === "eligible"
     ).length,
   };
 
-  // Filter examinations
   const filteredExaminations = examinations.filter((exam) => {
     const matchesSearch =
-      exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.course.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesType = filterType === "all" || exam.examType === filterType;
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "active" && exam.isActive) ||
-      (filterStatus === "inactive" && !exam.isActive);
-
-    return matchesSearch && matchesType && matchesStatus;
+      exam.exam_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.offering?.course?.course_code
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      exam.offering?.course?.course_name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+    const matchesType = filterType === "all" || exam.exam_type === filterType;
+    return matchesSearch && matchesType;
   });
 
-  // Filter schedules
   const filteredSchedules = schedules.filter((schedule) => {
     return (
-      schedule.exam.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      schedule.room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      schedule.exam?.exam_name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      schedule.room?.room_number
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase())
     );
   });
 
-  // Filter admit cards
   const filteredAdmitCards = admitCards.filter((card) => {
+    const studentName = card.student
+      ? `${card.student.first_name || ""} ${
+          card.student.last_name || ""
+        }`.toLowerCase()
+      : "";
     return (
-      card.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.student.regNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+      studentName.includes(searchTerm.toLowerCase()) ||
+      card.student?.university_reg_number
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      card.exam?.exam_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
-  const handleCreateExam = (e) => {
-    e.preventDefault();
-    const newExam = {
-      id: Math.max(...examinations.map((e) => e.id)) + 1,
-      examName: examForm.examName,
-      course: {
-        code: examForm.courseCode,
-        name: examForm.courseName,
-        instructor: examForm.instructor,
-      },
-      examType: examForm.examType,
-      totalMarks: parseInt(examForm.totalMarks),
-      weightage: parseInt(examForm.weightage),
-      duration: parseInt(examForm.duration),
-      instructions: examForm.instructions,
-      syllabus: examForm.syllabus.split("\n").filter((s) => s.trim()),
-      isActive: examForm.isActive,
-      createdAt: new Date().toISOString(),
-      createdBy: "Current User",
-    };
-    setExaminations([...examinations, newExam]);
-    setShowCreateModal(false);
-    resetExamForm();
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleCreateSchedule = (e) => {
+  const handleCreateExam = async (e) => {
     e.preventDefault();
-    const exam = examinations.find(
-      (e) => e.id === parseInt(scheduleForm.examId)
-    );
-    const room = mockExamRooms.find(
-      (r) => r.id === parseInt(scheduleForm.roomId)
-    );
-    const invigilator = mockInvigilators.find(
-      (i) => i.id === parseInt(scheduleForm.invigilatorId)
-    );
-
-    const newSchedule = {
-      id: Math.max(...schedules.map((s) => s.id)) + 1,
-      exam: {
-        id: exam.id,
-        name: exam.examName,
-        course: `${exam.course.code} - ${exam.course.name}`,
-      },
-      date: scheduleForm.date,
-      startTime: scheduleForm.startTime,
-      endTime: scheduleForm.endTime,
-      room: {
-        id: room.id,
-        roomNumber: room.roomNumber,
-        building: room.building,
-        capacity: room.capacity,
-      },
-      invigilator: {
-        id: invigilator.id,
-        name: invigilator.name,
-      },
-      enrolledStudents: 0,
-      admitCardsGenerated: 0,
-      status: "scheduled",
-    };
-    setSchedules([...schedules, newSchedule]);
-    setShowScheduleModal(false);
-    resetScheduleForm();
+    setError(null);
+    try {
+      const result = await adminService.createExamination?.(examForm);
+      if (result?.success) {
+        showSuccess("Examination created successfully");
+        setShowCreateModal(false);
+        resetExamForm();
+        await loadData();
+      } else {
+        setError(result?.error || "Failed to create examination");
+      }
+    } catch (err) {
+      setError("Failed to create examination");
+      console.error(err);
+    }
   };
 
-  const deleteExamination = (id) => {
+  const handleCreateSchedule = async (e) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      const result = await adminService.createExamSchedule?.(scheduleForm);
+      if (result?.success) {
+        showSuccess("Exam scheduled successfully");
+        setShowScheduleModal(false);
+        resetScheduleForm();
+        await loadData();
+      } else {
+        setError(result?.error || "Failed to schedule exam");
+      }
+    } catch (err) {
+      setError("Failed to schedule exam");
+      console.error(err);
+    }
+  };
+
+  const handleDeleteExam = async (examId) => {
     if (window.confirm("Are you sure you want to delete this examination?")) {
-      setExaminations(examinations.filter((e) => e.id !== id));
+      setError(null);
+      try {
+        const result = await adminService.deleteExamination?.(examId);
+        if (result?.success) {
+          showSuccess("Examination deleted successfully");
+          await loadData();
+        } else {
+          setError(result?.error || "Failed to delete examination");
+        }
+      } catch (err) {
+        setError("Failed to delete examination");
+        console.error(err);
+      }
     }
   };
 
-  const deleteSchedule = (id) => {
+  const handleDeleteSchedule = async (scheduleId) => {
     if (window.confirm("Are you sure you want to delete this schedule?")) {
-      setSchedules(schedules.filter((s) => s.id !== id));
+      setError(null);
+      try {
+        const result = await adminService.deleteExamSchedule?.(scheduleId);
+        if (result?.success) {
+          showSuccess("Schedule deleted successfully");
+          await loadData();
+        } else {
+          setError(result?.error || "Failed to delete schedule");
+        }
+      } catch (err) {
+        setError("Failed to delete schedule");
+        console.error(err);
+      }
     }
   };
 
-  const toggleExamStatus = (id) => {
-    setExaminations(
-      examinations.map((e) =>
-        e.id === id ? { ...e, isActive: !e.isActive } : e
-      )
-    );
-  };
-
-  const generateAdmitCard = (scheduleId) => {
-    alert(`Generating admit cards for schedule #${scheduleId}`);
+  const generateAdmitCards = async (scheduleId) => {
+    setError(null);
+    try {
+      const result = await adminService.generateAdmitCards?.(scheduleId);
+      if (result?.success) {
+        showSuccess("Admit cards generated successfully");
+        await loadData();
+      } else {
+        setError(result?.error || "Failed to generate admit cards");
+      }
+    } catch (err) {
+      setError("Failed to generate admit cards");
+      console.error(err);
+    }
   };
 
   const openDetailsModal = (item) => {
@@ -211,28 +249,24 @@ export default function AdminExamManagement() {
 
   const resetExamForm = () => {
     setExamForm({
-      examName: "",
-      courseCode: "",
-      courseName: "",
-      instructor: "",
-      examType: "final",
-      totalMarks: 100,
-      weightage: 40,
-      duration: 180,
+      offering_id: "",
+      exam_name: "",
+      exam_type: "final",
+      total_marks: 100,
+      duration_minutes: 180,
       instructions: "",
-      syllabus: "",
-      isActive: true,
+      passing_marks: 40,
     });
   };
 
   const resetScheduleForm = () => {
     setScheduleForm({
-      examId: "",
-      date: "",
-      startTime: "",
-      endTime: "",
-      roomId: "",
-      invigilatorId: "",
+      exam_id: "",
+      exam_date: "",
+      start_time: "",
+      end_time: "",
+      room_id: "",
+      invigilator_id: "",
     });
   };
 
@@ -246,577 +280,444 @@ export default function AdminExamManagement() {
     return colors[type] || "#6b7280";
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      scheduled: "#3b82f6",
-      ongoing: "#f59e0b",
-      completed: "#10b981",
-      cancelled: "#6b7280",
-    };
-    return colors[status] || "#6b7280";
-  };
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "4px solid #f3f4f6",
+              borderTop: "4px solid #1e40af",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <p style={{ color: "#6b7280" }}>Loading exam data...</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      </div>
+    );
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="exam-management"
+      style={{ padding: "24px" }}
     >
-      {/* Header */}
-      <div className="exam-management__header">
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              position: "fixed",
+              top: "20px",
+              right: "20px",
+              backgroundColor: "#10b981",
+              color: "white",
+              padding: "16px 24px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              zIndex: 1000,
+            }}
+          >
+            ✓ {successMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fee",
+            border: "1px solid #fcc",
+            color: "#c33",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c33",
+              cursor: "pointer",
+              fontSize: "18px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <div
+        style={{
+          marginBottom: "32px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
-          <h1 className="exam-management__title">Exam Management</h1>
-          <p className="exam-management__subtitle">
+          <h1
+            style={{
+              fontSize: "32px",
+              fontWeight: "700",
+              color: "#111827",
+              marginBottom: "8px",
+            }}
+          >
+            Exam Management
+          </h1>
+          <p style={{ color: "#6b7280", fontSize: "16px" }}>
             Manage examinations, schedules, and admit cards
           </p>
         </div>
-        <div className="exam-management__header-actions">
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={loadData}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#6b7280",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <RefreshCw size={18} /> Refresh
+          </button>
           {activeTab === "examinations" && (
             <button
-              className="btn btn--primary"
               onClick={() => setShowCreateModal(true)}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#1e40af",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "500",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
             >
-              <Plus size={18} />
-              Create Exam
+              <Plus size={18} /> Create Exam
             </button>
           )}
           {activeTab === "schedules" && (
             <button
-              className="btn btn--primary"
               onClick={() => setShowScheduleModal(true)}
+              style={{
+                padding: "10px 20px",
+                backgroundColor: "#1e40af",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "500",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
             >
-              <Plus size={18} />
-              Schedule Exam
-            </button>
-          )}
-          {activeTab === "admit-cards" && (
-            <button className="btn btn--secondary">
-              <Download size={18} />
-              Download All
+              <Plus size={18} /> Schedule Exam
             </button>
           )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="exam-management__tabs">
-        <button
-          className={`tab ${activeTab === "examinations" ? "tab--active" : ""}`}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          marginBottom: "24px",
+          borderBottom: "2px solid #e5e7eb",
+        }}
+      >
+        <TabButton
+          active={activeTab === "examinations"}
           onClick={() => setActiveTab("examinations")}
-        >
-          <BookOpen size={18} />
-          Examinations
-        </button>
-        <button
-          className={`tab ${activeTab === "schedules" ? "tab--active" : ""}`}
+          icon={<BookOpen size={18} />}
+          label="Examinations"
+        />
+        <TabButton
+          active={activeTab === "schedules"}
           onClick={() => setActiveTab("schedules")}
-        >
-          <Calendar size={18} />
-          Schedules
-        </button>
-        <button
-          className={`tab ${activeTab === "admit-cards" ? "tab--active" : ""}`}
+          icon={<Calendar size={18} />}
+          label="Schedules"
+        />
+        <TabButton
+          active={activeTab === "admit-cards"}
           onClick={() => setActiveTab("admit-cards")}
-        >
-          <FileText size={18} />
-          Admit Cards
-        </button>
-        <button
-          className={`tab ${activeTab === "rooms" ? "tab--active" : ""}`}
+          icon={<FileText size={18} />}
+          label="Admit Cards"
+        />
+        <TabButton
+          active={activeTab === "rooms"}
           onClick={() => setActiveTab("rooms")}
-        >
-          <Building size={18} />
-          Exam Rooms
-        </button>
+          icon={<Building size={18} />}
+          label="Exam Rooms"
+        />
       </div>
 
-      {/* Statistics */}
-      <div className="exam-management__stats">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gap: "20px",
+          marginBottom: "32px",
+        }}
+      >
         <StatCard
-          icon={<BookOpen />}
+          icon={<BookOpen size={24} />}
           title="Total Exams"
           value={stats.totalExams}
           color="#3b82f6"
         />
         <StatCard
-          icon={<Calendar />}
+          icon={<Calendar size={24} />}
           title="Scheduled"
           value={stats.scheduledExams}
           color="#10b981"
         />
         <StatCard
-          icon={<FileText />}
+          icon={<FileText size={24} />}
           title="Admit Cards"
           value={stats.totalAdmitCards}
           color="#f59e0b"
         />
         <StatCard
-          icon={<CheckCircle />}
+          icon={<CheckCircle size={24} />}
           title="Eligible Students"
           value={stats.eligibleStudents}
           color="#8b5cf6"
         />
       </div>
 
-      {/* Examinations Tab */}
       {activeTab === "examinations" && (
         <>
-          {/* Filters */}
-          <div className="exam-management__filters">
-            <div className="filter-group">
-              <div className="input-with-icon">
-                <Search size={18} />
-                <input
-                  type="text"
-                  placeholder="Search examinations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="filter-input"
-                />
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "24px",
+              borderRadius: "12px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              marginBottom: "24px",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Search
+                </label>
+                <div style={{ position: "relative" }}>
+                  <Search
+                    size={18}
+                    style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#6b7280",
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search examinations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px 10px 40px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
               </div>
 
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Types</option>
-                <option value="final">Final</option>
-                <option value="midterm">Midterm</option>
-                <option value="quiz">Quiz</option>
-                <option value="practical">Practical</option>
-              </select>
-
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Exam Type
+                </label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <option value="all">All Types</option>
+                  {examTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Examinations Grid */}
-          <div className="examinations-grid">
-            {filteredExaminations.map((exam) => (
-              <motion.div
-                key={exam.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="exam-card"
-              >
-                <div className="exam-card__header">
-                  <div>
-                    <h3 className="exam-card__title">{exam.examName}</h3>
-                    <p className="exam-card__course">
-                      {exam.course.code} - {exam.course.name}
-                    </p>
-                  </div>
-                  <span
-                    className="exam-type-badge"
-                    style={{
-                      backgroundColor: `${getExamTypeColor(exam.examType)}20`,
-                      color: getExamTypeColor(exam.examType),
-                    }}
-                  >
-                    {exam.examType.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="exam-card__details">
-                  <div className="exam-detail">
-                    <Clock size={16} />
-                    <span>{exam.duration} minutes</span>
-                  </div>
-                  <div className="exam-detail">
-                    <FileText size={16} />
-                    <span>{exam.totalMarks} marks</span>
-                  </div>
-                  <div className="exam-detail">
-                    <UserCheck size={16} />
-                    <span>{exam.weightage}% weightage</span>
-                  </div>
-                </div>
-
-                <div className="exam-card__instructor">
-                  <Users size={14} />
-                  <span>{exam.course.instructor}</span>
-                </div>
-
-                <div className="exam-card__status">
-                  {exam.isActive ? (
-                    <span className="status-badge status-badge--active">
-                      <CheckCircle size={14} />
-                      Active
-                    </span>
-                  ) : (
-                    <span className="status-badge status-badge--inactive">
-                      <XCircle size={14} />
-                      Inactive
-                    </span>
-                  )}
-                </div>
-
-                <div className="exam-card__actions">
-                  <button
-                    className="action-btn action-btn--view"
-                    onClick={() => openDetailsModal(exam)}
-                    title="View Details"
-                  >
-                    <Eye size={16} />
-                  </button>
-                  <button className="action-btn action-btn--edit" title="Edit">
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    className="action-btn action-btn--toggle"
-                    onClick={() => toggleExamStatus(exam.id)}
-                    title={exam.isActive ? "Deactivate" : "Activate"}
-                  >
-                    {exam.isActive ? (
-                      <XCircle size={16} />
-                    ) : (
-                      <CheckCircle size={16} />
-                    )}
-                  </button>
-                  <button
-                    className="action-btn action-btn--delete"
-                    onClick={() => deleteExamination(exam.id)}
-                    title="Delete"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          {filteredExaminations.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: "white",
+                padding: "60px 20px",
+                borderRadius: "12px",
+                textAlign: "center",
+                color: "#6b7280",
+              }}
+            >
+              <p style={{ fontSize: "18px", marginBottom: "8px" }}>
+                No examinations found
+              </p>
+              <p style={{ fontSize: "14px" }}>
+                Create your first examination to get started
+              </p>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+                gap: "20px",
+              }}
+            >
+              {filteredExaminations.map((exam) => (
+                <ExamCard
+                  key={exam.exam_id}
+                  exam={exam}
+                  onView={openDetailsModal}
+                  onDelete={handleDeleteExam}
+                  getExamTypeColor={getExamTypeColor}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 
-      {/* Schedules Tab */}
       {activeTab === "schedules" && (
         <>
-          <div className="exam-management__filters">
-            <div className="filter-group">
-              <div className="input-with-icon">
-                <Search size={18} />
-                <input
-                  type="text"
-                  placeholder="Search schedules..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="filter-input"
-                />
-              </div>
-            </div>
-          </div>
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            placeholder="Search schedules..."
+          />
 
-          <div className="schedules-table-container">
-            <table className="schedules-table">
-              <thead>
-                <tr>
-                  <th>Exam</th>
-                  <th>Date & Time</th>
-                  <th>Room</th>
-                  <th>Invigilator</th>
-                  <th>Students</th>
-                  <th>Admit Cards</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSchedules.map((schedule) => (
-                  <motion.tr
-                    key={schedule.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <td>
-                      <div className="schedule-exam">
-                        <span className="schedule-exam__name">
-                          {schedule.exam.name}
-                        </span>
-                        <span className="schedule-exam__course">
-                          {schedule.exam.course}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="schedule-datetime">
-                        <Calendar size={14} />
-                        <span>
-                          {new Date(schedule.date).toLocaleDateString()}
-                        </span>
-                        <Clock size={14} />
-                        <span>
-                          {schedule.startTime} - {schedule.endTime}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="schedule-room">
-                        <MapPin size={14} />
-                        <div>
-                          <span className="schedule-room__number">
-                            {schedule.room.roomNumber}
-                          </span>
-                          <span className="schedule-room__building">
-                            {schedule.room.building}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="schedule-invigilator">
-                        <UserCheck size={14} />
-                        <span>{schedule.invigilator.name}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="student-count">
-                        {schedule.enrolledStudents} / {schedule.room.capacity}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="admit-card-progress">
-                        <span>
-                          {schedule.admitCardsGenerated} /{" "}
-                          {schedule.enrolledStudents}
-                        </span>
-                        <div className="progress-bar">
-                          <div
-                            className="progress-bar__fill"
-                            style={{
-                              width: `${
-                                (schedule.admitCardsGenerated /
-                                  schedule.enrolledStudents) *
-                                100
-                              }%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className="status-badge"
-                        style={{
-                          backgroundColor: `${getStatusColor(
-                            schedule.status
-                          )}20`,
-                          color: getStatusColor(schedule.status),
-                        }}
-                      >
-                        {schedule.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="action-btn action-btn--primary"
-                          onClick={() => generateAdmitCard(schedule.id)}
-                          title="Generate Admit Cards"
-                        >
-                          <QrCode size={16} />
-                        </button>
-                        <button
-                          className="action-btn action-btn--edit"
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          className="action-btn action-btn--delete"
-                          onClick={() => deleteSchedule(schedule.id)}
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {filteredSchedules.length === 0 ? (
+            <EmptyState
+              message="No schedules found"
+              subMessage="Schedule an examination to get started"
+            />
+          ) : (
+            <ScheduleTable
+              schedules={filteredSchedules}
+              onGenerateAdmitCards={generateAdmitCards}
+              onDelete={handleDeleteSchedule}
+            />
+          )}
         </>
       )}
 
-      {/* Admit Cards Tab */}
       {activeTab === "admit-cards" && (
         <>
-          <div className="exam-management__filters">
-            <div className="filter-group">
-              <div className="input-with-icon">
-                <Search size={18} />
-                <input
-                  type="text"
-                  placeholder="Search admit cards..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="filter-input"
-                />
-              </div>
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            placeholder="Search admit cards..."
+          />
+
+          {filteredAdmitCards.length === 0 ? (
+            <EmptyState message="No admit cards found" />
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+                gap: "20px",
+              }}
+            >
+              {filteredAdmitCards.map((card) => (
+                <AdmitCardItem key={card.admit_card_id} card={card} />
+              ))}
             </div>
-          </div>
-
-          <div className="admit-cards-grid">
-            {filteredAdmitCards.map((card) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="admit-card"
-              >
-                <div className="admit-card__header">
-                  <div className="admit-card__student">
-                    <div className="student-avatar">
-                      {card.student.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h4>{card.student.name}</h4>
-                      <p>{card.student.regNumber}</p>
-                    </div>
-                  </div>
-                  <span
-                    className={`eligibility-badge ${
-                      card.eligibilityStatus === "eligible"
-                        ? "eligibility-badge--eligible"
-                        : "eligibility-badge--not-eligible"
-                    }`}
-                  >
-                    {card.eligibilityStatus === "eligible" ? (
-                      <>
-                        <CheckCircle size={14} /> Eligible
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle size={14} /> Not Eligible
-                      </>
-                    )}
-                  </span>
-                </div>
-
-                <div className="admit-card__exam">
-                  <h5>{card.exam.name}</h5>
-                  <div className="admit-card__details">
-                    <div className="admit-card__detail">
-                      <Calendar size={14} />
-                      <span>{card.exam.date}</span>
-                    </div>
-                    <div className="admit-card__detail">
-                      <Clock size={14} />
-                      <span>{card.exam.time}</span>
-                    </div>
-                    <div className="admit-card__detail">
-                      <MapPin size={14} />
-                      <span>Room {card.exam.room}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="admit-card__info">
-                  <div className="info-item">
-                    <span className="info-label">Seat Number:</span>
-                    <span className="info-value">{card.seatNumber}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Issued:</span>
-                    <span className="info-value">
-                      {new Date(card.issuedDate).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Downloaded:</span>
-                    <span className="info-value">
-                      {card.isDownloaded ? (
-                        <CheckCircle
-                          size={14}
-                          className="status-icon--success"
-                        />
-                      ) : (
-                        <XCircle size={14} className="status-icon--warning" />
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="admit-card__actions">
-                  <button className="btn btn--sm btn--secondary">
-                    <Eye size={14} />
-                    Preview
-                  </button>
-                  <button className="btn btn--sm btn--primary">
-                    <Download size={14} />
-                    Download
-                  </button>
-                  <button className="btn btn--sm btn--secondary">
-                    <QrCode size={14} />
-                    QR Code
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          )}
         </>
       )}
 
-      {/* Exam Rooms Tab */}
       {activeTab === "rooms" && (
-        <div className="rooms-grid">
-          {mockExamRooms.map((room) => (
-            <motion.div
-              key={room.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="room-card"
+        <>
+          {examRooms.length === 0 ? (
+            <EmptyState message="No exam rooms found" />
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                gap: "20px",
+              }}
             >
-              <div className="room-card__header">
-                <Building size={24} className="room-icon" />
-                <div>
-                  <h3 className="room-number">{room.roomNumber}</h3>
-                  <p className="room-building">{room.building}</p>
-                </div>
-              </div>
-
-              <div className="room-card__details">
-                <div className="room-detail">
-                  <Users size={16} />
-                  <span>Capacity: {room.capacity}</span>
-                </div>
-                <div className="room-detail">
-                  <span
-                    className={`availability-badge ${
-                      room.isAvailable
-                        ? "availability-badge--available"
-                        : "availability-badge--unavailable"
-                    }`}
-                  >
-                    {room.isAvailable ? "Available" : "Not Available"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="room-facilities">
-                <h4>Facilities:</h4>
-                <div className="facilities-list">
-                  {room.facilities.map((facility, index) => (
-                    <span key={index} className="facility-tag">
-                      {facility}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              {examRooms.map((room) => (
+                <RoomCard key={room.room_id} room={room} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Create Exam Modal */}
       <AnimatePresence>
         {showCreateModal && (
           <Modal
@@ -825,176 +726,21 @@ export default function AdminExamManagement() {
               resetExamForm();
             }}
           >
-            <h2 className="modal__title">Create New Examination</h2>
-            <form onSubmit={handleCreateExam} className="exam-form">
-              <div className="form-grid">
-                <div className="form-field form-field--full">
-                  <label>Exam Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={examForm.examName}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, examName: e.target.value })
-                    }
-                    placeholder="e.g., CS301 Final Exam"
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Course Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={examForm.courseCode}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, courseCode: e.target.value })
-                    }
-                    placeholder="e.g., CS301"
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Course Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={examForm.courseName}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, courseName: e.target.value })
-                    }
-                    placeholder="e.g., Data Structures"
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Instructor *</label>
-                  <input
-                    type="text"
-                    required
-                    value={examForm.instructor}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, instructor: e.target.value })
-                    }
-                    placeholder="e.g., Dr. Jane Smith"
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Exam Type *</label>
-                  <select
-                    required
-                    value={examForm.examType}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, examType: e.target.value })
-                    }
-                  >
-                    <option value="final">Final</option>
-                    <option value="midterm">Midterm</option>
-                    <option value="quiz">Quiz</option>
-                    <option value="practical">Practical</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Total Marks *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={examForm.totalMarks}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, totalMarks: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Weightage (%) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    max="100"
-                    value={examForm.weightage}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, weightage: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Duration (minutes) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={examForm.duration}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, duration: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="form-field form-field--full">
-                  <label>Instructions</label>
-                  <textarea
-                    value={examForm.instructions}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, instructions: e.target.value })
-                    }
-                    rows="3"
-                    placeholder="Exam instructions..."
-                  />
-                </div>
-
-                <div className="form-field form-field--full">
-                  <label>Syllabus (one per line)</label>
-                  <textarea
-                    value={examForm.syllabus}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, syllabus: e.target.value })
-                    }
-                    rows="4"
-                    placeholder="Chapter 1&#10;Chapter 2&#10;Lab assignments"
-                  />
-                </div>
-
-                <div className="form-checkbox">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={examForm.isActive}
-                    onChange={(e) =>
-                      setExamForm({ ...examForm, isActive: e.target.checked })
-                    }
-                  />
-                  <label htmlFor="isActive">Exam is active</label>
-                </div>
-              </div>
-
-              <div className="modal__actions">
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetExamForm();
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn--primary">
-                  <Plus size={18} />
-                  Create Exam
-                </button>
-              </div>
-            </form>
+            <CreateExamForm
+              examForm={examForm}
+              setExamForm={setExamForm}
+              courseOfferings={courseOfferings}
+              examTypes={examTypes}
+              onSubmit={handleCreateExam}
+              onCancel={() => {
+                setShowCreateModal(false);
+                resetExamForm();
+              }}
+            />
           </Modal>
         )}
       </AnimatePresence>
 
-      {/* Schedule Exam Modal */}
       <AnimatePresence>
         {showScheduleModal && (
           <Modal
@@ -1003,266 +749,1055 @@ export default function AdminExamManagement() {
               resetScheduleForm();
             }}
           >
-            <h2 className="modal__title">Schedule Examination</h2>
-            <form onSubmit={handleCreateSchedule} className="schedule-form">
-              <div className="form-grid">
-                <div className="form-field form-field--full">
-                  <label>Select Exam *</label>
-                  <select
-                    required
-                    value={scheduleForm.examId}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        examId: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Choose an exam...</option>
-                    {examinations
-                      .filter((e) => e.isActive)
-                      .map((exam) => (
-                        <option key={exam.id} value={exam.id}>
-                          {exam.examName} ({exam.course.code})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Exam Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={scheduleForm.date}
-                    onChange={(e) =>
-                      setScheduleForm({ ...scheduleForm, date: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Start Time *</label>
-                  <input
-                    type="time"
-                    required
-                    value={scheduleForm.startTime}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        startTime: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>End Time *</label>
-                  <input
-                    type="time"
-                    required
-                    value={scheduleForm.endTime}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        endTime: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Exam Room *</label>
-                  <select
-                    required
-                    value={scheduleForm.roomId}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        roomId: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Choose a room...</option>
-                    {mockExamRooms
-                      .filter((r) => r.isAvailable)
-                      .map((room) => (
-                        <option key={room.id} value={room.id}>
-                          {room.roomNumber} - {room.building} (Capacity:{" "}
-                          {room.capacity})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Invigilator *</label>
-                  <select
-                    required
-                    value={scheduleForm.invigilatorId}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        invigilatorId: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Choose an invigilator...</option>
-                    {mockInvigilators
-                      .filter((i) => i.isAvailable)
-                      .map((invigilator) => (
-                        <option key={invigilator.id} value={invigilator.id}>
-                          {invigilator.name} ({invigilator.department})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="modal__actions">
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={() => {
-                    setShowScheduleModal(false);
-                    resetScheduleForm();
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn--primary">
-                  <Calendar size={18} />
-                  Schedule Exam
-                </button>
-              </div>
-            </form>
+            <ScheduleExamForm
+              scheduleForm={scheduleForm}
+              setScheduleForm={setScheduleForm}
+              examinations={examinations}
+              examRooms={examRooms}
+              onSubmit={handleCreateSchedule}
+              onCancel={() => {
+                setShowScheduleModal(false);
+                resetScheduleForm();
+              }}
+            />
           </Modal>
         )}
       </AnimatePresence>
 
-      {/* Details Modal */}
       <AnimatePresence>
         {showDetailsModal && selectedItem && (
           <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2 className="modal__title">Examination Details</h2>
-            <div className="exam-details">
-              <div className="exam-details__header">
-                <div>
-                  <h3>{selectedItem.examName}</h3>
-                  <p className="exam-details__course">
-                    {selectedItem.course.code} - {selectedItem.course.name}
-                  </p>
-                </div>
-                <span
-                  className="exam-type-badge exam-type-badge--large"
-                  style={{
-                    backgroundColor: `${getExamTypeColor(
-                      selectedItem.examType
-                    )}20`,
-                    color: getExamTypeColor(selectedItem.examType),
-                  }}
-                >
-                  {selectedItem.examType.toUpperCase()}
-                </span>
-              </div>
-
-              <div className="exam-details__section">
-                <h4>Course Information</h4>
-                <div className="detail-row">
-                  <span className="detail-label">Instructor:</span>
-                  <span className="detail-value">
-                    {selectedItem.course.instructor}
-                  </span>
-                </div>
-              </div>
-
-              <div className="exam-details__section">
-                <h4>Exam Details</h4>
-                <div className="detail-row">
-                  <span className="detail-label">Total Marks:</span>
-                  <span className="detail-value">
-                    {selectedItem.totalMarks}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Weightage:</span>
-                  <span className="detail-value">
-                    {selectedItem.weightage}%
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Duration:</span>
-                  <span className="detail-value">
-                    {selectedItem.duration} minutes
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Status:</span>
-                  <span className="detail-value">
-                    {selectedItem.isActive ? (
-                      <span className="status-badge status-badge--active">
-                        <CheckCircle size={14} /> Active
-                      </span>
-                    ) : (
-                      <span className="status-badge status-badge--inactive">
-                        <XCircle size={14} /> Inactive
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              {selectedItem.instructions && (
-                <div className="exam-details__section">
-                  <h4>Instructions</h4>
-                  <p className="exam-details__text">
-                    {selectedItem.instructions}
-                  </p>
-                </div>
-              )}
-
-              {selectedItem.syllabus && selectedItem.syllabus.length > 0 && (
-                <div className="exam-details__section">
-                  <h4>Syllabus</h4>
-                  <ul className="syllabus-list">
-                    {selectedItem.syllabus.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="exam-details__section">
-                <h4>Metadata</h4>
-                <div className="detail-row">
-                  <span className="detail-label">Created By:</span>
-                  <span className="detail-value">{selectedItem.createdBy}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Created At:</span>
-                  <span className="detail-value">
-                    {new Date(selectedItem.createdAt).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal__actions">
-              <button
-                className="btn btn--secondary"
-                onClick={() => setShowDetailsModal(false)}
-              >
-                Close
-              </button>
-              <button className="btn btn--primary">
-                <Edit size={18} />
-                Edit Exam
-              </button>
-            </div>
+            <ExamDetails
+              exam={selectedItem}
+              getExamTypeColor={getExamTypeColor}
+              onClose={() => setShowDetailsModal(false)}
+            />
           </Modal>
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+// Component Definitions
+function ExamCard({ exam, onView, onDelete, getExamTypeColor }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        backgroundColor: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "start",
+          marginBottom: "16px",
+        }}
+      >
+        <div>
+          <h3
+            style={{
+              fontSize: "18px",
+              fontWeight: "600",
+              color: "#111827",
+              marginBottom: "4px",
+            }}
+          >
+            {exam.exam_name}
+          </h3>
+          <p style={{ fontSize: "14px", color: "#6b7280" }}>
+            {exam.offering?.course?.course_code} -{" "}
+            {exam.offering?.course?.course_name}
+          </p>
+        </div>
+        <span
+          style={{
+            padding: "4px 12px",
+            borderRadius: "12px",
+            fontSize: "12px",
+            fontWeight: "600",
+            backgroundColor: `${getExamTypeColor(exam.exam_type)}20`,
+            color: getExamTypeColor(exam.exam_type),
+            textTransform: "uppercase",
+          }}
+        >
+          {exam.exam_type}
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "14px",
+            color: "#6b7280",
+          }}
+        >
+          <Clock size={16} />
+          <span>{exam.duration_minutes} minutes</span>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "14px",
+            color: "#6b7280",
+          }}
+        >
+          <FileText size={16} />
+          <span>{exam.total_marks} marks</span>
+        </div>
+        {exam.offering?.faculty && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "14px",
+              color: "#6b7280",
+            }}
+          >
+            <Users size={16} />
+            <span>
+              {exam.offering.faculty.user?.first_name}{" "}
+              {exam.offering.faculty.user?.last_name}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          paddingTop: "16px",
+          borderTop: "1px solid #f3f4f6",
+        }}
+      >
+        <ActionButton onClick={() => onView(exam)} title="View" color="#3b82f6">
+          <Eye size={16} />
+        </ActionButton>
+        <ActionButton
+          onClick={() => onDelete(exam.exam_id)}
+          title="Delete"
+          color="#dc2626"
+        >
+          <Trash2 size={16} />
+        </ActionButton>
+      </div>
+    </motion.div>
+  );
+}
+
+function ScheduleTable({ schedules, onGenerateAdmitCards, onDelete }) {
+  return (
+    <div
+      style={{
+        backgroundColor: "white",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead
+            style={{
+              backgroundColor: "#f9fafb",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <tr>
+              {["Exam", "Date & Time", "Room", "Invigilator", "Actions"].map(
+                (header) => (
+                  <th
+                    key={header}
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {header}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {schedules.map((schedule) => (
+              <tr
+                key={schedule.schedule_id}
+                style={{ borderBottom: "1px solid #f3f4f6" }}
+              >
+                <td style={{ padding: "16px" }}>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        color: "#111827",
+                      }}
+                    >
+                      {schedule.exam?.exam_name || "N/A"}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                      {schedule.exam?.offering?.course?.course_code}
+                    </div>
+                  </div>
+                </td>
+                <td
+                  style={{
+                    padding: "16px",
+                    fontSize: "14px",
+                    color: "#6b7280",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    <Calendar size={14} />
+                    <span>
+                      {schedule.exam_date
+                        ? new Date(schedule.exam_date).toLocaleDateString()
+                        : "N/A"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Clock size={14} />
+                    <span>
+                      {schedule.start_time} - {schedule.end_time}
+                    </span>
+                  </div>
+                </td>
+                <td style={{ padding: "16px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <MapPin size={14} style={{ color: "#6b7280" }} />
+                    <div>
+                      <div
+                        style={{
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          color: "#111827",
+                        }}
+                      >
+                        {schedule.room?.room_number || "N/A"}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                        {schedule.room?.building || ""}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td
+                  style={{
+                    padding: "16px",
+                    fontSize: "14px",
+                    color: "#6b7280",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <UserCheck size={14} />
+                    <span>
+                      {schedule.invigilator?.user?.first_name}{" "}
+                      {schedule.invigilator?.user?.last_name}
+                    </span>
+                  </div>
+                </td>
+                <td style={{ padding: "16px" }}>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <ActionButton
+                      onClick={() => onGenerateAdmitCards(schedule.schedule_id)}
+                      title="Generate Admit Cards"
+                      color="#10b981"
+                    >
+                      <QrCode size={16} />
+                    </ActionButton>
+                    <ActionButton
+                      onClick={() => onDelete(schedule.schedule_id)}
+                      title="Delete"
+                      color="#dc2626"
+                    >
+                      <Trash2 size={16} />
+                    </ActionButton>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AdmitCardItem({ card }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        backgroundColor: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "16px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: "#3b82f6",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: "600",
+            }}
+          >
+            {card.student?.first_name?.charAt(0) || "?"}
+          </div>
+          <div>
+            <h4
+              style={{ fontSize: "16px", fontWeight: "600", color: "#111827" }}
+            >
+              {card.student
+                ? `${card.student.first_name || ""} ${
+                    card.student.last_name || ""
+                  }`.trim()
+                : "N/A"}
+            </h4>
+            <p style={{ fontSize: "12px", color: "#6b7280" }}>
+              {card.student?.university_reg_number || "N/A"}
+            </p>
+          </div>
+        </div>
+        <span
+          style={{
+            padding: "4px 12px",
+            borderRadius: "12px",
+            fontSize: "12px",
+            fontWeight: "500",
+            backgroundColor:
+              card.eligibility_status === "eligible"
+                ? "#10b98120"
+                : "#ef444420",
+            color:
+              card.eligibility_status === "eligible" ? "#10b981" : "#ef4444",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            height: "fit-content",
+          }}
+        >
+          {card.eligibility_status === "eligible" ? (
+            <>
+              <CheckCircle size={14} /> Eligible
+            </>
+          ) : (
+            <>
+              <AlertCircle size={14} /> Not Eligible
+            </>
+          )}
+        </span>
+      </div>
+
+      <div style={{ marginBottom: "16px" }}>
+        <h5
+          style={{
+            fontSize: "14px",
+            fontWeight: "600",
+            color: "#111827",
+            marginBottom: "8px",
+          }}
+        >
+          {card.exam?.exam_name || "N/A"}
+        </h5>
+        <div style={{ display: "grid", gap: "6px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "13px",
+              color: "#6b7280",
+            }}
+          >
+            <Calendar size={14} />
+            <span>
+              {card.exam?.schedules?.[0]?.exam_date
+                ? new Date(
+                    card.exam.schedules[0].exam_date
+                  ).toLocaleDateString()
+                : "N/A"}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "13px",
+              color: "#6b7280",
+            }}
+          >
+            <Clock size={14} />
+            <span>{card.exam?.schedules?.[0]?.start_time || "N/A"}</span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "13px",
+              color: "#6b7280",
+            }}
+          >
+            <MapPin size={14} />
+            <span>Room {card.seat_number || "TBA"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          padding: "12px 0",
+          borderTop: "1px solid #f3f4f6",
+          fontSize: "13px",
+        }}
+      >
+        <div>
+          <span style={{ color: "#6b7280" }}>Seat:</span>
+          <span
+            style={{ color: "#111827", marginLeft: "4px", fontWeight: "500" }}
+          >
+            {card.seat_number || "N/A"}
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "#6b7280" }}>Downloaded:</span>
+          {card.is_downloaded ? (
+            <CheckCircle
+              size={14}
+              style={{ color: "#10b981", marginLeft: "4px" }}
+            />
+          ) : (
+            <XCircle
+              size={14}
+              style={{ color: "#f59e0b", marginLeft: "4px" }}
+            />
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+        <button
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            backgroundColor: "#f3f4f6",
+            color: "#374151",
+            border: "none",
+            borderRadius: "6px",
+            fontSize: "13px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+          }}
+        >
+          <Eye size={14} /> Preview
+        </button>
+        <button
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            backgroundColor: "#1e40af",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            fontSize: "13px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+          }}
+        >
+          <Download size={14} /> Download
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+function RoomCard({ room }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        backgroundColor: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "16px",
+        }}
+      >
+        <Building size={24} style={{ color: "#3b82f6" }} />
+        <div>
+          <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#111827" }}>
+            {room.room_number}
+          </h3>
+          <p style={{ fontSize: "14px", color: "#6b7280" }}>{room.building}</p>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: "8px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "14px",
+            color: "#6b7280",
+          }}
+        >
+          <Users size={16} />
+          <span>Capacity: {room.capacity}</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CreateExamForm({
+  examForm,
+  setExamForm,
+  courseOfferings,
+  examTypes,
+  onSubmit,
+  onCancel,
+}) {
+  return (
+    <>
+      <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>
+        Create New Examination
+      </h2>
+      <p style={{ color: "#6b7280", marginBottom: "24px" }}>
+        Enter the examination details
+      </p>
+
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: "16px" }}>
+        <FormField label="Course Offering *" required>
+          <select
+            required
+            value={examForm.offering_id}
+            onChange={(e) =>
+              setExamForm({ ...examForm, offering_id: e.target.value })
+            }
+          >
+            <option value="">Select Course</option>
+            {courseOfferings.map((offering) => (
+              <option key={offering.offering_id} value={offering.offering_id}>
+                {offering.course?.course_code} - {offering.course?.course_name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Exam Name *" required>
+          <input
+            type="text"
+            required
+            placeholder="e.g., CS301 Final Exam"
+            value={examForm.exam_name}
+            onChange={(e) =>
+              setExamForm({ ...examForm, exam_name: e.target.value })
+            }
+          />
+        </FormField>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+          }}
+        >
+          <FormField label="Exam Type *" required>
+            <select
+              required
+              value={examForm.exam_type}
+              onChange={(e) =>
+                setExamForm({ ...examForm, exam_type: e.target.value })
+              }
+            >
+              {examTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Duration (minutes) *" required>
+            <input
+              type="number"
+              required
+              min="1"
+              value={examForm.duration_minutes}
+              onChange={(e) =>
+                setExamForm({ ...examForm, duration_minutes: e.target.value })
+              }
+            />
+          </FormField>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+          }}
+        >
+          <FormField label="Total Marks *" required>
+            <input
+              type="number"
+              required
+              min="1"
+              value={examForm.total_marks}
+              onChange={(e) =>
+                setExamForm({ ...examForm, total_marks: e.target.value })
+              }
+            />
+          </FormField>
+
+          <FormField label="Passing Marks *" required>
+            <input
+              type="number"
+              required
+              min="1"
+              value={examForm.passing_marks}
+              onChange={(e) =>
+                setExamForm({ ...examForm, passing_marks: e.target.value })
+              }
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Instructions">
+          <textarea
+            rows="4"
+            placeholder="Exam instructions..."
+            value={examForm.instructions}
+            onChange={(e) =>
+              setExamForm({ ...examForm, instructions: e.target.value })
+            }
+          />
+        </FormField>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            justifyContent: "flex-end",
+            marginTop: "8px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#e5e7eb",
+              color: "#374151",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#1e40af",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <Plus size={18} /> Create Exam
+          </button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+function ScheduleExamForm({
+  scheduleForm,
+  setScheduleForm,
+  examinations,
+  examRooms,
+  onSubmit,
+  onCancel,
+}) {
+  return (
+    <>
+      <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>
+        Schedule Examination
+      </h2>
+      <p style={{ color: "#6b7280", marginBottom: "24px" }}>
+        Set the exam date, time, and location
+      </p>
+
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: "16px" }}>
+        <FormField label="Select Exam *" required>
+          <select
+            required
+            value={scheduleForm.exam_id}
+            onChange={(e) =>
+              setScheduleForm({ ...scheduleForm, exam_id: e.target.value })
+            }
+          >
+            <option value="">Choose an exam...</option>
+            {examinations.map((exam) => (
+              <option key={exam.exam_id} value={exam.exam_id}>
+                {exam.exam_name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Exam Date *" required>
+          <input
+            type="date"
+            required
+            value={scheduleForm.exam_date}
+            onChange={(e) =>
+              setScheduleForm({ ...scheduleForm, exam_date: e.target.value })
+            }
+          />
+        </FormField>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+          }}
+        >
+          <FormField label="Start Time *" required>
+            <input
+              type="time"
+              required
+              value={scheduleForm.start_time}
+              onChange={(e) =>
+                setScheduleForm({ ...scheduleForm, start_time: e.target.value })
+              }
+            />
+          </FormField>
+
+          <FormField label="End Time *" required>
+            <input
+              type="time"
+              required
+              value={scheduleForm.end_time}
+              onChange={(e) =>
+                setScheduleForm({ ...scheduleForm, end_time: e.target.value })
+              }
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Exam Room *" required>
+          <select
+            required
+            value={scheduleForm.room_id}
+            onChange={(e) =>
+              setScheduleForm({ ...scheduleForm, room_id: e.target.value })
+            }
+          >
+            <option value="">Choose a room...</option>
+            {examRooms.map((room) => (
+              <option key={room.room_id} value={room.room_id}>
+                {room.room_number} - {room.building} (Capacity: {room.capacity})
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            justifyContent: "flex-end",
+            marginTop: "8px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#e5e7eb",
+              color: "#374151",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#1e40af",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <Calendar size={18} /> Schedule Exam
+          </button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+function ExamDetails({ exam, getExamTypeColor, onClose }) {
+  return (
+    <>
+      <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "24px" }}>
+        Examination Details
+      </h2>
+
+      <div style={{ display: "grid", gap: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "start",
+          }}
+        >
+          <div>
+            <h3
+              style={{ fontSize: "20px", fontWeight: "600", color: "#111827" }}
+            >
+              {exam.exam_name}
+            </h3>
+            <p style={{ fontSize: "14px", color: "#6b7280" }}>
+              {exam.offering?.course?.course_code} -{" "}
+              {exam.offering?.course?.course_name}
+            </p>
+          </div>
+          <span
+            style={{
+              padding: "6px 14px",
+              borderRadius: "12px",
+              fontSize: "14px",
+              fontWeight: "600",
+              backgroundColor: `${getExamTypeColor(exam.exam_type)}20`,
+              color: getExamTypeColor(exam.exam_type),
+              textTransform: "uppercase",
+            }}
+          >
+            {exam.exam_type}
+          </span>
+        </div>
+
+        <div>
+          <h4
+            style={{
+              fontSize: "16px",
+              fontWeight: "600",
+              marginBottom: "12px",
+            }}
+          >
+            Exam Details
+          </h4>
+          <div style={{ display: "grid", gap: "8px" }}>
+            <DetailRow label="Total Marks" value={exam.total_marks} />
+            <DetailRow label="Passing Marks" value={exam.passing_marks} />
+            <DetailRow
+              label="Duration"
+              value={`${exam.duration_minutes} minutes`}
+            />
+          </div>
+        </div>
+
+        {exam.instructions && (
+          <div>
+            <h4
+              style={{
+                fontSize: "16px",
+                fontWeight: "600",
+                marginBottom: "12px",
+              }}
+            >
+              Instructions
+            </h4>
+            <p
+              style={{ fontSize: "14px", color: "#6b7280", lineHeight: "1.6" }}
+            >
+              {exam.instructions}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: "24px",
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#1e40af",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </>
+  );
+}
+
+function SearchBar({ searchTerm, setSearchTerm, placeholder }) {
+  return (
+    <div
+      style={{
+        backgroundColor: "white",
+        padding: "24px",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        marginBottom: "24px",
+      }}
+    >
+      <div style={{ position: "relative" }}>
+        <Search
+          size={18}
+          style={{
+            position: "absolute",
+            left: "12px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "#6b7280",
+          }}
+        />
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "10px 12px 10px 40px",
+            border: "1px solid #d1d5db",
+            borderRadius: "8px",
+            fontSize: "14px",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ message, subMessage }) {
+  return (
+    <div
+      style={{
+        backgroundColor: "white",
+        padding: "60px 20px",
+        borderRadius: "12px",
+        textAlign: "center",
+        color: "#6b7280",
+      }}
+    >
+      <p style={{ fontSize: "18px", marginBottom: "8px" }}>{message}</p>
+      {subMessage && <p style={{ fontSize: "14px" }}>{subMessage}</p>}
+    </div>
   );
 }
 
@@ -1271,17 +1806,131 @@ function StatCard({ icon, title, value, color }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="stat-card"
-      style={{ borderLeftColor: color }}
+      style={{
+        backgroundColor: "white",
+        padding: "20px",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        borderLeft: `4px solid ${color}`,
+      }}
     >
-      <div className="stat-card__icon" style={{ color }}>
-        {icon}
-      </div>
-      <div className="stat-card__content">
-        <span className="stat-card__title">{title}</span>
-        <span className="stat-card__value">{value}</span>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <p
+            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
+          >
+            {title}
+          </p>
+          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
+            {value}
+          </p>
+        </div>
+        <div style={{ color }}>{icon}</div>
       </div>
     </motion.div>
+  );
+}
+
+function TabButton({ active, onClick, icon, label }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "12px 24px",
+        backgroundColor: "transparent",
+        color: active ? "#1e40af" : "#6b7280",
+        border: "none",
+        borderBottom: active ? "2px solid #1e40af" : "2px solid transparent",
+        cursor: "pointer",
+        fontSize: "14px",
+        fontWeight: "500",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        transition: "all 0.2s",
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function ActionButton({ onClick, title, color, children }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        padding: "6px 12px",
+        backgroundColor: color,
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        fontSize: "12px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FormField({ label, required, children }) {
+  return (
+    <div>
+      <label
+        style={{
+          display: "block",
+          fontSize: "14px",
+          fontWeight: "500",
+          marginBottom: "8px",
+          color: "#374151",
+        }}
+      >
+        {label}
+      </label>
+      <div style={{ width: "100%" }}>
+        {React.cloneElement(children, {
+          style: {
+            width: "100%",
+            padding: "10px 12px",
+            border: "1px solid #d1d5db",
+            borderRadius: "8px",
+            fontSize: "14px",
+            fontFamily: "inherit",
+          },
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "150px 1fr",
+        gap: "16px",
+        padding: "12px 0",
+        borderBottom: "1px solid #f3f4f6",
+      }}
+    >
+      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
+        {label}:
+      </span>
+      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    </div>
   );
 }
 
@@ -1292,14 +1941,36 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="modal-overlay"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: "20px",
+      }}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="modal"
+        style={{
+          backgroundColor: "white",
+          borderRadius: "12px",
+          padding: "32px",
+          maxWidth: "600px",
+          width: "100%",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          boxShadow:
+            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+        }}
       >
         {children}
       </motion.div>

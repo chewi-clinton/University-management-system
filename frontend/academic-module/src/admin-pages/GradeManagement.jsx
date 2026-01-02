@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Award,
@@ -18,145 +18,226 @@ import {
   Upload,
   Lock,
   Unlock,
+  RefreshCw,
 } from "lucide-react";
-import {
-  mockGrades,
-  mockGradeDistribution,
-  mockGPATrends,
-  mockAssessmentTypes,
-} from "../mock-data/gradesMock";
-import "../styles/admin-pages/GradeManagement.css";
+import { adminService } from "../services/api/adminService";
 
 export default function GradeManagement() {
-  const [grades, setGrades] = useState(mockGrades);
+  const [grades, setGrades] = useState([]);
+  const [courseOfferings, setCourseOfferings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedGrade, setSelectedGrade] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showAddAssessmentModal, setShowAddAssessmentModal] = useState(false);
-  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showAddGradeModal, setShowAddGradeModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterSemester, setFilterSemester] = useState("all");
+  const [filterOffering, setFilterOffering] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [activeTab, setActiveTab] = useState("grades"); // grades, analytics, bulk-upload
+  const [activeTab, setActiveTab] = useState("grades");
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [gradeDistribution, setGradeDistribution] = useState(null);
 
-  // Form state for adding assessment
-  const [assessmentForm, setAssessmentForm] = useState({
-    name: "",
-    type: "assignment",
-    marksObtained: "",
-    maxMarks: 100,
-    weightage: 15,
-    gradedAt: new Date().toISOString().split("T")[0],
-    isFinalized: false,
+  // Form state for adding/editing grade
+  const [gradeForm, setGradeForm] = useState({
+    student_id: "",
+    offering_id: "",
+    assessment_type: "midterm",
+    assessment_name: "",
+    marks_obtained: "",
+    max_marks: 100,
+    grade: "",
+    is_finalized: false,
   });
+
+  const assessmentTypes = [
+    { value: "assignment", label: "Assignment" },
+    { value: "quiz", label: "Quiz" },
+    { value: "midterm", label: "Midterm Exam" },
+    { value: "final", label: "Final Exam" },
+    { value: "project", label: "Project" },
+    { value: "presentation", label: "Presentation" },
+    { value: "lab", label: "Lab Work" },
+  ];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [gradesRes, offeringsRes, distributionRes] = await Promise.all([
+        adminService.getGrades(),
+        adminService.getCourseOfferings(),
+        adminService.getGradeDistribution(),
+      ]);
+
+      if (gradesRes.success) {
+        setGrades(gradesRes.data);
+      } else {
+        setError(gradesRes.error);
+      }
+
+      if (offeringsRes.success) {
+        setCourseOfferings(offeringsRes.data);
+      }
+
+      if (distributionRes.success) {
+        setGradeDistribution(distributionRes.data);
+      }
+    } catch (err) {
+      setError("Failed to load data");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculate statistics
   const stats = {
     totalGrades: grades.length,
-    finalized: grades.filter((g) => g.isFinalized).length,
-    avgGPA: (
-      grades.reduce((sum, g) => sum + g.gradePoints, 0) / grades.length
-    ).toFixed(2),
-    avgMarks: (
-      grades.reduce((sum, g) => sum + g.totalMarks, 0) / grades.length
-    ).toFixed(1),
+    finalized: grades.filter((g) => g.is_finalized).length,
+    avgMarks:
+      grades.length > 0
+        ? (
+            grades.reduce((sum, g) => sum + (g.marks_obtained || 0), 0) /
+            grades.length
+          ).toFixed(1)
+        : 0,
+    pending: grades.filter((g) => !g.is_finalized).length,
   };
 
   // Filter grades
   const filteredGrades = grades.filter((grade) => {
-    const matchesSearch =
-      grade.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grade.student.regNumber
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      grade.course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grade.course.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const studentName = grade.student
+      ? `${grade.student.first_name || ""} ${
+          grade.student.last_name || ""
+        }`.toLowerCase()
+      : "";
+    const regNumber = grade.student?.university_reg_number?.toLowerCase() || "";
+    const courseName = grade.offering?.course?.course_name?.toLowerCase() || "";
+    const courseCode = grade.offering?.course?.course_code?.toLowerCase() || "";
 
-    const matchesSemester =
-      filterSemester === "all" || grade.semester === filterSemester;
+    const matchesSearch =
+      studentName.includes(searchTerm.toLowerCase()) ||
+      regNumber.includes(searchTerm.toLowerCase()) ||
+      courseName.includes(searchTerm.toLowerCase()) ||
+      courseCode.includes(searchTerm.toLowerCase());
+
+    const matchesOffering =
+      filterOffering === "all" ||
+      grade.offering?.offering_id === parseInt(filterOffering);
+
     const matchesStatus =
       filterStatus === "all" ||
-      (filterStatus === "finalized" && grade.isFinalized) ||
-      (filterStatus === "draft" && !grade.isFinalized);
+      (filterStatus === "finalized" && grade.is_finalized) ||
+      (filterStatus === "draft" && !grade.is_finalized);
 
-    return matchesSearch && matchesSemester && matchesStatus;
+    return matchesSearch && matchesOffering && matchesStatus;
   });
 
-  const handleAddAssessment = (e) => {
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleSubmitGrade = async (e) => {
     e.preventDefault();
-    if (!selectedGrade) return;
+    setError(null);
 
-    const newAssessment = {
-      id: selectedGrade.assessments.length + 1,
-      ...assessmentForm,
-      marksObtained: parseFloat(assessmentForm.marksObtained),
-      maxMarks: parseFloat(assessmentForm.maxMarks),
-      weightage: parseFloat(assessmentForm.weightage),
-    };
+    try {
+      // Calculate percentage
+      const percentage =
+        (parseFloat(gradeForm.marks_obtained) /
+          parseFloat(gradeForm.max_marks)) *
+        100;
 
-    const updatedGrades = grades.map((g) => {
-      if (g.id === selectedGrade.id) {
-        const updatedAssessments = [...g.assessments, newAssessment];
-        const newTotalMarks = calculateTotalMarks(updatedAssessments);
-        return {
-          ...g,
-          assessments: updatedAssessments,
-          totalMarks: newTotalMarks,
-          letterGrade: calculateLetterGrade(newTotalMarks),
-          gradePoints: calculateGradePoints(newTotalMarks),
-        };
+      // Auto-calculate letter grade if not provided
+      let letterGrade = gradeForm.grade;
+      if (!letterGrade) {
+        letterGrade = calculateLetterGrade(percentage);
       }
-      return g;
-    });
 
-    setGrades(updatedGrades);
-    setShowAddAssessmentModal(false);
-    resetAssessmentForm();
+      const gradeData = {
+        ...gradeForm,
+        marks_obtained: parseFloat(gradeForm.marks_obtained),
+        max_marks: parseFloat(gradeForm.max_marks),
+        grade: letterGrade,
+      };
+
+      const result = selectedGrade
+        ? await adminService.updateGrade(selectedGrade.grade_id, gradeData)
+        : await adminService.createGrade(gradeData);
+
+      if (result.success) {
+        showSuccess(
+          selectedGrade
+            ? "Grade updated successfully"
+            : "Grade added successfully"
+        );
+        setShowAddGradeModal(false);
+        resetForm();
+        await loadData();
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to save grade");
+      console.error(err);
+    }
   };
 
-  const calculateTotalMarks = (assessments) => {
-    return assessments.reduce((total, assessment) => {
-      const percentage = (assessment.marksObtained / assessment.maxMarks) * 100;
-      return total + (percentage * assessment.weightage) / 100;
-    }, 0);
-  };
-
-  const calculateLetterGrade = (marks) => {
-    if (marks >= 90) return "A";
-    if (marks >= 85) return "A-";
-    if (marks >= 80) return "B+";
-    if (marks >= 75) return "B";
-    if (marks >= 70) return "B-";
-    if (marks >= 65) return "C+";
-    if (marks >= 60) return "C";
-    if (marks >= 55) return "C-";
-    if (marks >= 50) return "D";
+  const calculateLetterGrade = (percentage) => {
+    if (percentage >= 90) return "A";
+    if (percentage >= 85) return "A-";
+    if (percentage >= 80) return "B+";
+    if (percentage >= 75) return "B";
+    if (percentage >= 70) return "B-";
+    if (percentage >= 65) return "C+";
+    if (percentage >= 60) return "C";
+    if (percentage >= 55) return "C-";
+    if (percentage >= 50) return "D";
     return "F";
   };
 
-  const calculateGradePoints = (marks) => {
-    if (marks >= 90) return 4.0;
-    if (marks >= 85) return 3.7;
-    if (marks >= 80) return 3.3;
-    if (marks >= 75) return 3.0;
-    if (marks >= 70) return 2.7;
-    if (marks >= 65) return 2.3;
-    if (marks >= 60) return 2.0;
-    if (marks >= 55) return 1.7;
-    if (marks >= 50) return 1.0;
-    return 0.0;
+  const handleFinalizeGrade = async (gradeId) => {
+    setError(null);
+    try {
+      const grade = grades.find((g) => g.grade_id === gradeId);
+      const result = await adminService.updateGrade(gradeId, {
+        is_finalized: !grade.is_finalized,
+      });
+
+      if (result.success) {
+        showSuccess(
+          `Grade ${result.data.is_finalized ? "finalized" : "unfinalized"}`
+        );
+        await loadData();
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to update grade status");
+      console.error(err);
+    }
   };
 
-  const toggleFinalized = (gradeId) => {
-    setGrades(
-      grades.map((g) =>
-        g.id === gradeId ? { ...g, isFinalized: !g.isFinalized } : g
-      )
-    );
-  };
-
-  const deleteGrade = (gradeId) => {
+  const handleDeleteGrade = async (gradeId) => {
     if (window.confirm("Are you sure you want to delete this grade record?")) {
-      setGrades(grades.filter((g) => g.id !== gradeId));
+      setError(null);
+      try {
+        const result = await adminService.deleteGrade(gradeId);
+        if (result.success) {
+          showSuccess("Grade deleted successfully");
+          await loadData();
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError("Failed to delete grade");
+        console.error(err);
+      }
     }
   };
 
@@ -165,21 +246,33 @@ export default function GradeManagement() {
     setShowDetailsModal(true);
   };
 
-  const openAddAssessmentModal = (grade) => {
+  const openEditModal = (grade) => {
     setSelectedGrade(grade);
-    setShowAddAssessmentModal(true);
+    setGradeForm({
+      student_id: grade.student?.student_id || "",
+      offering_id: grade.offering?.offering_id || "",
+      assessment_type: grade.assessment_type || "midterm",
+      assessment_name: grade.assessment_name || "",
+      marks_obtained: grade.marks_obtained || "",
+      max_marks: grade.max_marks || 100,
+      grade: grade.grade || "",
+      is_finalized: grade.is_finalized || false,
+    });
+    setShowAddGradeModal(true);
   };
 
-  const resetAssessmentForm = () => {
-    setAssessmentForm({
-      name: "",
-      type: "assignment",
-      marksObtained: "",
-      maxMarks: 100,
-      weightage: 15,
-      gradedAt: new Date().toISOString().split("T")[0],
-      isFinalized: false,
+  const resetForm = () => {
+    setGradeForm({
+      student_id: "",
+      offering_id: "",
+      assessment_type: "midterm",
+      assessment_name: "",
+      marks_obtained: "",
+      max_marks: 100,
+      grade: "",
+      is_finalized: false,
     });
+    setSelectedGrade(null);
   };
 
   const getGradeColor = (letterGrade) => {
@@ -198,641 +291,1170 @@ export default function GradeManagement() {
     return colors[letterGrade] || "#6b7280";
   };
 
+  const exportToCSV = () => {
+    const headers = [
+      "Student",
+      "Reg Number",
+      "Course",
+      "Assessment",
+      "Marks",
+      "Grade",
+      "Status",
+    ];
+    const rows = filteredGrades.map((grade) => [
+      grade.student
+        ? `${grade.student.first_name || ""} ${
+            grade.student.last_name || ""
+          }`.trim()
+        : "N/A",
+      grade.student?.university_reg_number || "N/A",
+      `${grade.offering?.course?.course_code || ""} - ${
+        grade.offering?.course?.course_name || ""
+      }`,
+      grade.assessment_name || "N/A",
+      `${grade.marks_obtained}/${grade.max_marks}`,
+      grade.grade || "N/A",
+      grade.is_finalized ? "Finalized" : "Draft",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `grades_export_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showSuccess("Grades exported successfully");
+  };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "400px",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "4px solid #f3f4f6",
+              borderTop: "4px solid #1e40af",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 16px",
+            }}
+          />
+          <p style={{ color: "#6b7280" }}>Loading grades...</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="grade-management"
+      style={{ padding: "24px" }}
     >
+      {/* Success Message */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
+              position: "fixed",
+              top: "20px",
+              right: "20px",
+              backgroundColor: "#10b981",
+              color: "white",
+              padding: "16px 24px",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              zIndex: 1000,
+            }}
+          >
+            ✓ {successMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Message */}
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fee",
+            border: "1px solid #fcc",
+            color: "#c33",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c33",
+              cursor: "pointer",
+              fontSize: "18px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="grade-management__header">
+      <div
+        style={{
+          marginBottom: "32px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <div>
-          <h1 className="grade-management__title">Grade Management</h1>
-          <p className="grade-management__subtitle">
+          <h1
+            style={{
+              fontSize: "32px",
+              fontWeight: "700",
+              color: "#111827",
+              marginBottom: "8px",
+            }}
+          >
+            Grade Management
+          </h1>
+          <p style={{ color: "#6b7280", fontSize: "16px" }}>
             Manage student grades and academic performance
           </p>
         </div>
-        <div className="grade-management__header-actions">
-          <button className="btn btn--secondary">
-            <Download size={18} />
-            Export Grades
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={exportToCSV}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#10b981",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <Download size={18} /> Export
           </button>
-          <button className="btn btn--primary">
-            <Plus size={18} />
-            Add Grade
+          <button
+            onClick={loadData}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#6b7280",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <RefreshCw size={18} /> Refresh
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowAddGradeModal(true);
+            }}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#1e40af",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <Plus size={18} /> Add Grade
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="grade-management__tabs">
-        <button
-          className={`tab ${activeTab === "grades" ? "tab--active" : ""}`}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          marginBottom: "24px",
+          borderBottom: "2px solid #e5e7eb",
+        }}
+      >
+        <TabButton
+          active={activeTab === "grades"}
           onClick={() => setActiveTab("grades")}
-        >
-          <FileText size={18} />
-          Grades
-        </button>
-        <button
-          className={`tab ${activeTab === "analytics" ? "tab--active" : ""}`}
+          icon={<FileText size={18} />}
+          label="Grades"
+        />
+        <TabButton
+          active={activeTab === "analytics"}
           onClick={() => setActiveTab("analytics")}
-        >
-          <BarChart3 size={18} />
-          Analytics
-        </button>
-        <button
-          className={`tab ${activeTab === "bulk-upload" ? "tab--active" : ""}`}
-          onClick={() => setActiveTab("bulk-upload")}
-        >
-          <Upload size={18} />
-          Bulk Upload
-        </button>
+          icon={<BarChart3 size={18} />}
+          label="Analytics"
+        />
       </div>
 
-      {/* Statistics Cards */}
+      {/* Grades Tab */}
       {activeTab === "grades" && (
         <>
-          <div className="grade-management__stats">
+          {/* Statistics Cards */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: "20px",
+              marginBottom: "32px",
+            }}
+          >
             <StatCard
-              icon={<FileText />}
+              icon={<FileText size={24} />}
               title="Total Grades"
               value={stats.totalGrades}
               color="#3b82f6"
             />
             <StatCard
-              icon={<CheckCircle />}
+              icon={<CheckCircle size={24} />}
               title="Finalized"
               value={stats.finalized}
               color="#10b981"
             />
             <StatCard
-              icon={<Award />}
-              title="Average GPA"
-              value={stats.avgGPA}
-              color="#8b5cf6"
+              icon={<XCircle size={24} />}
+              title="Pending"
+              value={stats.pending}
+              color="#f59e0b"
             />
             <StatCard
-              icon={<TrendingUp />}
+              icon={<TrendingUp size={24} />}
               title="Average Marks"
               value={`${stats.avgMarks}%`}
-              color="#f59e0b"
+              color="#8b5cf6"
             />
           </div>
 
           {/* Filters */}
-          <div className="grade-management__filters">
-            <div className="filter-group">
-              <div className="input-with-icon">
-                <Search size={18} />
-                <input
-                  type="text"
-                  placeholder="Search by student, course, or reg number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="filter-input"
-                />
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "24px",
+              borderRadius: "12px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              marginBottom: "24px",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Search
+                </label>
+                <div style={{ position: "relative" }}>
+                  <Search
+                    size={18}
+                    style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#6b7280",
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search by student, course..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px 10px 40px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
               </div>
 
-              <select
-                value={filterSemester}
-                onChange={(e) => setFilterSemester(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Semesters</option>
-                <option value="Fall 2024">Fall 2024</option>
-                <option value="Spring 2024">Spring 2024</option>
-                <option value="Fall 2023">Fall 2023</option>
-              </select>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Course
+                </label>
+                <select
+                  value={filterOffering}
+                  onChange={(e) => setFilterOffering(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <option value="all">All Courses</option>
+                  {courseOfferings.map((offering) => (
+                    <option
+                      key={offering.offering_id}
+                      value={offering.offering_id}
+                    >
+                      {offering.course?.course_code} -{" "}
+                      {offering.course?.course_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Status</option>
-                <option value="finalized">Finalized</option>
-                <option value="draft">Draft</option>
-              </select>
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Status
+                </label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <option value="all">All Status</option>
+                  <option value="finalized">Finalized</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
             </div>
           </div>
 
           {/* Grades Table */}
-          <div className="grade-management__table-container">
-            <table className="grade-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Reg Number</th>
-                  <th>Course</th>
-                  <th>Semester</th>
-                  <th>Total Marks</th>
-                  <th>Letter Grade</th>
-                  <th>GPA</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGrades.map((grade) => (
-                  <motion.tr
-                    key={grade.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              overflow: "hidden",
+            }}
+          >
+            {filteredGrades.length === 0 ? (
+              <div
+                style={{
+                  padding: "60px 20px",
+                  textAlign: "center",
+                  color: "#6b7280",
+                }}
+              >
+                <p style={{ fontSize: "18px", marginBottom: "8px" }}>
+                  No grades found
+                </p>
+                <p style={{ fontSize: "14px" }}>
+                  {searchTerm ||
+                  filterOffering !== "all" ||
+                  filterStatus !== "all"
+                    ? "Try adjusting your filters"
+                    : "Add your first grade to get started"}
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead
+                    style={{
+                      backgroundColor: "#f9fafb",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}
                   >
-                    <td className="student-cell">
-                      <div className="student-avatar">
-                        {grade.student.name.charAt(0)}
-                      </div>
-                      <span className="student-name">{grade.student.name}</span>
-                    </td>
-                    <td className="reg-number">{grade.student.regNumber}</td>
-                    <td>
-                      <div className="course-info">
-                        <span className="course-code">{grade.course.code}</span>
-                        <span className="course-name">{grade.course.name}</span>
-                      </div>
-                    </td>
-                    <td>{grade.semester}</td>
-                    <td>
-                      <span className="marks-badge">
-                        {grade.totalMarks.toFixed(1)}%
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className="grade-badge"
-                        style={{
-                          backgroundColor: `${getGradeColor(
-                            grade.letterGrade
-                          )}20`,
-                          color: getGradeColor(grade.letterGrade),
-                        }}
+                    <tr>
+                      {[
+                        "Student",
+                        "Reg Number",
+                        "Course",
+                        "Assessment",
+                        "Marks",
+                        "Grade",
+                        "Status",
+                        "Actions",
+                      ].map((header) => (
+                        <th
+                          key={header}
+                          style={{
+                            padding: "12px 16px",
+                            textAlign: "left",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            color: "#6b7280",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredGrades.map((grade) => (
+                      <motion.tr
+                        key={grade.grade_id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{ borderBottom: "1px solid #f3f4f6" }}
                       >
-                        {grade.letterGrade}
-                      </span>
-                    </td>
-                    <td className="gpa-cell">{grade.gradePoints.toFixed(1)}</td>
-                    <td>
-                      <span
-                        className={`status-badge ${
-                          grade.isFinalized
-                            ? "status-badge--finalized"
-                            : "status-badge--draft"
-                        }`}
-                      >
-                        {grade.isFinalized ? (
-                          <>
-                            <CheckCircle size={14} />
-                            Finalized
-                          </>
-                        ) : (
-                          <>
-                            <XCircle size={14} />
-                            Draft
-                          </>
-                        )}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="action-btn action-btn--view"
-                          onClick={() => openDetailsModal(grade)}
-                          title="View Details"
+                        <td style={{ padding: "16px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "50%",
+                                backgroundColor: "#3b82f6",
+                                color: "white",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontWeight: "600",
+                              }}
+                            >
+                              {grade.student?.first_name?.charAt(0) || "?"}
+                            </div>
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                color: "#111827",
+                              }}
+                            >
+                              {grade.student
+                                ? `${grade.student.first_name || ""} ${
+                                    grade.student.last_name || ""
+                                  }`.trim()
+                                : "N/A"}
+                            </span>
+                          </div>
+                        </td>
+                        <td
+                          style={{
+                            padding: "16px",
+                            fontSize: "14px",
+                            color: "#6b7280",
+                          }}
                         >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          className="action-btn action-btn--edit"
-                          onClick={() => openAddAssessmentModal(grade)}
-                          title="Add Assessment"
-                        >
-                          <Plus size={16} />
-                        </button>
-                        <button
-                          className="action-btn action-btn--toggle"
-                          onClick={() => toggleFinalized(grade.id)}
-                          title={grade.isFinalized ? "Unfinalize" : "Finalize"}
-                        >
-                          {grade.isFinalized ? (
-                            <Unlock size={16} />
-                          ) : (
-                            <Lock size={16} />
-                          )}
-                        </button>
-                        <button
-                          className="action-btn action-btn--delete"
-                          onClick={() => deleteGrade(grade.id)}
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                          {grade.student?.university_reg_number || "N/A"}
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div>
+                            <div
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                color: "#1e40af",
+                              }}
+                            >
+                              {grade.offering?.course?.course_code || "N/A"}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                              {grade.offering?.course?.course_name || ""}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div>
+                            <div style={{ fontSize: "14px", color: "#111827" }}>
+                              {grade.assessment_name || "N/A"}
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                              {grade.assessment_type?.replace("_", " ") || ""}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div>
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                color: "#111827",
+                              }}
+                            >
+                              {grade.marks_obtained}/{grade.max_marks}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "12px",
+                                color: "#6b7280",
+                                marginLeft: "4px",
+                              }}
+                            >
+                              (
+                              {(
+                                (grade.marks_obtained / grade.max_marks) *
+                                100
+                              ).toFixed(1)}
+                              %)
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <span
+                            style={{
+                              padding: "4px 12px",
+                              borderRadius: "12px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              backgroundColor: `${getGradeColor(
+                                grade.grade
+                              )}20`,
+                              color: getGradeColor(grade.grade),
+                            }}
+                          >
+                            {grade.grade || "N/A"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <span
+                            style={{
+                              padding: "4px 12px",
+                              borderRadius: "12px",
+                              fontSize: "12px",
+                              fontWeight: "500",
+                              backgroundColor: grade.is_finalized
+                                ? "#10b98120"
+                                : "#f59e0b20",
+                              color: grade.is_finalized ? "#10b981" : "#f59e0b",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            {grade.is_finalized ? (
+                              <CheckCircle size={14} />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
+                            {grade.is_finalized ? "Finalized" : "Draft"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <ActionButton
+                              onClick={() => openDetailsModal(grade)}
+                              title="View"
+                              color="#3b82f6"
+                            >
+                              <Eye size={16} />
+                            </ActionButton>
+                            <ActionButton
+                              onClick={() => openEditModal(grade)}
+                              title="Edit"
+                              color="#f59e0b"
+                            >
+                              <Edit size={16} />
+                            </ActionButton>
+                            <ActionButton
+                              onClick={() =>
+                                handleFinalizeGrade(grade.grade_id)
+                              }
+                              title={
+                                grade.is_finalized ? "Unfinalize" : "Finalize"
+                              }
+                              color={grade.is_finalized ? "#6b7280" : "#10b981"}
+                            >
+                              {grade.is_finalized ? (
+                                <Unlock size={16} />
+                              ) : (
+                                <Lock size={16} />
+                              )}
+                            </ActionButton>
+                            <ActionButton
+                              onClick={() => handleDeleteGrade(grade.grade_id)}
+                              title="Delete"
+                              color="#dc2626"
+                            >
+                              <Trash2 size={16} />
+                            </ActionButton>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
 
       {/* Analytics Tab */}
-      {activeTab === "analytics" && (
-        <div className="analytics-container">
-          <div className="analytics-grid">
-            {/* Grade Distribution */}
-            <div className="analytics-card">
-              <h3 className="analytics-card__title">Grade Distribution</h3>
-              <div className="grade-distribution">
-                {mockGradeDistribution.overall.map((item) => (
-                  <div key={item.grade} className="grade-distribution__item">
-                    <div className="grade-distribution__header">
-                      <span className="grade-distribution__grade">
-                        {item.grade}
-                      </span>
-                      <span className="grade-distribution__percentage">
-                        {item.percentage}%
-                      </span>
-                    </div>
-                    <div className="grade-distribution__bar">
-                      <div
-                        className="grade-distribution__fill"
-                        style={{
-                          width: `${item.percentage}%`,
-                          backgroundColor: getGradeColor(item.grade),
-                        }}
-                      />
-                    </div>
-                    <span className="grade-distribution__count">
-                      {item.count} students
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* GPA Trends */}
-            <div className="analytics-card">
-              <h3 className="analytics-card__title">GPA Trends</h3>
-              <div className="gpa-trends">
-                {mockGPATrends.map((trend, index) => (
-                  <div key={index} className="gpa-trend__item">
-                    <div className="gpa-trend__info">
-                      <span className="gpa-trend__semester">
-                        {trend.semester}
-                      </span>
-                      <span className="gpa-trend__students">
-                        {trend.totalStudents} students
-                      </span>
-                    </div>
-                    <div className="gpa-trend__value">
-                      <TrendingUp size={16} className="gpa-trend__icon" />
-                      <span className="gpa-trend__gpa">{trend.avgGPA}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Assessment Types */}
-            <div className="analytics-card analytics-card--full">
-              <h3 className="analytics-card__title">
-                Assessment Types & Weightages
-              </h3>
-              <div className="assessment-types">
-                {mockAssessmentTypes.map((type) => (
-                  <div key={type.type} className="assessment-type__item">
-                    <span className="assessment-type__label">{type.label}</span>
-                    <div className="assessment-type__weightage">
-                      <span>Default: {type.defaultWeightage}%</span>
-                      <span>Max: {type.maxWeightage}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Upload Tab */}
-      {activeTab === "bulk-upload" && (
-        <div className="bulk-upload-container">
-          <div className="bulk-upload-card">
-            <Upload size={48} className="bulk-upload-icon" />
-            <h3>Bulk Grade Upload</h3>
-            <p>Upload a CSV or Excel file to import multiple grades at once</p>
-            <div className="bulk-upload-actions">
-              <button className="btn btn--secondary">
-                <Download size={18} />
-                Download Template
-              </button>
-              <button className="btn btn--primary">
-                <Upload size={18} />
-                Upload File
-              </button>
-            </div>
-            <div className="bulk-upload-info">
-              <p>
-                <strong>Supported formats:</strong> CSV, XLSX, XLS
-              </p>
-              <p>
-                <strong>Maximum file size:</strong> 10 MB
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Grade Details Modal */}
-      <AnimatePresence>
-        {showDetailsModal && selectedGrade && (
-          <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2 className="modal__title">Grade Details</h2>
-
-            <div className="grade-details">
-              <div className="grade-details__header">
-                <div>
-                  <h3>{selectedGrade.student.name}</h3>
-                  <p className="grade-details__reg">
-                    {selectedGrade.student.regNumber}
-                  </p>
-                </div>
-                <div className="grade-details__summary">
-                  <span
-                    className="grade-badge grade-badge--large"
-                    style={{
-                      backgroundColor: `${getGradeColor(
-                        selectedGrade.letterGrade
-                      )}20`,
-                      color: getGradeColor(selectedGrade.letterGrade),
-                    }}
-                  >
-                    {selectedGrade.letterGrade}
-                  </span>
-                  <div className="grade-details__stats">
-                    <div>
-                      <span className="label">Total Marks</span>
-                      <span className="value">
-                        {selectedGrade.totalMarks.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div>
-                      <span className="label">GPA</span>
-                      <span className="value">
-                        {selectedGrade.gradePoints.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grade-details__course">
-                <h4>Course Information</h4>
-                <div className="detail-row">
-                  <span className="detail-label">Course Code:</span>
-                  <span className="detail-value">
-                    {selectedGrade.course.code}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Course Name:</span>
-                  <span className="detail-value">
-                    {selectedGrade.course.name}
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Semester:</span>
-                  <span className="detail-value">{selectedGrade.semester}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Graded By:</span>
-                  <span className="detail-value">{selectedGrade.gradedBy}</span>
-                </div>
-              </div>
-
-              <div className="grade-details__assessments">
-                <h4>Assessments</h4>
-                <table className="assessments-table">
-                  <thead>
-                    <tr>
-                      <th>Assessment</th>
-                      <th>Type</th>
-                      <th>Marks</th>
-                      <th>Weightage</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedGrade.assessments.map((assessment) => (
-                      <tr key={assessment.id}>
-                        <td>{assessment.name}</td>
-                        <td>
-                          <span className="assessment-type-badge">
-                            {assessment.type.replace("_", " ")}
-                          </span>
-                        </td>
-                        <td>
-                          {assessment.marksObtained}/{assessment.maxMarks}
-                          <span className="percentage">
-                            (
-                            {(
-                              (assessment.marksObtained / assessment.maxMarks) *
-                              100
-                            ).toFixed(1)}
-                            %)
-                          </span>
-                        </td>
-                        <td>{assessment.weightage}%</td>
-                        <td>
-                          {new Date(assessment.gradedAt).toLocaleDateString()}
-                        </td>
-                        <td>
-                          {assessment.isFinalized ? (
-                            <CheckCircle
-                              size={16}
-                              className="status-icon status-icon--success"
-                            />
-                          ) : (
-                            <XCircle
-                              size={16}
-                              className="status-icon status-icon--warning"
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="modal__actions">
-              <button
-                className="btn btn--secondary"
-                onClick={() => setShowDetailsModal(false)}
-              >
-                Close
-              </button>
-            </div>
-          </Modal>
-        )}
-      </AnimatePresence>
-
-      {/* Add Assessment Modal */}
-      <AnimatePresence>
-        {showAddAssessmentModal && selectedGrade && (
-          <Modal
-            onClose={() => {
-              setShowAddAssessmentModal(false);
-              resetAssessmentForm();
+      {activeTab === "analytics" && gradeDistribution && (
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "32px",
+            borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: "20px",
+              fontWeight: "700",
+              marginBottom: "24px",
             }}
           >
-            <h2 className="modal__title">Add Assessment</h2>
-            <p className="modal__subtitle">
-              Adding assessment for {selectedGrade.student.name} -{" "}
-              {selectedGrade.course.code}
-            </p>
-
-            <form onSubmit={handleAddAssessment} className="assessment-form">
-              <div className="form-grid">
-                <div className="form-field">
-                  <label>Assessment Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={assessmentForm.name}
-                    onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="e.g., Midterm Exam"
+            Grade Distribution
+          </h3>
+          <div style={{ display: "grid", gap: "16px" }}>
+            {gradeDistribution.map((item) => (
+              <div
+                key={item.grade}
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      color: getGradeColor(item.grade),
+                    }}
+                  >
+                    {item.grade}
+                  </span>
+                  <span style={{ fontSize: "14px", color: "#6b7280" }}>
+                    {item.count} students ({item.percentage}%)
+                  </span>
+                </div>
+                <div
+                  style={{
+                    width: "100%",
+                    height: "12px",
+                    backgroundColor: "#f3f4f6",
+                    borderRadius: "6px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${item.percentage}%`,
+                      height: "100%",
+                      backgroundColor: getGradeColor(item.grade),
+                      transition: "width 0.3s ease",
+                    }}
                   />
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-                <div className="form-field">
-                  <label>Assessment Type *</label>
+      {/* Add/Edit Grade Modal */}
+      <AnimatePresence>
+        {showAddGradeModal && (
+          <Modal
+            onClose={() => {
+              setShowAddGradeModal(false);
+              resetForm();
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: "700",
+                marginBottom: "8px",
+              }}
+            >
+              {selectedGrade ? "Edit Grade" : "Add New Grade"}
+            </h2>
+            <p style={{ color: "#6b7280", marginBottom: "24px" }}>
+              Enter the grade details below
+            </p>
+
+            <form
+              onSubmit={handleSubmitGrade}
+              style={{ display: "grid", gap: "16px" }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "16px",
+                }}
+              >
+                <FormField label="Course Offering *" required>
                   <select
                     required
-                    value={assessmentForm.type}
+                    value={gradeForm.offering_id}
                     onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        type: e.target.value,
+                      setGradeForm({
+                        ...gradeForm,
+                        offering_id: e.target.value,
                       })
                     }
                   >
-                    {mockAssessmentTypes.map((type) => (
-                      <option key={type.type} value={type.type}>
+                    <option value="">Select Course</option>
+                    {courseOfferings.map((offering) => (
+                      <option
+                        key={offering.offering_id}
+                        value={offering.offering_id}
+                      >
+                        {offering.course?.course_code} -{" "}
+                        {offering.course?.course_name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField label="Assessment Type *" required>
+                  <select
+                    required
+                    value={gradeForm.assessment_type}
+                    onChange={(e) =>
+                      setGradeForm({
+                        ...gradeForm,
+                        assessment_type: e.target.value,
+                      })
+                    }
+                  >
+                    {assessmentTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
                         {type.label}
                       </option>
                     ))}
                   </select>
-                </div>
+                </FormField>
+              </div>
 
-                <div className="form-field">
-                  <label>Marks Obtained *</label>
+              <FormField label="Assessment Name *" required>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., Midterm Exam"
+                  value={gradeForm.assessment_name}
+                  onChange={(e) =>
+                    setGradeForm({
+                      ...gradeForm,
+                      assessment_name: e.target.value,
+                    })
+                  }
+                />
+              </FormField>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: "16px",
+                }}
+              >
+                <FormField label="Marks Obtained *" required>
                   <input
                     type="number"
                     required
                     min="0"
                     step="0.1"
-                    value={assessmentForm.marksObtained}
+                    value={gradeForm.marks_obtained}
                     onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        marksObtained: e.target.value,
+                      setGradeForm({
+                        ...gradeForm,
+                        marks_obtained: e.target.value,
                       })
                     }
                   />
-                </div>
+                </FormField>
 
-                <div className="form-field">
-                  <label>Maximum Marks *</label>
+                <FormField label="Maximum Marks *" required>
                   <input
                     type="number"
                     required
                     min="1"
-                    value={assessmentForm.maxMarks}
+                    value={gradeForm.max_marks}
                     onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        maxMarks: e.target.value,
-                      })
+                      setGradeForm({ ...gradeForm, max_marks: e.target.value })
                     }
                   />
-                </div>
+                </FormField>
 
-                <div className="form-field">
-                  <label>Weightage (%) *</label>
+                <FormField label="Letter Grade">
                   <input
-                    type="number"
-                    required
-                    min="1"
-                    max="100"
-                    value={assessmentForm.weightage}
+                    type="text"
+                    placeholder="Auto-calculated"
+                    value={gradeForm.grade}
                     onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        weightage: e.target.value,
-                      })
+                      setGradeForm({ ...gradeForm, grade: e.target.value })
                     }
                   />
-                </div>
-
-                <div className="form-field">
-                  <label>Graded Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={assessmentForm.gradedAt}
-                    onChange={(e) =>
-                      setAssessmentForm({
-                        ...assessmentForm,
-                        gradedAt: e.target.value,
-                      })
-                    }
-                  />
-                </div>
+                </FormField>
               </div>
 
-              <div className="form-checkbox">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
                 <input
                   type="checkbox"
                   id="finalized"
-                  checked={assessmentForm.isFinalized}
+                  checked={gradeForm.is_finalized}
                   onChange={(e) =>
-                    setAssessmentForm({
-                      ...assessmentForm,
-                      isFinalized: e.target.checked,
+                    setGradeForm({
+                      ...gradeForm,
+                      is_finalized: e.target.checked,
                     })
                   }
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
                 />
-                <label htmlFor="finalized">Mark as finalized</label>
+                <label
+                  htmlFor="finalized"
+                  style={{
+                    fontSize: "14px",
+                    color: "#374151",
+                    cursor: "pointer",
+                  }}
+                >
+                  Mark as finalized
+                </label>
               </div>
 
-              <div className="modal__actions">
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                  marginTop: "8px",
+                }}
+              >
                 <button
                   type="button"
-                  className="btn btn--secondary"
                   onClick={() => {
-                    setShowAddAssessmentModal(false);
-                    resetAssessmentForm();
+                    setShowAddGradeModal(false);
+                    resetForm();
+                  }}
+                  style={{
+                    padding: "10px 20px",
+                    backgroundColor: "#e5e7eb",
+                    color: "#374151",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    cursor: "pointer",
                   }}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn--primary">
+                <button
+                  type="submit"
+                  style={{
+                    padding: "10px 20px",
+                    backgroundColor: "#1e40af",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
                   <Plus size={18} />
-                  Add Assessment
+                  {selectedGrade ? "Update Grade" : "Add Grade"}
                 </button>
               </div>
             </form>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* Grade Details Modal */}
+      <AnimatePresence>
+        {showDetailsModal && selectedGrade && (
+          <Modal onClose={() => setShowDetailsModal(false)}>
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: "700",
+                marginBottom: "24px",
+              }}
+            >
+              Grade Details
+            </h2>
+
+            <div style={{ display: "grid", gap: "24px" }}>
+              {/* Student & Grade Summary */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "start",
+                }}
+              >
+                <div>
+                  <h3
+                    style={{
+                      fontSize: "20px",
+                      fontWeight: "600",
+                      color: "#111827",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    {selectedGrade.student
+                      ? `${selectedGrade.student.first_name || ""} ${
+                          selectedGrade.student.last_name || ""
+                        }`.trim()
+                      : "N/A"}
+                  </h3>
+                  <p style={{ fontSize: "14px", color: "#6b7280" }}>
+                    {selectedGrade.student?.university_reg_number || "N/A"}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "12px",
+                      fontSize: "24px",
+                      fontWeight: "700",
+                      backgroundColor: `${getGradeColor(
+                        selectedGrade.grade
+                      )}20`,
+                      color: getGradeColor(selectedGrade.grade),
+                      display: "inline-block",
+                    }}
+                  >
+                    {selectedGrade.grade || "N/A"}
+                  </span>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      marginTop: "8px",
+                    }}
+                  >
+                    {selectedGrade.marks_obtained}/{selectedGrade.max_marks} (
+                    {(
+                      (selectedGrade.marks_obtained / selectedGrade.max_marks) *
+                      100
+                    ).toFixed(1)}
+                    %)
+                  </p>
+                </div>
+              </div>
+
+              {/* Course Information */}
+              <div>
+                <h4
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    marginBottom: "12px",
+                    color: "#111827",
+                  }}
+                >
+                  Course Information
+                </h4>
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <DetailRow
+                    label="Course Code"
+                    value={selectedGrade.offering?.course?.course_code || "N/A"}
+                  />
+                  <DetailRow
+                    label="Course Name"
+                    value={selectedGrade.offering?.course?.course_name || "N/A"}
+                  />
+                  <DetailRow
+                    label="Section"
+                    value={selectedGrade.offering?.section || "N/A"}
+                  />
+                  <DetailRow
+                    label="Semester"
+                    value={
+                      selectedGrade.offering?.semester?.semester_name || "N/A"
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Assessment Information */}
+              <div>
+                <h4
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    marginBottom: "12px",
+                    color: "#111827",
+                  }}
+                >
+                  Assessment Details
+                </h4>
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <DetailRow
+                    label="Assessment Name"
+                    value={selectedGrade.assessment_name || "N/A"}
+                  />
+                  <DetailRow
+                    label="Assessment Type"
+                    value={
+                      selectedGrade.assessment_type?.replace("_", " ") || "N/A"
+                    }
+                  />
+                  <DetailRow
+                    label="Marks"
+                    value={`${selectedGrade.marks_obtained}/${selectedGrade.max_marks}`}
+                  />
+                  <DetailRow
+                    label="Percentage"
+                    value={`${(
+                      (selectedGrade.marks_obtained / selectedGrade.max_marks) *
+                      100
+                    ).toFixed(1)}%`}
+                  />
+                  <DetailRow
+                    label="Graded By"
+                    value={
+                      selectedGrade.graded_by_faculty
+                        ? `${
+                            selectedGrade.graded_by_faculty.user?.first_name ||
+                            ""
+                          } ${
+                            selectedGrade.graded_by_faculty.user?.last_name ||
+                            ""
+                          }`.trim()
+                        : "N/A"
+                    }
+                  />
+                  <DetailRow
+                    label="Graded At"
+                    value={
+                      selectedGrade.graded_at
+                        ? new Date(selectedGrade.graded_at).toLocaleString()
+                        : "N/A"
+                    }
+                  />
+                  <DetailRow
+                    label="Status"
+                    value={
+                      <span
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: "12px",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          backgroundColor: selectedGrade.is_finalized
+                            ? "#10b98120"
+                            : "#f59e0b20",
+                          color: selectedGrade.is_finalized
+                            ? "#10b981"
+                            : "#f59e0b",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        {selectedGrade.is_finalized ? (
+                          <CheckCircle size={14} />
+                        ) : (
+                          <XCircle size={14} />
+                        )}
+                        {selectedGrade.is_finalized ? "Finalized" : "Draft"}
+                      </span>
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: "24px",
+              }}
+            >
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#1e40af",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
           </Modal>
         )}
       </AnimatePresence>
@@ -845,17 +1467,131 @@ function StatCard({ icon, title, value, color }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="stat-card"
-      style={{ borderLeftColor: color }}
+      style={{
+        backgroundColor: "white",
+        padding: "20px",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        borderLeft: `4px solid ${color}`,
+      }}
     >
-      <div className="stat-card__icon" style={{ color }}>
-        {icon}
-      </div>
-      <div className="stat-card__content">
-        <span className="stat-card__title">{title}</span>
-        <span className="stat-card__value">{value}</span>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <p
+            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
+          >
+            {title}
+          </p>
+          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
+            {value}
+          </p>
+        </div>
+        <div style={{ color }}>{icon}</div>
       </div>
     </motion.div>
+  );
+}
+
+function TabButton({ active, onClick, icon, label }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "12px 24px",
+        backgroundColor: "transparent",
+        color: active ? "#1e40af" : "#6b7280",
+        border: "none",
+        borderBottom: active ? "2px solid #1e40af" : "2px solid transparent",
+        cursor: "pointer",
+        fontSize: "14px",
+        fontWeight: "500",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        transition: "all 0.2s",
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function ActionButton({ onClick, title, color, children }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        padding: "6px 12px",
+        backgroundColor: color,
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        fontSize: "12px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FormField({ label, required, children }) {
+  return (
+    <div>
+      <label
+        style={{
+          display: "block",
+          fontSize: "14px",
+          fontWeight: "500",
+          marginBottom: "8px",
+          color: "#374151",
+        }}
+      >
+        {label}
+      </label>
+      <div style={{ width: "100%" }}>
+        {React.cloneElement(children, {
+          style: {
+            width: "100%",
+            padding: "10px 12px",
+            border: "1px solid #d1d5db",
+            borderRadius: "8px",
+            fontSize: "14px",
+            fontFamily: "inherit",
+          },
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "180px 1fr",
+        gap: "16px",
+        padding: "12px 0",
+        borderBottom: "1px solid #f3f4f6",
+      }}
+    >
+      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
+        {label}:
+      </span>
+      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    </div>
   );
 }
 
@@ -866,14 +1602,36 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="modal-overlay"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: "20px",
+      }}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="modal"
+        style={{
+          backgroundColor: "white",
+          borderRadius: "12px",
+          padding: "32px",
+          maxWidth: "700px",
+          width: "100%",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          boxShadow:
+            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+        }}
       >
         {children}
       </motion.div>
