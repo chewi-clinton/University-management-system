@@ -12,7 +12,7 @@ import {
   Star,
   Award,
   BookOpen,
-  Users, // ← THIS WAS MISSING! Fixed now
+  Users,
 } from "lucide-react";
 
 import AdminDataTable from "../components/shared/admin/AdminDataTable";
@@ -23,11 +23,12 @@ import FilterPanel, {
 } from "../components/shared/admin/FilterPanel";
 import BulkActionBar from "../components/shared/admin/BulkActionBar";
 import ExportButton from "../components/shared/admin/ExportButton";
-import { mockFaculty } from "../mock-data/usersMock";
+import { adminService } from "../services/api/adminService";
 import "../styles/admin-pages/faculty-management.css";
+
 export default function FacultyManagement() {
-  const [faculty, setFaculty] = useState(mockFaculty);
-  const [filteredFaculty, setFilteredFaculty] = useState(faculty);
+  const [faculty, setFaculty] = useState([]);
+  const [filteredFaculty, setFilteredFaculty] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("add"); // add | edit | view
@@ -39,20 +40,80 @@ export default function FacultyManagement() {
     status: "all",
   });
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  // Fetch faculty data from API
+  useEffect(() => {
+    fetchFaculty();
+    fetchDepartments();
+  }, []);
+
+  const fetchFaculty = async () => {
+    setLoading(true);
+    try {
+      const response = await adminService.getFacultyMembers();
+      if (response.success) {
+        // Transform backend data to match frontend structure with safe fallbacks
+        const transformedData = response.data.map((f) => ({
+          id: f.faculty_id,
+          employeeId: f.employee_id ?? "—",
+          firstName: f.user?.first_name ?? "—",
+          lastName: f.user?.last_name ?? "—",
+          email: f.user?.email ?? "—",
+          phone: f.phone ?? "—",
+          department: f.department?.department_name ?? "—",
+          departmentId: f.department?.department_id ?? null,
+          designation: f.designation ?? "—",
+          specialization: f.specialization ?? "—",
+          officeLocation: f.office_location ?? "—",
+          hireDate: f.hire_date ?? null,
+          isActive: f.user?.is_active ?? false,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${
+            (f.user?.first_name ?? "") + (f.user?.last_name ?? "")
+          }`,
+          totalCourses: 0,
+          totalStudents: 0,
+          averageRating: 0.0,
+        }));
+        setFaculty(transformedData);
+        setFilteredFaculty(transformedData);
+      } else {
+        console.error("Failed to fetch faculty:", response.error);
+        alert(`Error: ${response.error}`);
+      }
+    } catch (error) {
+      console.error("Error fetching faculty:", error);
+      alert("Failed to load faculty data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await adminService.getDepartments();
+      if (response.success) {
+        setDepartments(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
 
   // Search & Filter Logic
   useEffect(() => {
     let result = [...faculty];
 
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       result = result.filter(
         (f) =>
-          f.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          f.specialization.toLowerCase().includes(searchQuery.toLowerCase())
+          f.firstName.toLowerCase().includes(query) ||
+          f.lastName.toLowerCase().includes(query) ||
+          f.employeeId.toLowerCase().includes(query) ||
+          f.email.toLowerCase().includes(query) ||
+          f.department.toLowerCase().includes(query) ||
+          f.specialization.toLowerCase().includes(query)
       );
     }
 
@@ -168,12 +229,11 @@ export default function FacultyManagement() {
       key: "hireDate",
       label: "Joined",
       sortable: true,
-      render: (date) => new Date(date).toLocaleDateString(),
+      render: (date) => (date ? new Date(date).toLocaleDateString() : "—"),
     },
   ];
 
   const formFields = [
-    // ... (your formFields remain unchanged)
     {
       name: "firstName",
       type: "text",
@@ -214,6 +274,14 @@ export default function FacultyManagement() {
       },
     },
     {
+      name: "password",
+      type: "password",
+      label: "Password",
+      placeholder: "Enter password",
+      required: modalMode === "add",
+      hidden: modalMode !== "add",
+    },
+    {
       name: "phone",
       type: "tel",
       label: "Phone Number",
@@ -221,19 +289,15 @@ export default function FacultyManagement() {
       required: true,
     },
     {
-      name: "department",
+      name: "departmentId",
       type: "select",
       label: "Department",
       placeholder: "Select department",
       required: true,
-      options: [
-        "Computer Science",
-        "Mathematics",
-        "Engineering",
-        "Business",
-        "Physics",
-        "Chemistry",
-      ],
+      options: departments.map((dept) => ({
+        value: dept.id,
+        label: dept.name,
+      })),
     },
     {
       name: "designation",
@@ -265,6 +329,14 @@ export default function FacultyManagement() {
       required: true,
     },
     {
+      name: "employeeId",
+      type: "text",
+      label: "Employee ID",
+      placeholder: "FAC-2024-001",
+      required: true,
+      hidden: modalMode === "edit",
+    },
+    {
       name: "hireDate",
       type: "date",
       label: "Hire Date",
@@ -290,7 +362,11 @@ export default function FacultyManagement() {
 
   const handleEditFaculty = (faculty) => {
     setModalMode("edit");
-    setSelectedFaculty(faculty);
+    setSelectedFaculty({
+      ...faculty,
+      departmentId: faculty.departmentId,
+      officeLocation: faculty.officeLocation,
+    });
     setShowModal(true);
   };
 
@@ -300,39 +376,80 @@ export default function FacultyManagement() {
     setShowModal(true);
   };
 
-  const handleSaveFaculty = (formData) => {
-    if (modalMode === "add") {
-      const newFaculty = {
-        id: faculty.length ? Math.max(...faculty.map((f) => f.id)) + 1 : 1,
-        employeeId: `FAC-${new Date().getFullYear()}-${String(
-          faculty.length + 1
-        ).padStart(3, "0")}`,
-        ...formData,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.firstName}${formData.lastName}`,
-        totalCourses: 0,
-        totalStudents: 0,
-        averageRating: 0.0,
-        isActive: formData.isActive === true || formData.isActive === "true",
-      };
-      setFaculty([...faculty, newFaculty]);
-    } else {
-      setFaculty(
-        faculty.map((f) =>
-          f.id === selectedFaculty.id
-            ? {
-                ...f,
-                ...formData,
-                isActive:
-                  formData.isActive === true || formData.isActive === "true",
-              }
-            : f
-        )
-      );
+  const handleSaveFaculty = async (formData) => {
+    setLoading(true);
+    try {
+      if (modalMode === "add") {
+        const userData = {
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          password: formData.password,
+          role: "faculty",
+          is_active: formData.isActive === true || formData.isActive === "true",
+        };
+
+        const facultyData = {
+          department_id: formData.departmentId,
+          employee_id: formData.employeeId,
+          phone: formData.phone,
+          designation: formData.designation,
+          specialization: formData.specialization,
+          office_location: formData.officeLocation,
+          hire_date: formData.hireDate,
+        };
+
+        const response = await adminService.createFacultyMember({
+          ...userData,
+          ...facultyData,
+        });
+
+        if (response.success) {
+          alert("Faculty member created successfully!");
+          fetchFaculty();
+          setShowModal(false);
+        } else {
+          alert(`Error: ${response.error}`);
+        }
+      } else {
+        const updateData = {
+          department_id: formData.departmentId,
+          phone: formData.phone,
+          designation: formData.designation,
+          specialization: formData.specialization,
+          office_location: formData.officeLocation,
+          hire_date: formData.hireDate,
+          user: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email,
+            is_active:
+              formData.isActive === true || formData.isActive === "true",
+          },
+        };
+
+        const response = await adminService.updateFacultyMember(
+          selectedFaculty.id,
+          updateData
+        );
+
+        if (response.success) {
+          alert("Faculty member updated successfully!");
+          fetchFaculty();
+          setShowModal(false);
+        } else {
+          alert(`Error: ${response.error}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving faculty:", error);
+      alert("Failed to save faculty member");
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
-  const handleBulkAction = (action, selectedIds) => {
+  const handleBulkAction = async (action, selectedIds) => {
     switch (action) {
       case "export":
         console.log("Exporting faculty:", selectedIds);
@@ -341,22 +458,33 @@ export default function FacultyManagement() {
         console.log("Sending email to faculty:", selectedIds);
         break;
       case "activate":
-        setFaculty(
-          faculty.map((f) =>
-            selectedIds.includes(f.id) ? { ...f, isActive: true } : f
-          )
-        );
+        for (const id of selectedIds) {
+          await adminService.updateFacultyMember(id, {
+            user: { is_active: true },
+          });
+        }
+        fetchFaculty();
         break;
       case "deactivate":
-        setFaculty(
-          faculty.map((f) =>
-            selectedIds.includes(f.id) ? { ...f, isActive: false } : f
-          )
-        );
+        for (const id of selectedIds) {
+          await adminService.updateFacultyMember(id, {
+            user: { is_active: false },
+          });
+        }
+        fetchFaculty();
         break;
       case "delete":
-        setFaculty(faculty.filter((f) => !selectedIds.includes(f.id)));
-        setSelectedRows([]);
+        if (
+          window.confirm(
+            `Are you sure you want to delete ${selectedIds.length} faculty member(s)?`
+          )
+        ) {
+          for (const id of selectedIds) {
+            await adminService.deleteFacultyMember(id);
+          }
+          fetchFaculty();
+          setSelectedRows([]);
+        }
         break;
       default:
         break;
@@ -367,14 +495,6 @@ export default function FacultyManagement() {
     console.log(`Exporting faculty as ${format}`);
   };
 
-  const departments = [
-    "Computer Science",
-    "Mathematics",
-    "Engineering",
-    "Business",
-    "Physics",
-    "Chemistry",
-  ];
   const designations = [
     "Professor",
     "Associate Professor",
@@ -467,7 +587,7 @@ export default function FacultyManagement() {
           <SelectFilter
             value={filters.department}
             onChange={(value) => setFilters({ ...filters, department: value })}
-            options={["all", ...departments]}
+            options={["all", ...departments.map((d) => d.name)]}
             placeholder="All Departments"
           />
           <SelectFilter
@@ -532,11 +652,19 @@ export default function FacultyManagement() {
               type: "delete",
               label: "Delete",
               icon: <Trash2 size={16} />,
-              onClick: (row) => {
+              onClick: async (row) => {
                 if (
                   window.confirm(`Delete ${row.firstName} ${row.lastName}?`)
                 ) {
-                  setFaculty(faculty.filter((f) => f.id !== row.id));
+                  const response = await adminService.deleteFacultyMember(
+                    row.id
+                  );
+                  if (response.success) {
+                    alert("Faculty member deleted successfully!");
+                    fetchFaculty();
+                  } else {
+                    alert(`Error: ${response.error}`);
+                  }
                 }
               },
             },

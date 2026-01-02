@@ -867,6 +867,77 @@ const adminService = {
       };
     }
   },
+
+  // ==================== Users ====================
+  getUsers: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/users/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load users",
+      };
+    }
+  },
+
+  createUser: async (userData) => {
+    try {
+      const response = await api.post("/users/", userData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating user:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail ||
+          error.response?.data ||
+          "Failed to create user",
+      };
+    }
+  },
+
+  updateUser: async (userId, userData) => {
+    try {
+      const response = await api.patch(`/users/${userId}/`, userData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update user",
+      };
+    }
+  },
+
+  deleteUser: async (userId) => {
+    try {
+      await api.delete(`/users/${userId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete user",
+      };
+    }
+  },
 };
 
 // Helper function to generate random colors for departments
