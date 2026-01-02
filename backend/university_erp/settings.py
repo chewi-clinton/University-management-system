@@ -1,3 +1,5 @@
+# settings.py (updated with file upload configuration)
+
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -127,8 +129,13 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+# Media files configuration (for file uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Maximum upload size (100MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB in bytes
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB in bytes
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -139,7 +146,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
-    # Don't set DEFAULT_PERMISSION_CLASSES - let views control their own permissions
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': [
@@ -509,4 +515,4 @@ LOGGING = {
         },
     },
 }
-APPEND_SLASH = True  # This is usually the default
+APPEND_SLASH = True

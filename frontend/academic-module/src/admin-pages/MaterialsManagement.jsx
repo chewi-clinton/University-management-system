@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
@@ -25,127 +25,13 @@ import {
   Star,
   Share2,
   ChevronDown,
-  Plus,
   X,
-  Check,
-  AlertCircle,
-  FolderPlus,
   Archive,
   Tags,
   Paperclip,
-  ExternalLink,
 } from "lucide-react";
+import { adminService } from "../services/api/adminService";
 import "../styles/admin-pages/MaterialsManagement.css";
-
-// Mock Data
-const mockMaterials = [
-  {
-    id: 1,
-    title: "Introduction to Machine Learning - Lecture Notes",
-    description:
-      "Comprehensive notes covering supervised and unsupervised learning",
-    course: "CS501 - Artificial Intelligence",
-    type: "document",
-    fileType: "pdf",
-    size: "2.4 MB",
-    uploadedBy: "Dr. Sarah Johnson",
-    uploadDate: "2026-01-01T10:00:00",
-    lastModified: "2026-01-01T10:00:00",
-    downloads: 156,
-    views: 342,
-    accessLevel: "enrolled",
-    tags: ["Machine Learning", "AI", "Lecture Notes"],
-    isStarred: true,
-    thumbnail: null,
-  },
-  {
-    id: 2,
-    title: "Database Design Tutorial Video",
-    description: "Step-by-step guide on designing normalized databases",
-    course: "CS302 - Database Systems",
-    type: "video",
-    fileType: "mp4",
-    size: "125.6 MB",
-    duration: "45:30",
-    uploadedBy: "Prof. Michael Chen",
-    uploadDate: "2025-12-30T14:00:00",
-    lastModified: "2025-12-30T14:00:00",
-    downloads: 89,
-    views: 234,
-    accessLevel: "public",
-    tags: ["Database", "Tutorial", "Design"],
-    isStarred: false,
-    thumbnail: "https://placeholder.com/video-thumb.jpg",
-  },
-  {
-    id: 3,
-    title: "Data Structures Cheat Sheet",
-    description: "Quick reference for common data structures and algorithms",
-    course: "CS401 - Data Structures",
-    type: "image",
-    fileType: "png",
-    size: "856 KB",
-    uploadedBy: "Dr. Emily Davis",
-    uploadDate: "2025-12-29T09:00:00",
-    lastModified: "2025-12-29T09:00:00",
-    downloads: 267,
-    views: 445,
-    accessLevel: "enrolled",
-    tags: ["Data Structures", "Cheat Sheet", "Reference"],
-    isStarred: true,
-    thumbnail: null,
-  },
-  {
-    id: 4,
-    title: "Web Development Project Template",
-    description: "Starter template with React, Node.js, and MongoDB setup",
-    course: "CS201 - Web Technologies",
-    type: "archive",
-    fileType: "zip",
-    size: "45.2 MB",
-    uploadedBy: "Prof. James Wilson",
-    uploadDate: "2025-12-28T11:30:00",
-    lastModified: "2025-12-28T11:30:00",
-    downloads: 178,
-    views: 289,
-    accessLevel: "enrolled",
-    tags: ["Web Development", "Template", "Full Stack"],
-    isStarred: false,
-    thumbnail: null,
-  },
-  {
-    id: 5,
-    title: "Algorithm Analysis Assignment",
-    description: "Assignment problems on time complexity analysis",
-    course: "CS401 - Data Structures",
-    type: "document",
-    fileType: "docx",
-    size: "1.2 MB",
-    uploadedBy: "Dr. Sarah Johnson",
-    uploadDate: "2025-12-27T16:00:00",
-    lastModified: "2025-12-27T16:00:00",
-    downloads: 234,
-    views: 378,
-    accessLevel: "enrolled",
-    tags: ["Assignment", "Algorithms", "Analysis"],
-    isStarred: false,
-    thumbnail: null,
-  },
-];
-
-const mockCourses = [
-  { id: 1, code: "CS501", name: "Artificial Intelligence" },
-  { id: 2, code: "CS302", name: "Database Systems" },
-  { id: 3, code: "CS401", name: "Data Structures" },
-  { id: 4, code: "CS201", name: "Web Technologies" },
-];
-
-const mockStats = {
-  totalMaterials: 342,
-  totalSize: "12.4 GB",
-  totalDownloads: 8945,
-  recentUploads: 23,
-};
 
 export default function MaterialsManagement() {
   const [selectedView, setSelectedView] = useState("grid");
@@ -156,7 +42,125 @@ export default function MaterialsManagement() {
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterAccess, setFilterAccess] = useState("all");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [materials, setMaterials] = useState(mockMaterials);
+
+  // Data states
+  const [materials, setMaterials] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [courseOfferings, setCourseOfferings] = useState([]);
+  const [stats, setStats] = useState({
+    totalMaterials: 0,
+    totalSize: "0 GB",
+    totalDownloads: 0,
+    recentUploads: 0,
+  });
+
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    offering_id: "",
+    file_type: "lecture_notes",
+    access_level: "enrolled_only",
+    tags: "",
+    file: null,
+    notify_students: false,
+  });
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [materialsRes, coursesRes, offeringsRes, statsRes] =
+        await Promise.all([
+          adminService.getStudyMaterials(),
+          adminService.getCourses(),
+          adminService.getCourseOfferings(),
+          adminService.getStudyMaterialStats(),
+        ]);
+
+      if (materialsRes.success) {
+        // Transform backend data to frontend format
+        const transformedMaterials = materialsRes.data.map((m) => ({
+          id: m.id,
+          title: m.title,
+          description: m.description || "",
+          course: m.offering?.course
+            ? `${m.offering.course.course_code} - ${m.offering.course.course_name}`
+            : "N/A",
+          type: getFileTypeCategory(m.file_type),
+          fileType: getFileExtension(m.file_path),
+          size: adminService.formatFileSize(m.file_size || 0),
+          duration: m.duration || null,
+          uploadedBy: m.uploaded_by_faculty
+            ? `${m.uploaded_by_faculty.user?.first_name || ""} ${
+                m.uploaded_by_faculty.user?.last_name || ""
+              }`
+            : "N/A",
+          uploadDate: m.uploaded_at,
+          lastModified: m.uploaded_at,
+          downloads: m.download_count || 0,
+          views: m.view_count || 0,
+          accessLevel: m.access_level === "public" ? "public" : "enrolled",
+          tags: m.tags ? m.tags.split(",").map((t) => t.trim()) : [],
+          isStarred: false, // You can add this field to backend if needed
+          thumbnail: null,
+          filePath: m.file_path,
+          isVisible: m.is_visible,
+        }));
+        setMaterials(transformedMaterials);
+      }
+
+      if (coursesRes.success) {
+        setCourses(coursesRes.data);
+      }
+
+      if (offeringsRes.success) {
+        setCourseOfferings(offeringsRes.data);
+      }
+
+      if (statsRes.success) {
+        setStats(statsRes.data);
+      }
+    } catch (err) {
+      setError("Failed to load materials. Please try again.");
+      console.error("Error loading data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper functions
+  const getFileTypeCategory = (fileType) => {
+    const mapping = {
+      lecture_notes: "document",
+      assignment: "document",
+      syllabus: "document",
+      book: "document",
+      video_lecture: "video",
+      tutorial: "video",
+      presentation: "document",
+      code: "archive",
+      dataset: "archive",
+      other: "document",
+    };
+    return mapping[fileType] || "document";
+  };
+
+  const getFileExtension = (filePath) => {
+    if (!filePath) return "file";
+    const extension = filePath.split(".").pop().toLowerCase();
+    return extension || "file";
+  };
 
   // Filter materials
   const filteredMaterials = materials.filter((material) => {
@@ -174,6 +178,111 @@ export default function MaterialsManagement() {
 
     return matchesSearch && matchesType && matchesCourse && matchesAccess;
   });
+
+  const handleFormChange = (e) => {
+    const { name, value, type, checked, files } = e.target;
+
+    if (type === "file") {
+      setFormData((prev) => ({ ...prev, [name]: files[0] }));
+    } else if (type === "checkbox") {
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleUploadMaterial = async (e) => {
+    e.preventDefault();
+
+    if (!formData.file) {
+      alert("Please select a file to upload");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      // Prepare data for API
+      const uploadData = {
+        title: formData.title,
+        description: formData.description,
+        offering_id: formData.offering_id,
+        file_type: formData.file_type,
+        access_level: formData.access_level,
+        tags: formData.tags,
+        file: formData.file,
+        is_visible: true,
+      };
+
+      const result = await adminService.createStudyMaterial(uploadData);
+
+      if (result.success) {
+        setShowUploadModal(false);
+        setFormData({
+          title: "",
+          description: "",
+          offering_id: "",
+          file_type: "lecture_notes",
+          access_level: "enrolled_only",
+          tags: "",
+          file: null,
+          notify_students: false,
+        });
+        await loadData();
+        alert("Material uploaded successfully!");
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to upload material. Please try again.");
+      console.error("Error uploading material:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDownload = async (materialId, fileName) => {
+    try {
+      const result = await adminService.downloadStudyMaterial(materialId);
+      if (result.success) {
+        // Create download link
+        const url = window.URL.createObjectURL(new Blob([result.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert(result.error);
+      }
+    } catch (err) {
+      alert("Failed to download material");
+      console.error("Error downloading:", err);
+    }
+  };
+
+  const handleDelete = async (materialId) => {
+    if (!window.confirm("Are you sure you want to delete this material?")) {
+      return;
+    }
+
+    try {
+      const result = await adminService.deleteStudyMaterial(materialId);
+      if (result.success) {
+        await loadData();
+        setSelectedMaterial(null);
+        alert("Material deleted successfully!");
+      } else {
+        alert(result.error);
+      }
+    } catch (err) {
+      alert("Failed to delete material");
+      console.error("Error deleting:", err);
+    }
+  };
 
   const getFileIcon = (type, fileType) => {
     switch (type) {
@@ -222,6 +331,16 @@ export default function MaterialsManagement() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="materials-management">
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <div className="spinner">Loading materials...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -244,6 +363,21 @@ export default function MaterialsManagement() {
         </button>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div
+          style={{
+            padding: "15px",
+            background: "#fee",
+            color: "#c00",
+            borderRadius: "8px",
+            marginBottom: "20px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="mm-stats">
         <motion.div className="stat-card" whileHover={{ y: -4 }}>
@@ -254,7 +388,7 @@ export default function MaterialsManagement() {
             <FolderOpen size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.totalMaterials}</div>
+            <div className="stat-value">{stats.totalMaterials}</div>
             <div className="stat-label">Total Materials</div>
           </div>
         </motion.div>
@@ -267,7 +401,7 @@ export default function MaterialsManagement() {
             <Archive size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.totalSize}</div>
+            <div className="stat-value">{stats.totalSize}</div>
             <div className="stat-label">Total Size</div>
           </div>
         </motion.div>
@@ -281,7 +415,7 @@ export default function MaterialsManagement() {
           </div>
           <div className="stat-content">
             <div className="stat-value">
-              {mockStats.totalDownloads.toLocaleString()}
+              {stats.totalDownloads.toLocaleString()}
             </div>
             <div className="stat-label">Total Downloads</div>
           </div>
@@ -295,7 +429,7 @@ export default function MaterialsManagement() {
             <Clock size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.recentUploads}</div>
+            <div className="stat-value">{stats.recentUploads}</div>
             <div className="stat-label">Recent Uploads</div>
           </div>
         </motion.div>
@@ -354,9 +488,12 @@ export default function MaterialsManagement() {
                       onChange={(e) => setFilterCourse(e.target.value)}
                     >
                       <option value="all">All Courses</option>
-                      {mockCourses.map((course) => (
-                        <option key={course.id} value={course.code}>
-                          {course.code} - {course.name}
+                      {courses.map((course) => (
+                        <option
+                          key={course.course_id}
+                          value={course.course_code}
+                        >
+                          {course.course_code} - {course.course_name}
                         </option>
                       ))}
                     </select>
@@ -476,7 +613,7 @@ export default function MaterialsManagement() {
               </div>
 
               <div className="material-tags">
-                {material.tags.map((tag, index) => (
+                {material.tags.slice(0, 3).map((tag, index) => (
                   <span key={index} className="tag">
                     <Tags size={12} /> {tag}
                   </span>
@@ -542,116 +679,177 @@ export default function MaterialsManagement() {
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="modal-header">
-                <h2>Upload New Material</h2>
-                <button
-                  className="modal-close"
-                  onClick={() => setShowUploadModal(false)}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="modal-body">
-                {/* Upload Area */}
-                <div className="upload-area">
-                  <Upload size={48} />
-                  <h3>Drag & drop files here</h3>
-                  <p>or click to browse</p>
-                  <button className="btn-secondary">
-                    <Paperclip size={18} /> Choose Files
+              <form onSubmit={handleUploadMaterial}>
+                <div className="modal-header">
+                  <h2>Upload New Material</h2>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    onClick={() => setShowUploadModal(false)}
+                  >
+                    <X size={20} />
                   </button>
                 </div>
 
-                {/* Form Fields */}
-                <div className="form-group">
-                  <label>Title *</label>
-                  <input type="text" placeholder="Enter material title" />
-                </div>
-
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea
-                    rows="3"
-                    placeholder="Add a description..."
-                  ></textarea>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Course *</label>
-                    <select>
-                      <option>Select Course</option>
-                      {mockCourses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.code} - {course.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Type *</label>
-                    <select>
-                      <option>Select Type</option>
-                      <option>Document</option>
-                      <option>Video</option>
-                      <option>Image</option>
-                      <option>Archive</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Access Level *</label>
-                  <div className="radio-group">
-                    <label className="radio-label">
-                      <input type="radio" name="access" value="public" />
-                      <Unlock size={16} />
-                      <span>Public - Anyone can access</span>
+                <div className="modal-body">
+                  {/* File Input */}
+                  <div className="upload-area">
+                    <Upload size={48} />
+                    <h3>Select a file to upload</h3>
+                    <input
+                      type="file"
+                      name="file"
+                      onChange={handleFormChange}
+                      style={{ display: "none" }}
+                      id="file-upload"
+                      required
+                    />
+                    <label htmlFor="file-upload" className="btn-secondary">
+                      <Paperclip size={18} /> Choose File
                     </label>
-                    <label className="radio-label">
+                    {formData.file && (
+                      <p style={{ marginTop: "10px", color: "#10b981" }}>
+                        Selected: {formData.file.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Form Fields */}
+                  <div className="form-group">
+                    <label>Title *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleFormChange}
+                      placeholder="Enter material title"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleFormChange}
+                      rows="3"
+                      placeholder="Add a description..."
+                    ></textarea>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Course Offering *</label>
+                      <select
+                        name="offering_id"
+                        value={formData.offering_id}
+                        onChange={handleFormChange}
+                        required
+                      >
+                        <option value="">Select Course Offering</option>
+                        {courseOfferings.map((offering) => (
+                          <option key={offering.id} value={offering.id}>
+                            {offering.course?.course_code} -{" "}
+                            {offering.course?.course_name} ({offering.section})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Type *</label>
+                      <select
+                        name="file_type"
+                        value={formData.file_type}
+                        onChange={handleFormChange}
+                        required
+                      >
+                        <option value="lecture_notes">Lecture Notes</option>
+                        <option value="assignment">Assignment</option>
+                        <option value="syllabus">Syllabus</option>
+                        <option value="book">Book</option>
+                        <option value="video_lecture">Video Lecture</option>
+                        <option value="tutorial">Tutorial</option>
+                        <option value="presentation">Presentation</option>
+                        <option value="code">Code/Project</option>
+                        <option value="dataset">Dataset</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Access Level *</label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="access_level"
+                          value="public"
+                          checked={formData.access_level === "public"}
+                          onChange={handleFormChange}
+                        />
+                        <Unlock size={16} />
+                        <span>Public - Anyone can access</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="access_level"
+                          value="enrolled_only"
+                          checked={formData.access_level === "enrolled_only"}
+                          onChange={handleFormChange}
+                        />
+                        <Lock size={16} />
+                        <span>Enrolled Students - Only enrolled students</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Tags</label>
+                    <input
+                      type="text"
+                      name="tags"
+                      value={formData.tags}
+                      onChange={handleFormChange}
+                      placeholder="Add tags (comma separated)"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="checkbox-label">
                       <input
-                        type="radio"
-                        name="access"
-                        value="enrolled"
-                        defaultChecked
+                        type="checkbox"
+                        name="notify_students"
+                        checked={formData.notify_students}
+                        onChange={handleFormChange}
                       />
-                      <Lock size={16} />
-                      <span>Enrolled Students - Only enrolled students</span>
-                    </label>
-                    <label className="radio-label">
-                      <input type="radio" name="access" value="private" />
-                      <Lock size={16} />
-                      <span>Private - Only you can access</span>
+                      <span>Notify enrolled students</span>
                     </label>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Tags</label>
-                  <input type="text" placeholder="Add tags (comma separated)" />
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setShowUploadModal(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={submitting}
+                  >
+                    <Upload size={18} />{" "}
+                    {submitting ? "Uploading..." : "Upload Material"}
+                  </button>
                 </div>
-
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input type="checkbox" />
-                    <span>Notify enrolled students</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  className="btn-secondary"
-                  onClick={() => setShowUploadModal(false)}
-                >
-                  Cancel
-                </button>
-                <button className="btn-primary">
-                  <Upload size={18} /> Upload Material
-                </button>
-              </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
@@ -796,13 +994,21 @@ export default function MaterialsManagement() {
               </div>
 
               <div className="modal-footer">
+                <button
+                  className="btn-secondary"
+                  onClick={() => handleDelete(selectedMaterial.id)}
+                >
+                  <Trash2 size={18} /> Delete
+                </button>
                 <button className="btn-secondary">
                   <Share2 size={18} /> Share
                 </button>
-                <button className="btn-secondary">
-                  <Edit3 size={18} /> Edit
-                </button>
-                <button className="btn-primary">
+                <button
+                  className="btn-primary"
+                  onClick={() =>
+                    handleDownload(selectedMaterial.id, selectedMaterial.title)
+                  }
+                >
                   <Download size={18} /> Download
                 </button>
               </div>

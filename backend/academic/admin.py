@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
@@ -216,13 +215,41 @@ class ZoomClassAdmin(ModelAdmin):
 
 @admin.register(StudyMaterial)
 class StudyMaterialAdmin(ModelAdmin):
-    list_display = ['material_id', 'title', 'offering', 'file_type', 'access_level', 'is_visible_badge', 'upload_date']
-    list_filter = ['file_type', 'access_level', 'is_visible', 'upload_date']
-    search_fields = ['title', 'offering__course__course_code']
-    
+    list_display = [
+        'id',  # Changed from 'material_id' to 'id' (Django's default PK)
+        'title',
+        'offering',
+        'uploaded_by_faculty',
+        'uploaded_at',
+        'file_type',
+        'access_level',
+        'is_visible_badge',
+        'download_count',
+        'view_count'
+    ]
+    list_filter = [
+        'file_type',
+        'access_level',
+        'is_visible',
+        'uploaded_at',
+        'offering__course__department',
+        'offering__semester'
+    ]
+    search_fields = ['title', 'description', 'tags', 'offering__course__course_code']
+    autocomplete_fields = ['offering', 'uploaded_by_faculty']
+    date_hierarchy = 'uploaded_at'
+
     @display(boolean=True, description="Visible")
     def is_visible_badge(self, obj):
         return obj.is_visible
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            'offering__course',
+            'offering__semester',
+            'uploaded_by_faculty__user'
+        )
 
 @admin.register(ResultPublication)
 class ResultPublicationAdmin(ModelAdmin):

@@ -1,100 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { adminService } from "../services/api/adminService";
 import "../styles/admin-pages/VirtualClassManagement.css";
-
-// Mock Data
-const mockClasses = [
-  {
-    id: 1,
-    title: "Advanced Algorithms - Lecture 12",
-    course: "CS401 - Data Structures & Algorithms",
-    instructor: "Dr. Sarah Johnson",
-    platform: "zoom",
-    status: "live",
-    startTime: "2026-01-01T10:00:00",
-    duration: 60,
-    participants: 45,
-    maxParticipants: 50,
-    meetingLink: "https://zoom.us/j/123456789",
-    recordingAvailable: false,
-  },
-  {
-    id: 2,
-    title: "Database Management Systems",
-    course: "CS302 - Database Systems",
-    instructor: "Prof. Michael Chen",
-    platform: "google-meet",
-    status: "scheduled",
-    startTime: "2026-01-01T14:00:00",
-    duration: 90,
-    participants: 0,
-    maxParticipants: 60,
-    meetingLink: "https://meet.google.com/abc-defg-hij",
-    recordingAvailable: false,
-  },
-  {
-    id: 3,
-    title: "Machine Learning Basics",
-    course: "CS501 - Artificial Intelligence",
-    instructor: "Dr. Emily Davis",
-    platform: "zoom",
-    status: "completed",
-    startTime: "2025-12-31T11:00:00",
-    duration: 120,
-    participants: 52,
-    maxParticipants: 60,
-    meetingLink: "https://zoom.us/j/987654321",
-    recordingAvailable: true,
-    recordingUrl: "https://zoom.us/rec/share/xyz123",
-  },
-  {
-    id: 4,
-    title: "Web Development Workshop",
-    course: "CS201 - Web Technologies",
-    instructor: "Prof. James Wilson",
-    platform: "zoom",
-    status: "scheduled",
-    startTime: "2026-01-02T09:00:00",
-    duration: 180,
-    participants: 0,
-    maxParticipants: 40,
-    meetingLink: "https://zoom.us/j/456789123",
-    recordingAvailable: false,
-  },
-];
-
-const mockUpcomingClasses = [
-  {
-    id: 5,
-    title: "Software Engineering Principles",
-    course: "CS301",
-    time: "2026-01-01T16:00:00",
-    instructor: "Dr. Anderson",
-  },
-  {
-    id: 6,
-    title: "Computer Networks Lab",
-    course: "CS402",
-    time: "2026-01-02T10:30:00",
-    instructor: "Prof. Martinez",
-  },
-  {
-    id: 7,
-    title: "Operating Systems Tutorial",
-    course: "CS303",
-    time: "2026-01-02T13:00:00",
-    instructor: "Dr. Thompson",
-  },
-];
-
-const mockStats = {
-  totalClasses: 156,
-  liveNow: 1,
-  scheduledToday: 3,
-  completedThisWeek: 28,
-  averageAttendance: 87,
-  totalParticipants: 234,
-};
 
 export default function VirtualClassManagement() {
   const [selectedTab, setSelectedTab] = useState("all");
@@ -103,8 +10,120 @@ export default function VirtualClassManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterPlatform, setFilterPlatform] = useState("all");
 
+  // Data states
+  const [classes, setClasses] = useState([]);
+  const [stats, setStats] = useState({
+    totalClasses: 0,
+    liveNow: 0,
+    scheduledToday: 0,
+    completedThisWeek: 0,
+    averageAttendance: 0,
+    totalParticipants: 0,
+  });
+  const [upcomingClasses, setUpcomingClasses] = useState([]);
+  const [courseOfferings, setCourseOfferings] = useState([]);
+
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    topic: "",
+    offering_id: "",
+    platform: "zoom",
+    schedule_date: "",
+    start_time: "",
+    duration_minutes: 60,
+    description: "",
+  });
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Load all data in parallel
+      const [classesRes, statsRes, upcomingRes, offeringsRes] =
+        await Promise.all([
+          adminService.getVirtualClasses(),
+          adminService.getVirtualClassStats(),
+          adminService.getUpcomingVirtualClasses(),
+          adminService.getCourseOfferings(),
+        ]);
+
+      if (classesRes.success) {
+        // Transform backend data to frontend format
+        const transformedClasses = classesRes.data.map((cls) => ({
+          id: cls.id,
+          title: cls.topic,
+          course:
+            cls.offering?.course?.course_code +
+              " - " +
+              cls.offering?.course?.course_name || "N/A",
+          instructor: cls.created_by_faculty
+            ? `${cls.created_by_faculty.user?.first_name || ""} ${
+                cls.created_by_faculty.user?.last_name || ""
+              }`
+            : "N/A",
+          platform: cls.platform,
+          status: getClassStatus(cls),
+          startTime: `${cls.schedule_date}T${cls.start_time}`,
+          duration: cls.duration_minutes,
+          participants: cls.current_participants || 0,
+          maxParticipants: cls.max_participants || 100,
+          meetingLink: cls.join_link,
+          recordingAvailable: cls.recording_url ? true : false,
+          recordingUrl: cls.recording_url,
+        }));
+        setClasses(transformedClasses);
+      }
+
+      if (statsRes.success) {
+        setStats(statsRes.data);
+      }
+
+      if (upcomingRes.success) {
+        setUpcomingClasses(upcomingRes.data);
+      }
+
+      if (offeringsRes.success) {
+        setCourseOfferings(offeringsRes.data);
+      }
+    } catch (err) {
+      setError("Failed to load data. Please try again.");
+      console.error("Error loading data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getClassStatus = (cls) => {
+    if (!cls.schedule_date || !cls.start_time || !cls.is_active)
+      return "completed";
+
+    const classDateTime = new Date(`${cls.schedule_date}T${cls.start_time}`);
+    const endTime = new Date(
+      classDateTime.getTime() + cls.duration_minutes * 60000
+    );
+    const currentTime = new Date();
+
+    if (currentTime >= classDateTime && currentTime <= endTime) {
+      return "live";
+    } else if (currentTime < classDateTime) {
+      return "scheduled";
+    } else {
+      return "completed";
+    }
+  };
+
   // Filter classes based on tab, search, and platform
-  const filteredClasses = mockClasses.filter((cls) => {
+  const filteredClasses = classes.filter((cls) => {
     const matchesTab = selectedTab === "all" || cls.status === selectedTab;
     const matchesSearch =
       cls.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,6 +134,75 @@ export default function VirtualClassManagement() {
 
     return matchesTab && matchesSearch && matchesPlatform;
   });
+
+  const handleFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleCreateClass = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await adminService.createVirtualClass(formData);
+
+      if (result.success) {
+        setShowCreateModal(false);
+        setFormData({
+          topic: "",
+          offering_id: "",
+          platform: "zoom",
+          schedule_date: "",
+          start_time: "",
+          duration_minutes: 60,
+          description: "",
+        });
+        // Reload data
+        await loadData();
+        alert("Virtual class created successfully!");
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("Failed to create class. Please try again.");
+      console.error("Error creating class:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStartClass = async (classId) => {
+    try {
+      const result = await adminService.startVirtualClass(classId);
+      if (result.success) {
+        window.open(result.data.start_url, "_blank");
+      } else {
+        alert(result.error);
+      }
+    } catch (err) {
+      alert("Failed to start class");
+      console.error("Error starting class:", err);
+    }
+  };
+
+  const handleSendReminder = async (classId) => {
+    try {
+      const result = await adminService.sendClassReminder(classId);
+      if (result.success) {
+        alert("Reminder sent successfully!");
+      } else {
+        alert(result.error);
+      }
+    } catch (err) {
+      alert("Failed to send reminder");
+      console.error("Error sending reminder:", err);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -133,6 +221,7 @@ export default function VirtualClassManagement() {
     switch (platform) {
       case "zoom":
         return "📹";
+      case "google_meet":
       case "google-meet":
         return "🎥";
       case "teams":
@@ -154,6 +243,16 @@ export default function VirtualClassManagement() {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
+
+  if (loading) {
+    return (
+      <div className="virtual-class-management">
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <div className="spinner">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -177,6 +276,21 @@ export default function VirtualClassManagement() {
         </button>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div
+          style={{
+            padding: "15px",
+            background: "#fee",
+            color: "#c00",
+            borderRadius: "8px",
+            marginBottom: "20px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="vcm-stats">
         <motion.div className="stat-card" whileHover={{ y: -4 }}>
@@ -184,7 +298,7 @@ export default function VirtualClassManagement() {
             📚
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.totalClasses}</div>
+            <div className="stat-value">{stats.totalClasses}</div>
             <div className="stat-label">Total Classes</div>
           </div>
         </motion.div>
@@ -197,7 +311,7 @@ export default function VirtualClassManagement() {
             🔴
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.liveNow}</div>
+            <div className="stat-value">{stats.liveNow}</div>
             <div className="stat-label">Live Now</div>
           </div>
         </motion.div>
@@ -207,7 +321,7 @@ export default function VirtualClassManagement() {
             📅
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.scheduledToday}</div>
+            <div className="stat-value">{stats.scheduledToday}</div>
             <div className="stat-label">Scheduled Today</div>
           </div>
         </motion.div>
@@ -217,7 +331,7 @@ export default function VirtualClassManagement() {
             ✅
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.completedThisWeek}</div>
+            <div className="stat-value">{stats.completedThisWeek}</div>
             <div className="stat-label">Completed This Week</div>
           </div>
         </motion.div>
@@ -227,7 +341,7 @@ export default function VirtualClassManagement() {
             👥
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.averageAttendance}%</div>
+            <div className="stat-value">{stats.averageAttendance}%</div>
             <div className="stat-label">Avg Attendance</div>
           </div>
         </motion.div>
@@ -237,7 +351,7 @@ export default function VirtualClassManagement() {
             🎓
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.totalParticipants}</div>
+            <div className="stat-value">{stats.totalParticipants}</div>
             <div className="stat-label">Total Participants</div>
           </div>
         </motion.div>
@@ -268,7 +382,7 @@ export default function VirtualClassManagement() {
               >
                 <option value="all">All Platforms</option>
                 <option value="zoom">Zoom</option>
-                <option value="google-meet">Google Meet</option>
+                <option value="google_meet">Google Meet</option>
                 <option value="teams">Microsoft Teams</option>
               </select>
             </div>
@@ -458,7 +572,7 @@ export default function VirtualClassManagement() {
                         </span>
                         {selectedClass.platform === "zoom"
                           ? "Zoom"
-                          : selectedClass.platform === "google-meet"
+                          : selectedClass.platform === "google_meet"
                           ? "Google Meet"
                           : "Microsoft Teams"}
                       </div>
@@ -493,16 +607,19 @@ export default function VirtualClassManagement() {
 
                   <div className="details-actions">
                     {selectedClass.status === "live" && (
-                      <button className="btn-primary btn-block btn-pulse">
+                      <button
+                        className="btn-primary btn-block btn-pulse"
+                        onClick={() => handleStartClass(selectedClass.id)}
+                      >
                         <span>▶️</span> Join Live Class
                       </button>
                     )}
                     {selectedClass.status === "scheduled" && (
                       <>
-                        <button className="btn-primary btn-block">
-                          <span>✏️</span> Edit Class
-                        </button>
-                        <button className="btn-secondary btn-block">
+                        <button
+                          className="btn-secondary btn-block"
+                          onClick={() => handleSendReminder(selectedClass.id)}
+                        >
                           <span>📧</span> Send Reminder
                         </button>
                       </>
@@ -528,7 +645,7 @@ export default function VirtualClassManagement() {
           <div className="upcoming-classes">
             <h3 className="upcoming-title">📅 Upcoming Classes</h3>
             <div className="upcoming-list">
-              {mockUpcomingClasses.map((cls) => (
+              {upcomingClasses.map((cls) => (
                 <div key={cls.id} className="upcoming-item">
                   <div className="upcoming-time">
                     <div className="upcoming-date">{formatDate(cls.time)}</div>
@@ -541,6 +658,17 @@ export default function VirtualClassManagement() {
                   </div>
                 </div>
               ))}
+              {upcomingClasses.length === 0 && (
+                <p
+                  style={{
+                    textAlign: "center",
+                    padding: "20px",
+                    color: "#666",
+                  }}
+                >
+                  No upcoming classes
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -563,100 +691,132 @@ export default function VirtualClassManagement() {
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="modal-header">
-                <h2>Schedule New Virtual Class</h2>
-                <button
-                  className="modal-close"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Class Title *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Introduction to Machine Learning"
-                  />
+              <form onSubmit={handleCreateClass}>
+                <div className="modal-header">
+                  <h2>Schedule New Virtual Class</h2>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    onClick={() => setShowCreateModal(false)}
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                <div className="form-row">
+                <div className="modal-body">
                   <div className="form-group">
-                    <label>Course *</label>
-                    <select>
-                      <option>Select Course</option>
-                      <option>CS401 - Data Structures</option>
-                      <option>CS302 - Database Systems</option>
-                      <option>CS501 - AI</option>
-                    </select>
+                    <label>Class Title *</label>
+                    <input
+                      type="text"
+                      name="topic"
+                      value={formData.topic}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Introduction to Machine Learning"
+                      required
+                    />
                   </div>
 
-                  <div className="form-group">
-                    <label>Platform *</label>
-                    <select>
-                      <option>Select Platform</option>
-                      <option>Zoom</option>
-                      <option>Google Meet</option>
-                      <option>Microsoft Teams</option>
-                    </select>
-                  </div>
-                </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Course Offering *</label>
+                      <select
+                        name="offering_id"
+                        value={formData.offering_id}
+                        onChange={handleFormChange}
+                        required
+                      >
+                        <option value="">Select Course Offering</option>
+                        {courseOfferings.map((offering) => (
+                          <option key={offering.id} value={offering.id}>
+                            {offering.course?.course_code} -{" "}
+                            {offering.course?.course_name} ({offering.section})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Date *</label>
-                    <input type="date" />
+                    <div className="form-group">
+                      <label>Platform *</label>
+                      <select
+                        name="platform"
+                        value={formData.platform}
+                        onChange={handleFormChange}
+                        required
+                      >
+                        <option value="zoom">Zoom</option>
+                        <option value="google_meet">Google Meet</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Time *</label>
-                    <input type="time" />
-                  </div>
-                </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Date *</label>
+                      <input
+                        type="date"
+                        name="schedule_date"
+                        value={formData.schedule_date}
+                        onChange={handleFormChange}
+                        required
+                      />
+                    </div>
 
-                <div className="form-row">
+                    <div className="form-group">
+                      <label>Time *</label>
+                      <input
+                        type="time"
+                        name="start_time"
+                        value={formData.start_time}
+                        onChange={handleFormChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="form-group">
                     <label>Duration (minutes) *</label>
-                    <input type="number" placeholder="60" />
+                    <input
+                      type="number"
+                      name="duration_minutes"
+                      value={formData.duration_minutes}
+                      onChange={handleFormChange}
+                      placeholder="60"
+                      min="15"
+                      max="300"
+                      required
+                    />
                   </div>
 
                   <div className="form-group">
-                    <label>Max Participants *</label>
-                    <input type="number" placeholder="50" />
+                    <label>Description</label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleFormChange}
+                      rows="3"
+                      placeholder="Add class description..."
+                    ></textarea>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea
-                    rows="3"
-                    placeholder="Add class description..."
-                  ></textarea>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setShowCreateModal(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Creating..." : "Schedule Class"}
+                  </button>
                 </div>
-
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input type="checkbox" />
-                    <span>Enable recording</span>
-                  </label>
-                  <label className="checkbox-label">
-                    <input type="checkbox" />
-                    <span>Send email notifications to participants</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  className="btn-secondary"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </button>
-                <button className="btn-primary">Schedule Class</button>
-              </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

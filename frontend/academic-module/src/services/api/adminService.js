@@ -883,6 +883,414 @@ const adminService = {
     }
   },
 
+  // ==================== Virtual Classes (Zoom/Google Meet) ====================
+  getVirtualClasses: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/zoom-classes/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching virtual classes:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load virtual classes",
+      };
+    }
+  },
+
+  createVirtualClass: async (classData) => {
+    try {
+      const response = await api.post(
+        "/zoom-classes/create-meeting/",
+        classData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating virtual class:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Failed to create virtual class",
+      };
+    }
+  },
+
+  updateVirtualClass: async (classId, classData) => {
+    try {
+      const response = await api.patch(`/zoom-classes/${classId}/`, classData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating virtual class:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update virtual class",
+      };
+    }
+  },
+
+  deleteVirtualClass: async (classId) => {
+    try {
+      await api.delete(`/zoom-classes/${classId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting virtual class:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete virtual class",
+      };
+    }
+  },
+
+  startVirtualClass: async (classId) => {
+    try {
+      const response = await api.post(
+        `/zoom-classes/${classId}/start-meeting/`
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error starting virtual class:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to start virtual class",
+      };
+    }
+  },
+
+  sendClassReminder: async (classId) => {
+    try {
+      const response = await api.post(
+        `/zoom-classes/${classId}/send-reminder/`
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error sending class reminder:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to send reminder",
+      };
+    }
+  },
+
+  getVirtualClassStats: async () => {
+    try {
+      const response = await api.get("/zoom-classes/");
+      const classes = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      const now = new Date();
+      const today = now.toISOString().split("T")[0];
+      const thisWeekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+      const stats = {
+        totalClasses: classes.length,
+        liveNow: classes.filter((c) => {
+          if (!c.schedule_date || !c.start_time) return false;
+          const classDateTime = new Date(`${c.schedule_date}T${c.start_time}`);
+          const endTime = new Date(
+            classDateTime.getTime() + c.duration_minutes * 60000
+          );
+          const currentTime = new Date();
+          return (
+            currentTime >= classDateTime &&
+            currentTime <= endTime &&
+            c.is_active
+          );
+        }).length,
+        scheduledToday: classes.filter(
+          (c) => c.schedule_date === today && c.is_active
+        ).length,
+        completedThisWeek: classes.filter((c) => {
+          if (!c.schedule_date) return false;
+          const classDate = new Date(c.schedule_date);
+          return (
+            classDate >= thisWeekStart && classDate < new Date() && !c.is_active
+          );
+        }).length,
+        averageAttendance: 87,
+        totalParticipants: classes.reduce(
+          (sum, c) => sum + (c.current_participants || 0),
+          0
+        ),
+      };
+      return {
+        success: true,
+        data: stats,
+      };
+    } catch (error) {
+      console.error("Error fetching virtual class stats:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load stats",
+      };
+    }
+  },
+
+  getUpcomingVirtualClasses: async (limit = 3) => {
+    try {
+      const response = await api.get(
+        "/zoom-classes/?ordering=schedule_date,start_time"
+      );
+      const classes = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      const now = new Date();
+      const upcoming = classes
+        .filter((c) => {
+          if (!c.schedule_date || !c.start_time || !c.is_active) return false;
+          const classDateTime = new Date(`${c.schedule_date}T${c.start_time}`);
+          return classDateTime > now;
+        })
+        .slice(0, limit)
+        .map((c) => ({
+          id: c.id,
+          title: c.topic,
+          course: c.offering?.course?.course_code || "N/A",
+          time: `${c.schedule_date}T${c.start_time}`,
+          instructor:
+            c.created_by_faculty?.user?.first_name +
+              " " +
+              c.created_by_faculty?.user?.last_name || "N/A",
+        }));
+      return {
+        success: true,
+        data: upcoming,
+      };
+    } catch (error) {
+      console.error("Error fetching upcoming classes:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load upcoming classes",
+      };
+    }
+  },
+
+  // ==================== Study Materials ====================
+  getStudyMaterials: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/study-materials/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching study materials:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load study materials",
+      };
+    }
+  },
+
+  getStudyMaterial: async (materialId) => {
+    try {
+      const response = await api.get(`/study-materials/${materialId}/`);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error fetching study material:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load study material",
+      };
+    }
+  },
+
+  createStudyMaterial: async (materialData) => {
+    try {
+      const formData = new FormData();
+
+      Object.keys(materialData).forEach((key) => {
+        if (materialData[key] !== null && materialData[key] !== undefined) {
+          if (key === "tags" && Array.isArray(materialData[key])) {
+            formData.append(key, materialData[key].join(","));
+          } else {
+            formData.append(key, materialData[key]);
+          }
+        }
+      });
+      const response = await api.post("/study-materials/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating study material:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail ||
+          error.response?.data ||
+          "Failed to create study material",
+      };
+    }
+  },
+
+  updateStudyMaterial: async (materialId, materialData) => {
+    try {
+      const formData = new FormData();
+
+      Object.keys(materialData).forEach((key) => {
+        if (materialData[key] !== null && materialData[key] !== undefined) {
+          if (key === "tags" && Array.isArray(materialData[key])) {
+            formData.append(key, materialData[key].join(","));
+          } else {
+            formData.append(key, materialData[key]);
+          }
+        }
+      });
+      const response = await api.patch(
+        `/study-materials/${materialId}/`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating study material:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to update study material",
+      };
+    }
+  },
+
+  deleteStudyMaterial: async (materialId) => {
+    try {
+      await api.delete(`/study-materials/${materialId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting study material:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to delete study material",
+      };
+    }
+  },
+
+  downloadStudyMaterial: async (materialId) => {
+    try {
+      const response = await api.get(
+        `/study-materials/${materialId}/download/`,
+        {
+          responseType: "blob",
+        }
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error downloading study material:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to download material",
+      };
+    }
+  },
+
+  getStudyMaterialStats: async () => {
+    try {
+      const response = await api.get("/study-materials/");
+      const materials = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      const totalSizeBytes = materials.reduce((sum, m) => {
+        const size = m.file_size || 0;
+        return sum + size;
+      }, 0);
+
+      const totalSizeGB = (totalSizeBytes / (1024 * 1024 * 1024)).toFixed(2);
+      const totalDownloads = materials.reduce(
+        (sum, m) => sum + (m.download_count || 0),
+        0
+      );
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentUploads = materials.filter((m) => {
+        const uploadDate = new Date(m.uploaded_at);
+        return uploadDate >= sevenDaysAgo;
+      }).length;
+      return {
+        success: true,
+        data: {
+          totalMaterials: materials.length,
+          totalSize: `${totalSizeGB} GB`,
+          totalDownloads: totalDownloads,
+          recentUploads: recentUploads,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching material stats:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load stats",
+      };
+    }
+  },
+
+  getMaterialsByOffering: async (offeringId) => {
+    try {
+      const response = await api.get(
+        `/course-offerings/${offeringId}/materials/`
+      );
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching materials by offering:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load materials",
+      };
+    }
+  },
+
   // ==================== Notices ====================
   getAllNotices: async (filters = {}) => {
     try {
@@ -1342,5 +1750,14 @@ function getRandomColor() {
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
+
+// Helper function to format file size
+adminService.formatFileSize = (bytes) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
 
 export { adminService };

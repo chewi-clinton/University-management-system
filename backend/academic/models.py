@@ -513,28 +513,53 @@ class ZoomClass(models.Model):
         return f"{self.topic} - {self.offering} - {self.schedule_date}"
 
 class StudyMaterial(models.Model):
-    """Study materials"""
-    ACCESS_LEVEL_CHOICES = [
-        ('enrolled_students', 'Enrolled Students'),
-        ('public', 'Public'),
-    ]
-    
-    material_id = models.AutoField(primary_key=True)
+    id = models.BigAutoField(primary_key=True)  # Explicit default Django PK
     offering = models.ForeignKey(CourseOffering, on_delete=models.CASCADE, related_name='study_materials')
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    file_url = models.URLField(max_length=500)
-    file_type = models.CharField(max_length=50)  # pdf, ppt, video, link
-    uploaded_by_faculty = models.ForeignKey(FacultyMember, on_delete=models.CASCADE, related_name='uploaded_materials')
-    upload_date = models.DateTimeField(default=timezone.now)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    file_path = models.FileField(upload_to='study_materials/%Y/%m/', null=True, blank=True)
+    file_type = models.CharField(
+        max_length=50,
+        choices=[
+            ('lecture_notes', 'Lecture Notes'),
+            ('assignment', 'Assignment'),
+            ('syllabus', 'Syllabus'),
+            ('book', 'Book'),
+            ('video_lecture', 'Video Lecture'),
+            ('tutorial', 'Tutorial'),
+            ('presentation', 'Presentation'),
+            ('code', 'Code/Project'),
+            ('dataset', 'Dataset'),
+            ('other', 'Other'),
+        ],
+        default='lecture_notes'
+    )
+    file_size = models.BigIntegerField(default=0)
+    access_level = models.CharField(
+        max_length=20,
+        choices=[
+            ('public', 'Public'),
+            ('enrolled_only', 'Enrolled Students Only'),
+        ],
+        default='enrolled_only'
+    )
+    uploaded_by_faculty = models.ForeignKey(
+        FacultyMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_materials'
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
     is_visible = models.BooleanField(default=True)
-    access_level = models.CharField(max_length=50, choices=ACCESS_LEVEL_CHOICES, default='enrolled_students')
-    
+    download_count = models.IntegerField(default=0)
+    view_count = models.IntegerField(default=0)
+    tags = models.CharField(max_length=500, blank=True, null=True)
+
     class Meta:
-        db_table = 'study_materials'
-    
+        ordering = ['-uploaded_at']
+
     def __str__(self):
-        return f"{self.title} - {self.offering}"
+        return self.title
 
 class ResultPublication(models.Model):
     """Result publications"""

@@ -7,6 +7,8 @@ from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.http import FileResponse
+import os
 import qrcode
 from io import BytesIO
 from PIL import Image
@@ -83,36 +85,19 @@ class FacultyMemberViewSet(viewsets.ModelViewSet):
     ordering_fields = ['hire_date', 'user__first_name']
     ordering = ['user__first_name']
     def get_permissions(self):
-        """
-        - Academic admins (including super_admin) have full access (create/update/delete/list/retrieve)
-        - Faculty members have read-only access to their own record only
-        - Other roles (students, etc.) have no access
-        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsAcademicAdmin()]
-        # For list/retrieve actions (and the new 'me' action)
         return [IsAuthenticated()]
     def get_queryset(self):
-        """
-        - Admins see all faculty members
-        - Faculty users see only their own FacultyMember record
-        - Other users see nothing (empty queryset)
-        """
         queryset = super().get_queryset()
         user = self.request.user
         if user.role in ['super_admin', 'academic_admin']:
             return queryset
         if user.role == 'faculty':
             return queryset.filter(user=user)
-        # Students or unauthenticated → empty
         return queryset.none()
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """
-        Dedicated endpoint for the authenticated faculty member to get their own profile.
-        GET /api/faculty-members/me/
-        This is cleaner than using ?user=<id> filters and avoids exposing the filter to other users.
-        """
         try:
             faculty = FacultyMember.objects.select_related('user', 'department').get(user=request.user)
             serializer = self.get_serializer(faculty)
@@ -179,8 +164,7 @@ class SemesterViewSet(viewsets.ModelViewSet):
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.select_related('user', 'program').all()
     serializer_class = StudentSerializer
-    # CRITICAL FIX: Changed from [IsAuthenticated, IsFacultyOrAdmin] to just [IsAuthenticated]
-    permission_classes = [IsAuthenticated] # <-- This is the key change!
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['program', 'current_status', 'enrollment_date']
     search_fields = ['university_reg_number', 'first_name', 'last_name', 'user__email']
@@ -190,35 +174,17 @@ class StudentViewSet(viewsets.ModelViewSet):
             return StudentSummarySerializer
         return StudentSerializer
     def get_permissions(self):
-        """
-        Customize permissions per action:
-        - Students can access: list (own record), me, dashboard, transcript, attendance_summary
-        - Faculty/Admin can access: everything
-        """
-        # Allow students to access these specific actions
         if self.action in ['list', 'me', 'dashboard', 'transcript', 'attendance_summary']:
             return [IsAuthenticated()]
-       
-        # All other actions (create, update, delete, retrieve) require Faculty or Admin
         return [IsAuthenticated(), IsFacultyOrAdmin()]
     def get_queryset(self):
-        """
-        Filter queryset based on user role:
-        - Students can only see their own record
-        - Faculty/Admin can see all students
-        """
         queryset = super().get_queryset()
         user = self.request.user
-       
-        # If student, only show their own record
         if user.role == 'student':
             return queryset.filter(user=user)
-       
-        # Faculty and admin can see all
         return queryset
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """Get current student's profile"""
         try:
             student = Student.objects.select_related('program').get(user=request.user)
             serializer = StudentSerializer(student)
@@ -230,12 +196,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             )
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def dashboard(self, request):
-        """
-        Student dashboard endpoint - accessible by any authenticated student
-        GET /api/students/dashboard/
-        """
         logger.info(f"Dashboard accessed by: {request.user.email} (role: {request.user.role})")
-       
         try:
             student = Student.objects.select_related('program', 'user').get(user=request.user)
         except Student.DoesNotExist:
@@ -243,12 +204,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                 {'detail': 'Student profile not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        # Get registered courses count
         registered_courses = StudentCourseRegistration.objects.filter(
             student=student,
             status='registered'
         ).count()
-        # Build stats
         stats = {
             'totalCourses': registered_courses,
             'currentGPA': float(student.current_gpa) if student.current_gpa else 0.0,
@@ -257,7 +216,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         }
         today_schedule = []
         upcoming_deadlines = []
-        # Get recent notices
         recent_notices = Notice.objects.filter(
             Q(target_audience='all') |
             Q(target_audience='students') |
@@ -274,20 +232,16 @@ class StudentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsStudentOrAdmin])
     def transcript(self, request, pk=None):
         student = self.get_object()
-       
         if request.user.role == 'student' and student.user != request.user:
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-       
         transcripts = Transcript.objects.filter(student=student).order_by('-generated_date')
         serializer = TranscriptSerializer(transcripts, many=True)
         return Response(serializer.data)
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsStudentOrAdmin])
     def attendance_summary(self, request, pk=None):
         student = self.get_object()
-       
         if request.user.role == 'student' and student.user != request.user:
             return Response({'error': 'Not authorized'}, status=status.HTTP_403_FORBIDDEN)
-       
         attendance_summaries = AttendanceSummary.objects.filter(student=student)
         serializer = AttendanceSummarySerializer(attendance_summaries, many=True)
         return Response(serializer.data)
@@ -349,18 +303,11 @@ class StudentCourseRegistrationViewSet(viewsets.ModelViewSet):
     filterset_fields = ['offering__semester', 'status', 'grade']
     search_fields = ['student__university_reg_number', 'student__first_name', 'offering__course__course_code']
     def get_permissions(self):
-        """
-        Allow students to access their own courses via the my_courses action
-        """
         if self.action == 'my_courses':
             return [IsAuthenticated()]
         return [IsAuthenticated(), IsFacultyOrAdmin()]
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_courses(self, request):
-        """
-        Get current student's course registrations
-        GET /api/course-registrations/my-courses/
-        """
         try:
             student = Student.objects.get(user=request.user)
         except Student.DoesNotExist:
@@ -368,8 +315,6 @@ class StudentCourseRegistrationViewSet(viewsets.ModelViewSet):
                 {'detail': 'Student profile not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-       
-        # Get all course registrations for this student
         registrations = StudentCourseRegistration.objects.filter(
             student=student
         ).select_related(
@@ -378,7 +323,6 @@ class StudentCourseRegistrationViewSet(viewsets.ModelViewSet):
             'offering__faculty__user',
             'enrollment'
         ).order_by('-offering__semester__start_date')
-       
         serializer = StudentCourseRegistrationSerializer(registrations, many=True)
         return Response(serializer.data)
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsFacultyOrAdmin])
@@ -401,18 +345,11 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     ordering_fields = ['attendance_date', 'marked_at']
     ordering = ['-attendance_date', '-marked_at']
     def get_permissions(self):
-        """
-        Allow students to access their own attendance records via my_attendance action
-        """
         if self.action == 'my_attendance':
             return [IsAuthenticated()]
         return [IsAuthenticated(), CanMarkAttendance()]
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_attendance(self, request):
-        """
-        Get current student's attendance records
-        GET /api/attendance/my-attendance/
-        """
         try:
             student = Student.objects.get(user=request.user)
         except Student.DoesNotExist:
@@ -420,8 +357,6 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 {'detail': 'Student profile not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-       
-        # Get all attendance records for this student
         attendance_records = Attendance.objects.filter(
             student=student
         ).select_related(
@@ -429,20 +364,15 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             'offering__semester',
             'marked_by_faculty__user'
         ).order_by('-attendance_date')
-       
-        # Apply filters if provided
         offering_id = request.query_params.get('offering')
         if offering_id:
             attendance_records = attendance_records.filter(offering_id=offering_id)
-       
         attendance_date = request.query_params.get('attendance_date')
         if attendance_date:
             attendance_records = attendance_records.filter(attendance_date=attendance_date)
-       
         status_filter = request.query_params.get('status')
         if status_filter:
             attendance_records = attendance_records.filter(status=status_filter)
-       
         serializer = AttendanceSerializer(attendance_records, many=True)
         return Response(serializer.data)
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated, CanMarkAttendance])
@@ -502,54 +432,34 @@ class GradeViewSet(viewsets.ModelViewSet):
     serializer_class = GradeSerializer
     permission_classes = [IsAuthenticated, CanViewGrades]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    # Fixed: Removed 'grade' from filterset_fields as it's not in the Grade model
     filterset_fields = ['offering', 'assessment_type', 'is_finalized']
     search_fields = ['student__university_reg_number', 'student__first_name', 'assessment_name']
     ordering_fields = ['graded_at', 'marks_obtained']
     ordering = ['-graded_at']
     def get_permissions(self):
-        """
-        Allow students to access their own grades via my_grades action
-        """
         if self.action == 'my_grades':
             return [IsAuthenticated()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanModifyGrades()]
         return [IsAuthenticated(), CanViewGrades()]
     def get_queryset(self):
-        """
-        Filter queryset based on user role:
-        - Students can only see their own grades
-        - Faculty can see grades for courses they teach
-        - Admins can see all grades
-        """
         queryset = super().get_queryset()
         user = self.request.user
-       
-        # If student, only show their own grades
         if user.role == 'student':
             try:
                 student = user.student_profile
                 return queryset.filter(student=student)
             except:
                 return queryset.none()
-       
-        # If faculty, show grades for courses they teach
         if user.role == 'faculty':
             try:
                 faculty = user.faculty_profile
                 return queryset.filter(offering__faculty=faculty)
             except:
                 return queryset.none()
-       
-        # Admins can see all
         return queryset
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_grades(self, request):
-        """
-        Get current student's grades
-        GET /api/grades/my-grades/
-        """
         try:
             student = Student.objects.get(user=request.user)
         except Student.DoesNotExist:
@@ -557,8 +467,6 @@ class GradeViewSet(viewsets.ModelViewSet):
                 {'detail': 'Student profile not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-       
-        # Get all grades for this student
         grades = Grade.objects.filter(
             student=student
         ).select_related(
@@ -566,20 +474,15 @@ class GradeViewSet(viewsets.ModelViewSet):
             'offering__semester',
             'graded_by_faculty__user'
         ).order_by('-graded_at')
-       
-        # Apply filters if provided
         offering_id = request.query_params.get('offering')
         if offering_id:
             grades = grades.filter(offering_id=offering_id)
-       
         assessment_type = request.query_params.get('assessment_type')
         if assessment_type:
             grades = grades.filter(assessment_type=assessment_type)
-       
         is_finalized = request.query_params.get('is_finalized')
         if is_finalized is not None:
             grades = grades.filter(is_finalized=is_finalized.lower() == 'true')
-       
         serializer = GradeSerializer(grades, many=True)
         return Response(serializer.data)
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanModifyGrades])
@@ -605,17 +508,12 @@ class ExaminationViewSet(viewsets.ModelViewSet):
 class ExamRoomViewSet(viewsets.ModelViewSet):
     queryset = ExamRoom.objects.all()
     serializer_class = ExamRoomSerializer
-    # CHANGED: Allow faculty to view exam rooms
-    permission_classes = [IsAuthenticated] # Changed from [IsAuthenticated, IsAcademicAdmin]
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['building']
     search_fields = ['room_number', 'building']
    
     def get_permissions(self):
-        """
-        Faculty can list and retrieve exam rooms (read-only)
-        Only admins can create, update, or delete
-        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsAcademicAdmin()]
         return [IsAuthenticated()]
@@ -623,7 +521,6 @@ class ExamRoomViewSet(viewsets.ModelViewSet):
 class ExamScheduleViewSet(viewsets.ModelViewSet):
     queryset = ExamSchedule.objects.select_related('exam', 'room', 'invigilator').all()
     serializer_class = ExamScheduleSerializer
-    # FIXED: Changed base permissions to allow students
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['exam__exam_type', 'room', 'invigilator']
@@ -632,77 +529,46 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
     ordering = ['exam_date', 'start_time']
    
     def get_permissions(self):
-        """
-        Customize permissions per action:
-        - Students can: list, retrieve (to view exam schedules)
-        - Faculty/Admin can: everything
-        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsFacultyOrAdmin()]
         return [IsAuthenticated()]
    
     def get_queryset(self):
-        """
-        Filter queryset based on user role:
-        - Students can only see schedules for exams they're enrolled in
-        - Faculty/Admin can see all schedules
-        """
         queryset = super().get_queryset()
         user = self.request.user
-       
-        # If student, only show schedules for their enrolled courses
         if user.role == 'student':
             try:
                 student = user.student_profile
-                # Get exam schedules for courses the student is registered in
                 enrolled_offerings = StudentCourseRegistration.objects.filter(
                     student=student,
                     status='registered'
                 ).values_list('offering', flat=True)
-               
                 return queryset.filter(exam__offering__in=enrolled_offerings)
             except:
                 return queryset.none()
-       
-        # Faculty and admin can see all schedules
         return queryset
 
 class AdmitCardViewSet(viewsets.ModelViewSet):
     queryset = AdmitCard.objects.select_related('student', 'exam').all()
     serializer_class = AdmitCardSerializer
-    # FIXED: Changed base permissions to allow students
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['exam', 'eligibility_status', 'is_downloaded']
     search_fields = ['student__university_reg_number', 'student__first_name', 'seat_number']
     def get_permissions(self):
-        """
-        Customize permissions per action:
-        - Students can: list (own cards), retrieve (own cards)
-        - Faculty/Admin can: everything
-        """
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'generate_qr', 'verify_qr']:
             return [IsAuthenticated(), IsFacultyOrAdmin()]
         return [IsAuthenticated()]
    
     def get_queryset(self):
-        """
-        Filter queryset based on user role:
-        - Students can only see their own admit cards
-        - Faculty/Admin can see all admit cards
-        """
         queryset = super().get_queryset()
         user = self.request.user
-       
-        # If student, only show their own admit cards
         if user.role == 'student':
             try:
                 student = user.student_profile
                 return queryset.filter(student=student)
             except:
                 return queryset.none()
-       
-        # Faculty and admin can see all
         return queryset
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsAcademicAdmin])
     def generate_qr(self, request, pk=None):
@@ -760,40 +626,91 @@ class AdmitCardViewSet(viewsets.ModelViewSet):
         return Response({'error': 'Admit card not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class ZoomClassViewSet(viewsets.ModelViewSet):
-    queryset = ZoomClass.objects.select_related('offering', 'created_by_faculty').all()
+    queryset = ZoomClass.objects.select_related(
+        'offering__course',
+        'offering__semester',
+        'created_by_faculty__user'
+    ).all()
     serializer_class = ZoomClassSerializer
     permission_classes = [IsAuthenticated, CanManageZoomClasses]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['offering', 'platform', 'is_active']
     search_fields = ['topic', 'offering__course__course_code']
     ordering_fields = ['schedule_date', 'start_time']
+    ordering = ['schedule_date', 'start_time']
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), CanManageZoomClasses()]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+       
+        if user.role == 'student':
+            try:
+                student = user.student_profile
+                enrolled_offerings = StudentCourseRegistration.objects.filter(
+                    student=student,
+                    status='registered'
+                ).values_list('offering', flat=True)
+                return queryset.filter(offering__in=enrolled_offerings)
+            except:
+                return queryset.none()
+       
+        if user.role == 'faculty':
+            try:
+                faculty = user.faculty_profile
+                return queryset.filter(
+                    Q(created_by_faculty=faculty) |
+                    Q(offering__faculty=faculty)
+                )
+            except:
+                return queryset.none()
+       
+        return queryset
 
     def create(self, request, *args, **kwargs):
         serializer = ZoomMeetingSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
             platform = request.data.get('platform', 'zoom')
-            if platform == 'zoom':
-                result = create_zoom_class(data)
-            else:
-                result = create_google_meet_class(data)
-            if result['success']:
-                zoom_class = ZoomClass.objects.create(
-                    offering_id=data['offering_id'],
-                    topic=data['topic'],
-                    schedule_date=data['schedule_date'],
-                    start_time=data['start_time'],
-                    duration_minutes=data.get('duration_minutes', 60),
-                    meeting_id=result.get('meeting_id', ''),
-                    join_link=result['join_link'],
-                    start_url=result.get('start_url', result['join_link']),
-                    platform=platform,
-                    created_by_faculty=request.user.faculty_profile if hasattr(request.user, 'faculty_profile') else None
+           
+            try:
+                if platform == 'zoom':
+                    result = create_zoom_class(data)
+                else:
+                    result = create_google_meet_class(data)
+               
+                if result['success']:
+                    faculty = None
+                    if hasattr(request.user, 'faculty_profile'):
+                        faculty = request.user.faculty_profile
+                   
+                    zoom_class = ZoomClass.objects.create(
+                        offering_id=data['offering_id'],
+                        topic=data['topic'],
+                        schedule_date=data['schedule_date'],
+                        start_time=data['start_time'],
+                        duration_minutes=data.get('duration_minutes', 60),
+                        meeting_id=result.get('meeting_id', ''),
+                        join_link=result['join_link'],
+                        start_url=result.get('start_url', result['join_link']),
+                        platform=platform,
+                        created_by_faculty=faculty,
+                        is_active=True
+                    )
+                    zoom_serializer = ZoomClassSerializer(zoom_class)
+                    return Response(zoom_serializer.data, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                logger.error(f"Error in create virtual class: {str(e)}")
+                return Response(
+                    {'error': f'Failed to create virtual class: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-                zoom_serializer = ZoomClassSerializer(zoom_class)
-                return Response(zoom_serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageZoomClasses])
@@ -816,17 +733,119 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
         return Response(result)
 
 class StudyMaterialViewSet(viewsets.ModelViewSet):
-    queryset = StudyMaterial.objects.select_related('offering', 'uploaded_by_faculty').all()
+    queryset = StudyMaterial.objects.select_related(
+        'offering__course',
+        'offering__semester',
+        'uploaded_by_faculty__user'
+    ).all()
     serializer_class = StudyMaterialSerializer
     permission_classes = [IsAuthenticated, CanViewMaterials]
-    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['offering', 'file_type', 'access_level', 'is_visible']
-    search_fields = ['title', 'offering__course__course_code']
+    search_fields = ['title', 'description', 'tags']
+    ordering_fields = ['uploaded_at', 'title', 'download_count', 'view_count']
+    ordering = ['-uploaded_at']
 
     def get_permissions(self):
+        """ 
+        Students can view materials for enrolled courses
+        Faculty can upload/edit materials for their courses
+        Admins can manage all materials
+        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanUploadMaterials()]
         return [IsAuthenticated(), CanViewMaterials()]
+
+    def get_queryset(self):
+        """ 
+        Filter materials based on user role:
+        - Students see public materials + materials for enrolled courses
+        - Faculty see materials for courses they teach
+        - Admins see all materials
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+
+        if user.role == 'student':
+            try:
+                student = user.student_profile
+                enrolled_offerings = StudentCourseRegistration.objects.filter(
+                    student=student,
+                    status='registered'
+                ).values_list('offering', flat=True)
+                return queryset.filter(
+                    Q(access_level='public') |
+                    Q(offering__in=enrolled_offerings, is_visible=True)
+                )
+            except:
+                return queryset.filter(access_level='public', is_visible=True)
+
+        if user.role == 'faculty':
+            try:
+                faculty = user.faculty_profile
+                return queryset.filter(
+                    Q(access_level='public') |
+                    Q(offering__faculty=faculty) |
+                    Q(uploaded_by_faculty=faculty)
+                )
+            except:
+                return queryset.filter(access_level='public', is_visible=True)
+
+        # Admins and super_admins see all
+        return queryset
+
+    def perform_create(self, serializer):
+        """Set the uploader as the current faculty member"""
+        faculty = None
+        if hasattr(self.request.user, 'faculty_profile'):
+            faculty = self.request.user.faculty_profile
+        serializer.save(
+            uploaded_by_faculty=faculty,
+            is_visible=True
+        )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, CanViewMaterials])
+    def download(self, request, pk=None):
+        """Download a material file"""
+        material = self.get_object()
+        # Increment download count
+        material.download_count = (material.download_count or 0) + 1
+        material.save(update_fields=['download_count'])
+
+        # Serve the file
+        if hasattr(material, 'file_path') and material.file_path:
+            try:
+                file_path = material.file_path.path
+                if os.path.exists(file_path):
+                    response = FileResponse(
+                        open(file_path, 'rb'),
+                        content_type='application/octet-stream'
+                    )
+                    response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+                    return response
+                else:
+                    return Response(
+                        {'error': 'File not found on server'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            except Exception as e:
+                logger.error(f"Error downloading file: {str(e)}")
+                return Response(
+                    {'error': 'Failed to download file'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        return Response(
+            {'error': 'No file associated with this material'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanViewMaterials])
+    def increment_view(self, request, pk=None):
+        """Increment view count"""
+        material = self.get_object()
+        material.view_count = (material.view_count or 0) + 1
+        material.save(update_fields=['view_count'])
+        return Response({'view_count': material.view_count})
 
 class ResultPublicationViewSet(viewsets.ModelViewSet):
     queryset = ResultPublication.objects.select_related('semester', 'published_by_admin').all()

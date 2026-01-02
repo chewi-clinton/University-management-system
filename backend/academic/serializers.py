@@ -442,12 +442,15 @@ class ZoomClassSerializer(serializers.ModelSerializer):
     created_by_faculty_id = serializers.PrimaryKeyRelatedField(
         queryset=FacultyMember.objects.all(),
         source='created_by_faculty',
-        write_only=True
+        write_only=True,
+        required=False,
+        allow_null=True
     )
     
     class Meta:
         model = ZoomClass
         fields = '__all__'
+        read_only_fields = ['meeting_id', 'join_link', 'start_url', 'recording_url']
 
 
 class StudyMaterialSerializer(serializers.ModelSerializer):
@@ -462,12 +465,41 @@ class StudyMaterialSerializer(serializers.ModelSerializer):
     uploaded_by_faculty_id = serializers.PrimaryKeyRelatedField(
         queryset=FacultyMember.objects.all(),
         source='uploaded_by_faculty',
-        write_only=True
+        write_only=True,
+        required=False,
+        allow_null=True
     )
-    
+    file = serializers.FileField(write_only=True, required=True)
+    file_path = serializers.FileField(read_only=True)
+    file_size = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = StudyMaterial
         fields = '__all__'
+        read_only_fields = ['uploaded_at', 'download_count', 'view_count', 'file_size']
+
+    def create(self, validated_data):
+        file = validated_data.pop('file', None)
+        # Create the material
+        material = StudyMaterial.objects.create(**validated_data)
+        # Handle file upload
+        if file:
+            material.file_path = file
+            material.file_size = file.size
+            material.save()
+        return material
+
+    def update(self, instance, validated_data):
+        file = validated_data.pop('file', None)
+        # Update fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        # Handle file upload
+        if file:
+            instance.file_path = file
+            instance.file_size = file.size
+            instance.save()
+        return instance
 
 
 class ResultPublicationSerializer(serializers.ModelSerializer):
@@ -611,16 +643,23 @@ class QRAttendanceSerializer(serializers.Serializer):
 
 class ZoomMeetingSerializer(serializers.Serializer):
     """Serializer for creating Zoom meetings"""
-    topic = serializers.CharField(required=True)
+    topic = serializers.CharField(required=True, max_length=255)
     schedule_date = serializers.DateField(required=True)
     start_time = serializers.TimeField(required=True)
-    duration_minutes = serializers.IntegerField(default=60)
+    duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=300)
     offering_id = serializers.IntegerField(required=True)
-    
+    platform = serializers.ChoiceField(choices=['zoom', 'google_meet'], default='zoom')
+    description = serializers.CharField(required=False, allow_blank=True)
+   
     def validate_offering_id(self, value):
         from .models import CourseOffering
         if not CourseOffering.objects.filter(id=value).exists():
             raise ValidationError("Course offering not found")
+        return value
+   
+    def validate_schedule_date(self, value):
+        if value < timezone.now().date():
+            raise ValidationError("Cannot schedule class in the past")
         return value
 
 
