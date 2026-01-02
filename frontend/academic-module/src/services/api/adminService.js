@@ -938,6 +938,127 @@ const adminService = {
       };
     }
   },
+
+  // ==================== Faculties (Organizations) ====================
+  getFaculties: async () => {
+    try {
+      const response = await api.get("/faculties/");
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching faculties:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load faculties",
+      };
+    }
+  },
+
+  createFaculty: async (facultyData) => {
+    try {
+      const response = await api.post("/faculties/", facultyData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating faculty:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create faculty",
+      };
+    }
+  },
+
+  updateFaculty: async (facultyId, facultyData) => {
+    try {
+      const response = await api.patch(`/faculties/${facultyId}/`, facultyData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating faculty:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update faculty",
+      };
+    }
+  },
+
+  deleteFaculty: async (facultyId) => {
+    try {
+      await api.delete(`/faculties/${facultyId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting faculty:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete faculty",
+      };
+    }
+  },
+
+  // ==================== Department CRUD Operations ====================
+  createDepartment: async (departmentData) => {
+    try {
+      const response = await api.post("/departments/", departmentData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating department:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail ||
+          error.response?.data ||
+          "Failed to create department",
+      };
+    }
+  },
+
+  updateDepartment: async (departmentId, departmentData) => {
+    try {
+      const response = await api.patch(
+        `/departments/${departmentId}/`,
+        departmentData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating department:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update department",
+      };
+    }
+  },
+
+  deleteDepartment: async (departmentId) => {
+    try {
+      await api.delete(`/departments/${departmentId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting department:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete department",
+      };
+    }
+  },
 };
 
 // Helper function to generate random colors for departments

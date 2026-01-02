@@ -16,20 +16,72 @@ import {
 import AdminDataTable from "../components/shared/admin/AdminDataTable";
 import AdminModal from "../components/shared/admin/AdminModal";
 import AdminForm from "../components/shared/admin/AdminForm";
-import ExportButton from "../components/shared/admin/ExportButton"; // ← Fixed: Added
-import BulkActionBar from "../components/shared/admin/BulkActionBar"; // ← Fixed: Added
-
-import { mockDepartmentStats } from "../mock-data/adminMockData";
+import ExportButton from "../components/shared/admin/ExportButton";
+import BulkActionBar from "../components/shared/admin/BulkActionBar";
+import { adminService } from "../services/api/adminService";
 
 export default function DepartmentManagement() {
-  const [departments, setDepartments] = useState(mockDepartmentStats);
-  const [filteredDepartments, setFilteredDepartments] = useState(departments);
+  const [departments, setDepartments] = useState([]);
+  const [filteredDepartments, setFilteredDepartments] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("add"); // add | edit | view
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [faculties, setFaculties] = useState([]);
+  const [facultyMembers, setFacultyMembers] = useState([]);
+
+  // Fetch departments and related data from API
+  useEffect(() => {
+    fetchDepartments();
+    fetchFaculties();
+    fetchFacultyMembers();
+  }, []);
+
+  const fetchDepartments = async () => {
+    setLoading(true);
+    try {
+      const response = await adminService.getDepartments();
+      if (response.success) {
+        // Data is already transformed in adminService
+        setDepartments(response.data);
+        setFilteredDepartments(response.data);
+      } else {
+        console.error("Failed to fetch departments:", response.error);
+        alert(`Error: ${response.error}`);
+      }
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      alert("Failed to load department data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFaculties = async () => {
+    try {
+      // Fetch faculties (organizations) for dropdown
+      const response = await adminService.getFaculties();
+      if (response.success) {
+        setFaculties(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching faculties:", error);
+    }
+  };
+
+  const fetchFacultyMembers = async () => {
+    try {
+      // Fetch faculty members for department head dropdown
+      const response = await adminService.getFacultyMembers();
+      if (response.success) {
+        setFacultyMembers(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching faculty members:", error);
+    }
+  };
 
   // Search Logic
   useEffect(() => {
@@ -127,7 +179,7 @@ export default function DepartmentManagement() {
         <span
           className={`gpa-display ${gpa >= 3.5 ? "gpa-display--high" : ""}`}
         >
-          {gpa.toFixed(2)}
+          {parseFloat(gpa).toFixed(2)}
         </span>
       ),
     },
@@ -135,7 +187,7 @@ export default function DepartmentManagement() {
 
   const formFields = [
     {
-      name: "name",
+      name: "department_name",
       type: "text",
       label: "Department Name",
       placeholder: "Enter department name",
@@ -148,7 +200,7 @@ export default function DepartmentManagement() {
       },
     },
     {
-      name: "code",
+      name: "department_code",
       type: "text",
       label: "Department Code",
       placeholder: "e.g., CS, MATH",
@@ -162,52 +214,36 @@ export default function DepartmentManagement() {
           value: 10,
           message: "Code cannot exceed 10 characters",
         },
-        pattern: {
-          value: /^[A-Z]+$/,
-          message: "Code must be uppercase letters only",
-        },
       },
     },
     {
-      name: "description",
-      type: "textarea",
-      label: "Description",
-      placeholder: "Enter department description",
+      name: "faculty_id",
+      type: "select",
+      label: "Faculty (Organization)",
+      placeholder: "Select faculty",
       required: true,
-      rows: 4,
+      options: faculties.map((f) => ({
+        value: f.faculty_id,
+        label: f.faculty_name,
+      })),
     },
     {
-      name: "head",
-      type: "text",
+      name: "head_id",
+      type: "select",
       label: "Department Head",
-      placeholder: "Enter department head name",
-      required: true,
+      placeholder: "Select department head",
+      required: false,
+      options: facultyMembers.map((fm) => ({
+        value: fm.faculty_id,
+        label: `${fm.user?.first_name} ${fm.user?.last_name}`,
+      })),
     },
     {
-      name: "email",
-      type: "email",
-      label: "Department Email",
-      placeholder: "dept@university.edu",
-      required: true,
-      validation: {
-        pattern: {
-          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-          message: "Invalid email format",
-        },
-      },
-    },
-    {
-      name: "phone",
-      type: "tel",
-      label: "Department Phone",
-      placeholder: "+1234567890",
-      required: true,
-    },
-    {
-      name: "color",
-      type: "color",
-      label: "Department Color",
-      required: true,
+      name: "office_location",
+      type: "text",
+      label: "Office Location",
+      placeholder: "Building, Room number",
+      required: false,
     },
   ];
 
@@ -219,7 +255,15 @@ export default function DepartmentManagement() {
 
   const handleEditDepartment = (department) => {
     setModalMode("edit");
-    setSelectedDepartment(department);
+    // Transform data back to API format
+    setSelectedDepartment({
+      department_id: department.id,
+      department_name: department.name,
+      department_code: department.code,
+      faculty_id: department.faculty_id,
+      head_id: department.head_id,
+      office_location: department.office_location,
+    });
     setShowModal(true);
   };
 
@@ -229,38 +273,59 @@ export default function DepartmentManagement() {
     setShowModal(true);
   };
 
-  const handleSaveDepartment = (formData) => {
-    if (modalMode === "add") {
-      const newDepartment = {
-        id: departments.length
-          ? Math.max(...departments.map((d) => d.id)) + 1
-          : 1,
-        ...formData,
-        students: 0,
-        faculty: 0,
-        courses: 0,
-        avgAttendance: 0,
-        avgGPA: 0.0,
-      };
-      setDepartments([...departments, newDepartment]);
-    } else {
-      setDepartments(
-        departments.map((d) =>
-          d.id === selectedDepartment.id ? { ...d, ...formData } : d
-        )
-      );
+  const handleSaveDepartment = async (formData) => {
+    setLoading(true);
+    try {
+      if (modalMode === "add") {
+        const response = await adminService.createDepartment(formData);
+
+        if (response.success) {
+          alert("Department created successfully!");
+          fetchDepartments(); // Refresh the list
+          setShowModal(false);
+        } else {
+          alert(`Error: ${response.error}`);
+        }
+      } else {
+        const response = await adminService.updateDepartment(
+          selectedDepartment.department_id,
+          formData
+        );
+
+        if (response.success) {
+          alert("Department updated successfully!");
+          fetchDepartments(); // Refresh the list
+          setShowModal(false);
+        } else {
+          alert(`Error: ${response.error}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving department:", error);
+      alert("Failed to save department");
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
-  const handleBulkAction = (action, selectedIds) => {
+  const handleBulkAction = async (action, selectedIds) => {
     switch (action) {
       case "export":
         console.log("Exporting departments:", selectedIds);
+        // Implement export functionality
         break;
       case "delete":
-        setDepartments(departments.filter((d) => !selectedIds.includes(d.id)));
-        setSelectedRows([]);
+        if (
+          window.confirm(
+            `Are you sure you want to delete ${selectedIds.length} department(s)?`
+          )
+        ) {
+          for (const id of selectedIds) {
+            await adminService.deleteDepartment(id);
+          }
+          fetchDepartments();
+          setSelectedRows([]);
+        }
         break;
       default:
         console.log("Unknown bulk action:", action);
@@ -273,12 +338,22 @@ export default function DepartmentManagement() {
   };
 
   // Calculate stats safely
-  const totalStudents = departments.reduce((sum, d) => sum + d.students, 0);
-  const totalFaculty = departments.reduce((sum, d) => sum + d.faculty, 0);
-  const totalCourses = departments.reduce((sum, d) => sum + d.courses, 0);
+  const totalStudents = departments.reduce(
+    (sum, d) => sum + (d.students || 0),
+    0
+  );
+  const totalFaculty = departments.reduce(
+    (sum, d) => sum + (d.faculty || 0),
+    0
+  );
+  const totalCourses = departments.reduce(
+    (sum, d) => sum + (d.courses || 0),
+    0
+  );
   const avgGPA =
     departments.length > 0
-      ? departments.reduce((sum, d) => sum + d.avgGPA, 0) / departments.length
+      ? departments.reduce((sum, d) => sum + parseFloat(d.avgGPA || 0), 0) /
+        departments.length
       : 0;
 
   return (
@@ -407,11 +482,17 @@ export default function DepartmentManagement() {
               type: "delete",
               label: "Delete",
               icon: <Trash2 size={16} />,
-              onClick: (row) => {
+              onClick: async (row) => {
                 if (
                   window.confirm(`Are you sure you want to delete ${row.name}?`)
                 ) {
-                  setDepartments(departments.filter((d) => d.id !== row.id));
+                  const response = await adminService.deleteDepartment(row.id);
+                  if (response.success) {
+                    alert("Department deleted successfully!");
+                    fetchDepartments();
+                  } else {
+                    alert(`Error: ${response.error}`);
+                  }
                 }
               },
             },
@@ -461,17 +542,12 @@ export default function DepartmentManagement() {
                 <h4>Department Information</h4>
                 <div className="department-details__grid">
                   <div>
-                    <strong>Description:</strong>{" "}
-                    {selectedDepartment?.description || "—"}
+                    <strong>Office Location:</strong>{" "}
+                    {selectedDepartment?.office_location || "—"}
                   </div>
                   <div>
-                    <strong>Head:</strong> {selectedDepartment?.head || "—"}
-                  </div>
-                  <div>
-                    <strong>Email:</strong> {selectedDepartment?.email || "—"}
-                  </div>
-                  <div>
-                    <strong>Phone:</strong> {selectedDepartment?.phone || "—"}
+                    <strong>Department Head:</strong>{" "}
+                    {selectedDepartment?.head_name || "—"}
                   </div>
                 </div>
               </div>
@@ -504,7 +580,7 @@ export default function DepartmentManagement() {
                   </div>
                   <div className="stat-item">
                     <span className="stat-value">
-                      {(selectedDepartment?.avgGPA ?? 0).toFixed(2)}
+                      {parseFloat(selectedDepartment?.avgGPA ?? 0).toFixed(2)}
                     </span>
                     <span className="stat-label">Avg GPA</span>
                   </div>
@@ -516,7 +592,7 @@ export default function DepartmentManagement() {
           <AdminForm
             fields={formFields}
             onSubmit={handleSaveDepartment}
-            defaultValues={selectedDepartment || { color: "#3b82f6" }}
+            defaultValues={selectedDepartment || {}}
             submitButtonText={
               modalMode === "add" ? "Add Department" : "Update Department"
             }
