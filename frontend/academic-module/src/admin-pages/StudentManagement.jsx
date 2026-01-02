@@ -12,7 +12,7 @@ import {
   Phone,
   MapPin,
   Calendar,
-  TrendingUp, // ← THIS WAS MISSING! Fixed now
+  TrendingUp,
 } from "lucide-react";
 
 import AdminDataTable from "../components/shared/admin/AdminDataTable";
@@ -20,18 +20,30 @@ import AdminModal from "../components/shared/admin/AdminModal";
 import AdminForm from "../components/shared/admin/AdminForm";
 import ExportButton from "../components/shared/admin/ExportButton";
 import BulkActionBar from "../components/shared/admin/BulkActionBar";
-import { mockStudents } from "../mock-data/usersMock";
+import { adminService } from "../services/api/adminService";
 import "../styles/admin-pages/student-management.css";
 
 export default function StudentManagement() {
-  const [students, setStudents] = useState(mockStudents);
-  const [filteredStudents, setFilteredStudents] = useState(students);
+  const [students, setStudents] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState("add"); // add | edit | view
+  const [modalMode, setModalMode] = useState("add");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    avgGPA: 0,
+  });
+
+  // Fetch students and programs on mount
+  useEffect(() => {
+    fetchStudents();
+    fetchPrograms();
+  }, []);
 
   // Search Logic
   useEffect(() => {
@@ -40,40 +52,104 @@ export default function StudentManagement() {
     if (searchQuery) {
       result = result.filter(
         (s) =>
-          s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.universityRegNumber
-            .toLowerCase()
+          s.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.university_reg_number
+            ?.toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.program.toLowerCase().includes(searchQuery.toLowerCase())
+          s.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.program_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     setFilteredStudents(result);
   }, [searchQuery, students]);
 
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const response = await adminService.getStudents();
+      if (response.success) {
+        const studentsData = response.data.map((student) => ({
+          id: student.student_id,
+          student_id: student.student_id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          university_reg_number: student.university_reg_number,
+          email: student.user?.email || "N/A",
+          phone: student.phone || "",
+          program_name: student.program?.program_name || "N/A",
+          program_id: student.program?.program_id,
+          current_semester: student.current_semester || 1,
+          current_gpa: parseFloat(student.current_gpa) || 0.0,
+          enrollment_date: student.enrollment_date,
+          current_status: student.current_status || "active",
+          user_id: student.user?.id,
+        }));
+
+        setStudents(studentsData);
+        calculateStats(studentsData);
+      } else {
+        console.error("Failed to fetch students:", response.error);
+        alert("Failed to load students. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      alert("An error occurred while loading students.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await adminService.getPrograms();
+      if (response.success) {
+        setPrograms(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+    }
+  };
+
+  const calculateStats = (studentsData) => {
+    const total = studentsData.length;
+    const active = studentsData.filter(
+      (s) => s.current_status === "active"
+    ).length;
+    const avgGPA =
+      total > 0
+        ? studentsData.reduce((sum, s) => sum + s.current_gpa, 0) / total
+        : 0;
+
+    setStats({
+      total,
+      active,
+      avgGPA: avgGPA.toFixed(2),
+    });
+  };
+
   const columns = [
     {
-      key: "universityRegNumber",
+      key: "university_reg_number",
       label: "Reg Number",
       sortable: true,
       width: "140px",
     },
     {
-      key: "firstName",
+      key: "first_name",
       label: "Student Name",
       sortable: true,
       render: (_, student) => (
         <div className="student-cell">
           <img
-            src={student.avatar}
-            alt={`${student.firstName} ${student.lastName}`}
+            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.first_name}${student.last_name}`}
+            alt={`${student.first_name} ${student.last_name}`}
             className="student-cell__avatar"
           />
           <div>
             <div className="student-cell__name">
-              {student.firstName} {student.lastName}
+              {student.first_name} {student.last_name}
             </div>
             <div className="student-cell__email">{student.email}</div>
           </div>
@@ -81,18 +157,18 @@ export default function StudentManagement() {
       ),
     },
     {
-      key: "program",
+      key: "program_name",
       label: "Program",
       sortable: true,
       render: (program) => <span className="program-badge">{program}</span>,
     },
     {
-      key: "currentSemester",
+      key: "current_semester",
       label: "Semester",
       sortable: true,
     },
     {
-      key: "currentGPA",
+      key: "current_gpa",
       label: "GPA",
       sortable: true,
       render: (gpa) => (
@@ -105,22 +181,22 @@ export default function StudentManagement() {
               : ""
           }`}
         >
-          {gpa.toFixed(2)}
+          {parseFloat(gpa).toFixed(2)}
         </span>
       ),
     },
     {
-      key: "enrollmentDate",
+      key: "enrollment_date",
       label: "Enrolled",
       sortable: true,
-      render: (date) => new Date(date).toLocaleDateString(),
+      render: (date) => (date ? new Date(date).toLocaleDateString() : "N/A"),
     },
     {
-      key: "status",
+      key: "current_status",
       label: "Status",
       render: (status) => (
-        <span className={`status-badge status-badge--${status.toLowerCase()}`}>
-          {status}
+        <span className={`status-badge status-badge--${status?.toLowerCase()}`}>
+          {status || "active"}
         </span>
       ),
     },
@@ -128,14 +204,14 @@ export default function StudentManagement() {
 
   const formFields = [
     {
-      name: "firstName",
+      name: "first_name",
       type: "text",
       label: "First Name",
       placeholder: "Enter first name",
       required: true,
     },
     {
-      name: "lastName",
+      name: "last_name",
       type: "text",
       label: "Last Name",
       placeholder: "Enter last name",
@@ -155,39 +231,40 @@ export default function StudentManagement() {
       placeholder: "+1234567890",
     },
     {
-      name: "universityRegNumber",
+      name: "university_reg_number",
       type: "text",
       label: "Registration Number",
       placeholder: "e.g., 20230001",
       required: true,
     },
     {
-      name: "program",
+      name: "program_id",
       type: "select",
       label: "Program",
       placeholder: "Select program",
       required: true,
-      options: [
-        "Computer Science",
-        "Mathematics",
-        "Electrical Engineering",
-        "Business Administration",
-        "Physics",
-        "Chemistry",
-      ],
+      options: programs.map((p) => ({
+        value: p.program_id,
+        label: p.program_name,
+      })),
     },
     {
-      name: "enrollmentDate",
+      name: "enrollment_date",
       type: "date",
       label: "Enrollment Date",
       required: true,
     },
     {
-      name: "status",
+      name: "current_status",
       type: "select",
       label: "Status",
       required: true,
-      options: ["Active", "Inactive", "Graduated", "Suspended"],
+      options: [
+        { value: "active", label: "Active" },
+        { value: "inactive", label: "Inactive" },
+        { value: "graduated", label: "Graduated" },
+        { value: "suspended", label: "Suspended" },
+      ],
     },
   ];
 
@@ -209,34 +286,107 @@ export default function StudentManagement() {
     setShowModal(true);
   };
 
-  const handleSaveStudent = (formData) => {
-    if (modalMode === "add") {
-      const newStudent = {
-        id: students.length + 1,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.firstName}${formData.lastName}`,
-        currentGPA: 0.0,
-        currentSemester: 1,
-        ...formData,
-      };
-      setStudents([...students, newStudent]);
-    } else {
-      setStudents(
-        students.map((s) =>
-          s.id === selectedStudent.id ? { ...s, ...formData } : s
-        )
-      );
+  const handleSaveStudent = async (formData) => {
+    setLoading(true);
+    try {
+      if (modalMode === "add") {
+        // Create new student
+        const response = await adminService.createStudent({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          university_reg_number: formData.university_reg_number,
+          program_id: formData.program_id,
+          enrollment_date: formData.enrollment_date,
+          current_status: formData.current_status,
+          // User data for backend
+          user_id: null, // Backend will create user
+          email: formData.email,
+        });
+
+        if (response.success) {
+          alert("Student added successfully!");
+          fetchStudents();
+          setShowModal(false);
+        } else {
+          alert(`Failed to add student: ${response.error}`);
+        }
+      } else {
+        // Update existing student
+        const response = await adminService.updateStudent(
+          selectedStudent.student_id,
+          {
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            phone: formData.phone,
+            university_reg_number: formData.university_reg_number,
+            program_id: formData.program_id,
+            enrollment_date: formData.enrollment_date,
+            current_status: formData.current_status,
+          }
+        );
+
+        if (response.success) {
+          alert("Student updated successfully!");
+          fetchStudents();
+          setShowModal(false);
+        } else {
+          alert(`Failed to update student: ${response.error}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving student:", error);
+      alert("An error occurred while saving the student.");
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
-  const handleBulkAction = (action, selectedIds) => {
+  const handleDeleteStudent = async (student) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${student.first_name} ${student.last_name}?`
+      )
+    ) {
+      try {
+        const response = await adminService.deleteStudent(student.student_id);
+        if (response.success) {
+          alert("Student deleted successfully!");
+          fetchStudents();
+        } else {
+          alert(`Failed to delete student: ${response.error}`);
+        }
+      } catch (error) {
+        console.error("Error deleting student:", error);
+        alert("An error occurred while deleting the student.");
+      }
+    }
+  };
+
+  const handleBulkAction = async (action, selectedIds) => {
     switch (action) {
       case "export":
         console.log("Exporting students:", selectedIds);
+        handleExport("csv");
         break;
       case "delete":
-        setStudents(students.filter((s) => !selectedIds.includes(s.id)));
-        setSelectedRows([]);
+        if (
+          window.confirm(
+            `Are you sure you want to delete ${selectedIds.length} students?`
+          )
+        ) {
+          try {
+            await Promise.all(
+              selectedIds.map((id) => adminService.deleteStudent(id))
+            );
+            alert("Students deleted successfully!");
+            fetchStudents();
+            setSelectedRows([]);
+          } catch (error) {
+            console.error("Error deleting students:", error);
+            alert("An error occurred while deleting students.");
+          }
+        }
         break;
       default:
         break;
@@ -244,7 +394,50 @@ export default function StudentManagement() {
   };
 
   const handleExport = (format) => {
-    console.log(`Exporting students as ${format}`);
+    const dataToExport =
+      selectedRows.length > 0
+        ? students.filter((s) => selectedRows.includes(s.id))
+        : filteredStudents;
+
+    if (format === "csv") {
+      const headers = [
+        "Reg Number",
+        "First Name",
+        "Last Name",
+        "Email",
+        "Phone",
+        "Program",
+        "Semester",
+        "GPA",
+        "Status",
+        "Enrollment Date",
+      ];
+
+      const csvContent = [
+        headers.join(","),
+        ...dataToExport.map((s) =>
+          [
+            s.university_reg_number,
+            s.first_name,
+            s.last_name,
+            s.email,
+            s.phone || "",
+            s.program_name,
+            s.current_semester,
+            s.current_gpa,
+            s.current_status,
+            s.enrollment_date,
+          ].join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `students_${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+    }
   };
 
   return (
@@ -277,7 +470,7 @@ export default function StudentManagement() {
           </div>
           <div className="stat-card__content">
             <h3>Total Students</h3>
-            <p>{students.length}</p>
+            <p>{stats.total}</p>
           </div>
         </div>
         <div className="stat-card">
@@ -286,23 +479,16 @@ export default function StudentManagement() {
           </div>
           <div className="stat-card__content">
             <h3>Active Students</h3>
-            <p>{students.filter((s) => s.status === "Active").length}</p>
+            <p>{stats.active}</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-card__icon">
-            <TrendingUp size={24} /> {/* Now works! */}
+            <TrendingUp size={24} />
           </div>
           <div className="stat-card__content">
             <h3>Average GPA</h3>
-            <p>
-              {students.length > 0
-                ? (
-                    students.reduce((sum, s) => sum + s.currentGPA, 0) /
-                    students.length
-                  ).toFixed(2)
-                : "0.00"}
-            </p>
+            <p>{stats.avgGPA}</p>
           </div>
         </div>
       </div>
@@ -353,13 +539,7 @@ export default function StudentManagement() {
               type: "delete",
               label: "Delete",
               icon: <Trash2 size={16} />,
-              onClick: (row) => {
-                if (
-                  window.confirm(`Delete ${row.firstName} ${row.lastName}?`)
-                ) {
-                  setStudents(students.filter((s) => s.id !== row.id));
-                }
-              },
+              onClick: handleDeleteStudent,
             },
           ]}
           loading={loading}
@@ -392,19 +572,19 @@ export default function StudentManagement() {
               <div className="student-details">
                 <div className="student-details__header">
                   <img
-                    src={selectedStudent?.avatar}
+                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedStudent?.first_name}${selectedStudent?.last_name}`}
                     alt="Student"
                     className="student-details__avatar"
                   />
                   <div>
                     <h3>
-                      {selectedStudent?.firstName} {selectedStudent?.lastName}
+                      {selectedStudent?.first_name} {selectedStudent?.last_name}
                     </h3>
-                    <p>{selectedStudent?.universityRegNumber}</p>
+                    <p>{selectedStudent?.university_reg_number}</p>
                     <span
-                      className={`status-badge status-badge--${selectedStudent?.status.toLowerCase()}`}
+                      className={`status-badge status-badge--${selectedStudent?.current_status?.toLowerCase()}`}
                     >
-                      {selectedStudent?.status}
+                      {selectedStudent?.current_status}
                     </span>
                   </div>
                 </div>
@@ -417,20 +597,20 @@ export default function StudentManagement() {
                       <strong>Phone:</strong> {selectedStudent?.phone || "—"}
                     </div>
                     <div>
-                      <strong>Program:</strong> {selectedStudent?.program}
+                      <strong>Program:</strong> {selectedStudent?.program_name}
                     </div>
                     <div>
                       <strong>Semester:</strong>{" "}
-                      {selectedStudent?.currentSemester}
+                      {selectedStudent?.current_semester}
                     </div>
                     <div>
                       <strong>GPA:</strong>{" "}
-                      {selectedStudent?.currentGPA.toFixed(2)}
+                      {parseFloat(selectedStudent?.current_gpa).toFixed(2)}
                     </div>
                     <div>
                       <strong>Enrolled:</strong>{" "}
                       {new Date(
-                        selectedStudent?.enrollmentDate
+                        selectedStudent?.enrollment_date
                       ).toLocaleDateString()}
                     </div>
                   </div>

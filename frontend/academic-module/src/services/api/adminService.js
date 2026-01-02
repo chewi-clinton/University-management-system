@@ -1,18 +1,17 @@
 import api from "./api";
 
 const adminService = {
-  // Dashboard Statistics
+  // ==================== Dashboard Statistics ====================
   getDashboardStats: async () => {
     try {
-      // Fetch all required data in parallel
-      const [students, faculty, courses, attendance] = await Promise.all([
-        api.get("/students/"),
-        api.get("/faculty-members/"),
-        api.get("/courses/"),
-        api.get("/attendance-summaries/"),
-      ]);
+      const [students, faculty, courses, attendanceSummaries] =
+        await Promise.all([
+          api.get("/students/"),
+          api.get("/faculty-members/"),
+          api.get("/courses/"),
+          api.get("/attendance-summaries/"),
+        ]);
 
-      // Extract results from paginated responses
       const studentsData = Array.isArray(students.data)
         ? students.data
         : students.data.results || [];
@@ -22,11 +21,10 @@ const adminService = {
       const coursesData = Array.isArray(courses.data)
         ? courses.data
         : courses.data.results || [];
-      const attendanceData = Array.isArray(attendance.data)
-        ? attendance.data
-        : attendance.data.results || [];
+      const attendanceData = Array.isArray(attendanceSummaries.data)
+        ? attendanceSummaries.data
+        : attendanceSummaries.data.results || [];
 
-      // Calculate attendance rate
       const totalAttendance = attendanceData.reduce(
         (sum, record) => sum + (record.attendance_percentage || 0),
         0
@@ -52,7 +50,7 @@ const adminService = {
     }
   },
 
-  // Get all students with detailed info
+  // ==================== Students ====================
   getStudents: async (filters = {}) => {
     try {
       const params = new URLSearchParams(filters);
@@ -73,7 +71,54 @@ const adminService = {
     }
   },
 
-  // Get all faculty members
+  createStudent: async (studentData) => {
+    try {
+      const response = await api.post("/students/", studentData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating student:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create student",
+      };
+    }
+  },
+
+  updateStudent: async (studentId, studentData) => {
+    try {
+      const response = await api.patch(`/students/${studentId}/`, studentData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating student:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update student",
+      };
+    }
+  },
+
+  deleteStudent: async (studentId) => {
+    try {
+      await api.delete(`/students/${studentId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete student",
+      };
+    }
+  },
+
+  // ==================== Faculty Members ====================
   getFacultyMembers: async (filters = {}) => {
     try {
       const params = new URLSearchParams(filters);
@@ -94,7 +139,128 @@ const adminService = {
     }
   },
 
-  // Get all departments with statistics
+  createFacultyMember: async (facultyData) => {
+    try {
+      const response = await api.post("/faculty-members/", facultyData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating faculty member:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to create faculty member",
+      };
+    }
+  },
+
+  updateFacultyMember: async (facultyId, facultyData) => {
+    try {
+      const response = await api.patch(
+        `/faculty-members/${facultyId}/`,
+        facultyData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating faculty member:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to update faculty member",
+      };
+    }
+  },
+
+  deleteFacultyMember: async (facultyId) => {
+    try {
+      await api.delete(`/faculty-members/${facultyId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting faculty member:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to delete faculty member",
+      };
+    }
+  },
+
+  // ==================== Programs ====================
+  getPrograms: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/programs/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load programs",
+      };
+    }
+  },
+
+  createProgram: async (programData) => {
+    try {
+      const response = await api.post("/programs/", programData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating program:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create program",
+      };
+    }
+  },
+
+  updateProgram: async (programId, programData) => {
+    try {
+      const response = await api.patch(`/programs/${programId}/`, programData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating program:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update program",
+      };
+    }
+  },
+
+  deleteProgram: async (programId) => {
+    try {
+      await api.delete(`/programs/${programId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting program:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete program",
+      };
+    }
+  },
+
+  // ==================== Departments ====================
   getDepartments: async () => {
     try {
       const response = await api.get("/departments/");
@@ -102,7 +268,6 @@ const adminService = {
         ? response.data
         : response.data.results || [];
 
-      // Fetch related data for each department
       const departmentsWithStats = await Promise.all(
         departments.map(async (dept) => {
           try {
@@ -112,7 +277,6 @@ const adminService = {
               api.get(`/courses/?department=${dept.department_id}`),
             ]);
 
-            // Extract results
             const studentsData = Array.isArray(students.data)
               ? students.data
               : students.data.results || [];
@@ -123,7 +287,6 @@ const adminService = {
               ? courses.data
               : courses.data.results || [];
 
-            // Calculate average GPA
             const avgGPA =
               studentsData.length > 0
                 ? studentsData.reduce(
@@ -132,7 +295,6 @@ const adminService = {
                   ) / studentsData.length
                 : 0;
 
-            // Calculate average attendance (placeholder - implement based on your data)
             const avgAttendance = 87;
 
             return {
@@ -171,71 +333,195 @@ const adminService = {
     }
   },
 
-  // Get enrollment trends
-  getEnrollmentTrends: async () => {
+  // ==================== Courses ====================
+  getCourses: async (filters = {}) => {
     try {
-      const response = await api.get("/students/");
-      const students = Array.isArray(response.data)
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/courses/?${params}`);
+      const data = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];
-
-      // Group students by enrollment month
-      const monthCounts = {};
-      const currentYear = new Date().getFullYear();
-
-      // Initialize all months
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      months.forEach((month) => (monthCounts[month] = 0));
-
-      // Count students enrolled in current year by month
-      students.forEach((student) => {
-        if (student.enrollment_date) {
-          const date = new Date(student.enrollment_date);
-          if (date.getFullYear() === currentYear) {
-            const month = months[date.getMonth()];
-            monthCounts[month] = (monthCounts[month] || 0) + 1;
-          }
-        }
-      });
-
-      // Create cumulative data
-      let cumulative = 0;
-      const data = months.map((month) => {
-        cumulative += monthCounts[month];
-        return cumulative;
-      });
-
       return {
         success: true,
-        data: {
-          labels: months,
-          data: data,
-        },
+        data: data,
       };
     } catch (error) {
-      console.error("Error fetching enrollment trends:", error);
+      console.error("Error fetching courses:", error);
       return {
         success: false,
-        error:
-          error.response?.data?.detail || "Failed to load enrollment trends",
+        error: error.response?.data?.detail || "Failed to load courses",
       };
     }
   },
 
-  // Get grade distribution
+  createCourse: async (courseData) => {
+    try {
+      const response = await api.post("/courses/", courseData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating course:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create course",
+      };
+    }
+  },
+
+  updateCourse: async (courseId, courseData) => {
+    try {
+      const response = await api.patch(`/courses/${courseId}/`, courseData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating course:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update course",
+      };
+    }
+  },
+
+  deleteCourse: async (courseId) => {
+    try {
+      await api.delete(`/courses/${courseId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete course",
+      };
+    }
+  },
+
+  // ==================== Enrollment & Registration ====================
+  getEnrollments: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/enrollments/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching enrollments:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load enrollments",
+      };
+    }
+  },
+
+  confirmEnrollment: async (enrollmentId) => {
+    try {
+      const response = await api.post(`/enrollments/${enrollmentId}/confirm/`);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error confirming enrollment:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to confirm enrollment",
+      };
+    }
+  },
+
+  getCourseOfferings: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/course-offerings/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching course offerings:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load course offerings",
+      };
+    }
+  },
+
+  // ==================== Attendance ====================
+  getAttendance: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/attendance/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load attendance",
+      };
+    }
+  },
+
+  getAttendanceSummaries: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/attendance-summaries/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching attendance summaries:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load attendance summaries",
+      };
+    }
+  },
+
+  // ==================== Grades ====================
+  getGrades: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/grades/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching grades:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load grades",
+      };
+    }
+  },
+
   getGradeDistribution: async () => {
     try {
       const response = await api.get("/grades/");
@@ -282,27 +568,55 @@ const adminService = {
     }
   },
 
-  // Get recent notices
-  getRecentNotices: async (limit = 5) => {
+  // ==================== Exams ====================
+  getExamSchedules: async (filters = {}) => {
     try {
-      const response = await api.get(`/notices/?ordering=-post_date`);
-      const notices = Array.isArray(response.data)
+      const params = new URLSearchParams(filters);
+      const response = await api.get(`/exam-schedules/?${params}`);
+      const data = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];
       return {
         success: true,
-        data: notices.slice(0, limit),
+        data: data,
       };
     } catch (error) {
-      console.error("Error fetching notices:", error);
+      console.error("Error fetching exam schedules:", error);
       return {
         success: false,
-        error: error.response?.data?.detail || "Failed to load notices",
+        error: error.response?.data?.detail || "Failed to load exam schedules",
       };
     }
   },
 
-  // Get all notices
+  getUpcomingEvents: async () => {
+    try {
+      const response = await api.get("/exam-schedules/?ordering=exam_date");
+      const schedules = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      const events = schedules.map((schedule) => ({
+        id: schedule.schedule_id,
+        title: schedule.exam?.exam_name || "Examination",
+        date: schedule.exam_date,
+        type: "exam",
+      }));
+
+      return {
+        success: true,
+        data: events.slice(0, 4),
+      };
+    } catch (error) {
+      console.error("Error fetching upcoming events:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load events",
+      };
+    }
+  },
+
+  // ==================== Notices ====================
   getAllNotices: async (filters = {}) => {
     try {
       const params = new URLSearchParams(filters);
@@ -323,38 +637,191 @@ const adminService = {
     }
   },
 
-  // Get upcoming events (exam schedules)
-  getUpcomingEvents: async () => {
+  getRecentNotices: async (limit = 5) => {
     try {
-      const response = await api.get("/exam-schedules/?ordering=exam_date");
-      const schedules = Array.isArray(response.data)
+      const response = await api.get(`/notices/?ordering=-post_date`);
+      const notices = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];
-
-      const events = schedules.map((schedule) => ({
-        id: schedule.schedule_id,
-        title: schedule.exam?.exam_name || "Examination",
-        date: schedule.exam_date,
-        type: "exam",
-      }));
-
       return {
         success: true,
-        data: events.slice(0, 4), // Return first 4 upcoming events
+        data: notices.slice(0, limit),
       };
     } catch (error) {
-      console.error("Error fetching upcoming events:", error);
+      console.error("Error fetching notices:", error);
       return {
         success: false,
-        error: error.response?.data?.detail || "Failed to load events",
+        error: error.response?.data?.detail || "Failed to load notices",
       };
     }
   },
 
-  // Get system notifications (low attendance warnings, pending submissions, etc.)
+  createNotice: async (noticeData) => {
+    try {
+      const response = await api.post("/notices/", noticeData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating notice:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to create notice",
+      };
+    }
+  },
+
+  updateNotice: async (noticeId, noticeData) => {
+    try {
+      const response = await api.patch(`/notices/${noticeId}/`, noticeData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating notice:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update notice",
+      };
+    }
+  },
+
+  deleteNotice: async (noticeId) => {
+    try {
+      await api.delete(`/notices/${noticeId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting notice:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete notice",
+      };
+    }
+  },
+
+  // ==================== Academic Sessions ====================
+  getAcademicSessions: async () => {
+    try {
+      const response = await api.get("/sessions/");
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching academic sessions:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load academic sessions",
+      };
+    }
+  },
+
+  activateSession: async (sessionId) => {
+    try {
+      const response = await api.post(`/sessions/${sessionId}/activate/`);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error activating session:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to activate session",
+      };
+    }
+  },
+
+  getSemesters: async () => {
+    try {
+      const response = await api.get("/semesters/");
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching semesters:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load semesters",
+      };
+    }
+  },
+
+  // ==================== Enrollment Trends ====================
+  getEnrollmentTrends: async () => {
+    try {
+      const response = await api.get("/students/");
+      const students = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      const monthCounts = {};
+      const currentYear = new Date().getFullYear();
+
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      months.forEach((month) => (monthCounts[month] = 0));
+
+      students.forEach((student) => {
+        if (student.enrollment_date) {
+          const date = new Date(student.enrollment_date);
+          if (date.getFullYear() === currentYear) {
+            const month = months[date.getMonth()];
+            monthCounts[month] = (monthCounts[month] || 0) + 1;
+          }
+        }
+      });
+
+      let cumulative = 0;
+      const data = months.map((month) => {
+        cumulative += monthCounts[month];
+        return cumulative;
+      });
+
+      return {
+        success: true,
+        data: {
+          labels: months,
+          data: data,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching enrollment trends:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load enrollment trends",
+      };
+    }
+  },
+
+  // ==================== System Notifications ====================
   getSystemNotifications: async () => {
     try {
-      // Get low attendance students
       const attendanceResponse = await api.get("/attendance-summaries/");
       const attendanceData = Array.isArray(attendanceResponse.data)
         ? attendanceResponse.data
@@ -364,7 +831,6 @@ const adminService = {
         (record) => record.attendance_percentage < 75
       );
 
-      // Get pending grade submissions
       const gradesResponse = await api.get("/grades/?is_finalized=false");
       const gradesData = Array.isArray(gradesResponse.data)
         ? gradesResponse.data
@@ -398,258 +864,6 @@ const adminService = {
       return {
         success: false,
         error: error.response?.data?.detail || "Failed to load notifications",
-      };
-    }
-  },
-
-  // Get all courses
-  getCourses: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters);
-      const response = await api.get(`/courses/?${params}`);
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to load courses",
-      };
-    }
-  },
-
-  // Get all course offerings
-  getCourseOfferings: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters);
-      const response = await api.get(`/course-offerings/?${params}`);
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching course offerings:", error);
-      return {
-        success: false,
-        error:
-          error.response?.data?.detail || "Failed to load course offerings",
-      };
-    }
-  },
-
-  // Get all enrollments
-  getEnrollments: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters);
-      const response = await api.get(`/enrollments/?${params}`);
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching enrollments:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to load enrollments",
-      };
-    }
-  },
-
-  // Get all attendance records
-  getAttendance: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters);
-      const response = await api.get(`/attendance/?${params}`);
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching attendance:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to load attendance",
-      };
-    }
-  },
-
-  // Get all grades
-  getGrades: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters);
-      const response = await api.get(`/grades/?${params}`);
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching grades:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to load grades",
-      };
-    }
-  },
-
-  // Get all exam schedules
-  getExamSchedules: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters);
-      const response = await api.get(`/exam-schedules/?${params}`);
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching exam schedules:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to load exam schedules",
-      };
-    }
-  },
-
-  // Get all semesters
-  getSemesters: async () => {
-    try {
-      const response = await api.get("/semesters/");
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching semesters:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to load semesters",
-      };
-    }
-  },
-
-  // Get all academic sessions
-  getAcademicSessions: async () => {
-    try {
-      const response = await api.get("/sessions/");
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data.results || [];
-      return {
-        success: true,
-        data: data,
-      };
-    } catch (error) {
-      console.error("Error fetching academic sessions:", error);
-      return {
-        success: false,
-        error:
-          error.response?.data?.detail || "Failed to load academic sessions",
-      };
-    }
-  },
-
-  // Create new notice
-  createNotice: async (noticeData) => {
-    try {
-      const response = await api.post("/notices/", noticeData);
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error("Error creating notice:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to create notice",
-      };
-    }
-  },
-
-  // Update notice
-  updateNotice: async (noticeId, noticeData) => {
-    try {
-      const response = await api.patch(`/notices/${noticeId}/`, noticeData);
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error("Error updating notice:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to update notice",
-      };
-    }
-  },
-
-  // Delete notice
-  deleteNotice: async (noticeId) => {
-    try {
-      await api.delete(`/notices/${noticeId}/`);
-      return {
-        success: true,
-      };
-    } catch (error) {
-      console.error("Error deleting notice:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to delete notice",
-      };
-    }
-  },
-
-  // Confirm enrollment
-  confirmEnrollment: async (enrollmentId) => {
-    try {
-      const response = await api.post(`/enrollments/${enrollmentId}/confirm/`);
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error("Error confirming enrollment:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to confirm enrollment",
-      };
-    }
-  },
-
-  // Activate academic session
-  activateSession: async (sessionId) => {
-    try {
-      const response = await api.post(`/sessions/${sessionId}/activate/`);
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error("Error activating session:", error);
-      return {
-        success: false,
-        error: error.response?.data?.detail || "Failed to activate session",
       };
     }
   },
