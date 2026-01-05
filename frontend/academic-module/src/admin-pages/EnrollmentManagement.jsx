@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { adminService } from "../services/api/adminService";
+import "../styles/admin-pages/enrollment-management.css";
 
 export default function EnrollmentManagement() {
   const [enrollments, setEnrollments] = useState([]);
@@ -25,7 +26,6 @@ export default function EnrollmentManagement() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
 
-  // Load initial data
   useEffect(() => {
     loadData();
   }, []);
@@ -58,7 +58,6 @@ export default function EnrollmentManagement() {
     }
   };
 
-  // Calculate statistics
   const stats = {
     total: enrollments.length,
     confirmed: enrollments.filter((e) => e.status === "confirmed").length,
@@ -66,7 +65,6 @@ export default function EnrollmentManagement() {
     rejected: enrollments.filter((e) => e.status === "rejected").length,
   };
 
-  // Filter enrollments
   const filteredEnrollments = enrollments.filter((enrollment) => {
     const studentName = enrollment.student
       ? `${enrollment.student.first_name || ""} ${
@@ -142,29 +140,9 @@ export default function EnrollmentManagement() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #1e40af",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280" }}>Loading enrollments...</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      <div className="enrollment-loading">
+        <div className="enrollment-loading__spinner" />
+        <p className="enrollment-loading__text">Loading enrollments...</p>
       </div>
     );
   }
@@ -173,116 +151,47 @@ export default function EnrollmentManagement() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ padding: "24px" }}
+      className="enrollment-management"
     >
-      {/* Success Message */}
       <AnimatePresence>
         {successMessage && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "16px 24px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="enrollment-management__success"
           >
             ✓ {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Error Message */}
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            color: "#c33",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="enrollment-management__error">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#c33",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
+            className="enrollment-management__error-close"
           >
             ×
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "32px",
-              fontWeight: "700",
-              color: "#111827",
-              marginBottom: "8px",
-            }}
-          >
-            Enrollment Management
-          </h1>
-          <p style={{ color: "#6b7280", fontSize: "16px" }}>
-            Manage student enrollments and course registrations
-          </p>
+      <div className="enrollment-management__header">
+        <div className="enrollment-management__header-content">
+          <h1>Enrollment Management</h1>
+          <p>Manage student enrollments and course registrations</p>
         </div>
         <button
           onClick={loadData}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#1e40af",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontWeight: "500",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
+          className="enrollment-management__refresh-btn"
         >
           <RefreshCw size={18} /> Refresh
         </button>
       </div>
 
-      {/* Statistics Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "20px",
-          marginBottom: "32px",
-        }}
-      >
+      <div className="enrollment-management__stats">
         <StatCard
           title="Total Enrollments"
           value={stats.total}
@@ -309,33 +218,10 @@ export default function EnrollmentManagement() {
         />
       </div>
 
-      {/* Filters and Search */}
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "24px",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          marginBottom: "24px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+      <div className="enrollment-management__filters">
+        <div className="enrollment-management__filters-grid">
+          <div className="enrollment-management__filter-group">
+            <label className="enrollment-management__filter-label">
               Search Enrollments
             </label>
             <input
@@ -343,38 +229,18 @@ export default function EnrollmentManagement() {
               placeholder="Search by student name or enrollment #..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="enrollment-management__filter-input"
             />
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="enrollment-management__filter-group">
+            <label className="enrollment-management__filter-label">
               Semester
             </label>
             <select
               value={filterSemester}
               onChange={(e) => setFilterSemester(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="enrollment-management__filter-select"
             >
               <option value="all">All Semesters</option>
               {semesters.map((sem) => (
@@ -386,28 +252,14 @@ export default function EnrollmentManagement() {
             </select>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="enrollment-management__filter-group">
+            <label className="enrollment-management__filter-label">
               Status
             </label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="enrollment-management__filter-select"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -419,160 +271,77 @@ export default function EnrollmentManagement() {
         </div>
       </div>
 
-      {/* Enrollments Table */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="enrollment-management__table-container">
         {filteredEnrollments.length === 0 ? (
-          <div
-            style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              color: "#6b7280",
-            }}
-          >
-            <p style={{ fontSize: "18px", marginBottom: "8px" }}>
+          <div className="enrollment-management__empty">
+            <p className="enrollment-management__empty-title">
               No enrollments found
             </p>
-            <p style={{ fontSize: "14px" }}>
+            <p className="enrollment-management__empty-text">
               {searchTerm || filterStatus !== "all" || filterSemester !== "all"
                 ? "Try adjusting your filters"
                 : "No enrollment records available"}
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead
-                style={{
-                  backgroundColor: "#f9fafb",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
+          <div className="enrollment-management__table-wrapper">
+            <table className="enrollment-management__table">
+              <thead>
                 <tr>
-                  {[
-                    "Enrollment #",
-                    "Student",
-                    "Program",
-                    "Semester",
-                    "Status",
-                    "Date",
-                    "Confirmed By",
-                    "Actions",
-                  ].map((header) => (
-                    <th
-                      key={header}
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {header}
-                    </th>
-                  ))}
+                  <th>Enrollment #</th>
+                  <th>Student</th>
+                  <th>Program</th>
+                  <th>Semester</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Confirmed By</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredEnrollments.map((enrollment) => (
-                  <tr
-                    key={enrollment.enrollment_id}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
-                  >
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                        color: "#1e40af",
-                      }}
-                    >
-                      {enrollment.enrollment_number ||
-                        `ENR-${enrollment.enrollment_id}`}
+                  <tr key={enrollment.enrollment_id}>
+                    <td>
+                      <span className="enrollment-number">
+                        {enrollment.enrollment_number ||
+                          `ENR-${enrollment.enrollment_id}`}
+                      </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#111827",
-                      }}
-                    >
-                      {enrollment.student
-                        ? `${enrollment.student.first_name || ""} ${
-                            enrollment.student.last_name || ""
-                          }`.trim() || "N/A"
-                        : "N/A"}
+                    <td>
+                      <span className="enrollment-student-name">
+                        {enrollment.student
+                          ? `${enrollment.student.first_name || ""} ${
+                              enrollment.student.last_name || ""
+                            }`.trim() || "N/A"
+                          : "N/A"}
+                      </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td>
                       {enrollment.student?.program?.program_name || "N/A"}
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td>
                       {enrollment.semester?.semester_name ||
                         `Semester ${
                           enrollment.semester?.semester_number || "N/A"
                         }`}
                     </td>
-                    <td style={{ padding: "16px" }}>
+                    <td>
                       <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          backgroundColor: `${getStatusColor(
-                            enrollment.status
-                          )}20`,
-                          color: getStatusColor(enrollment.status),
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
+                        className={`enrollment-status-badge enrollment-status-badge--${enrollment.status}`}
                       >
                         {getStatusIcon(enrollment.status)}
                         {enrollment.status?.charAt(0).toUpperCase() +
                           enrollment.status?.slice(1) || "Unknown"}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td>
                       {enrollment.enrollment_date
                         ? new Date(
                             enrollment.enrollment_date
                           ).toLocaleDateString()
                         : "N/A"}
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td>
                       {enrollment.confirmed_by_admin
                         ? `${
                             enrollment.confirmed_by_admin.user?.first_name || ""
@@ -581,22 +350,26 @@ export default function EnrollmentManagement() {
                           }`.trim()
                         : "-"}
                     </td>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <ActionButton
+                    <td>
+                      <div className="enrollment-actions">
+                        <button
                           onClick={() => openDetailsModal(enrollment)}
                           title="View Details"
-                          color="#3b82f6"
+                          className="enrollment-action-btn enrollment-action-btn--view"
                         >
                           <Eye size={16} />
-                        </ActionButton>
+                        </button>
                         {enrollment.status === "pending" && (
-                          <ActionButton
+                          <button
                             onClick={() =>
                               handleConfirmEnrollment(enrollment.enrollment_id)
                             }
                             title="Confirm Enrollment"
-                            color="#10b981"
+                            className={`enrollment-action-btn ${
+                              confirmingId === enrollment.enrollment_id
+                                ? "enrollment-action-btn--disabled"
+                                : "enrollment-action-btn--confirm"
+                            }`}
                             disabled={confirmingId === enrollment.enrollment_id}
                           >
                             {confirmingId === enrollment.enrollment_id ? (
@@ -607,7 +380,7 @@ export default function EnrollmentManagement() {
                             ) : (
                               <Check size={16} />
                             )}
-                          </ActionButton>
+                          </button>
                         )}
                       </div>
                     </td>
@@ -619,20 +392,11 @@ export default function EnrollmentManagement() {
         )}
       </div>
 
-      {/* Details Modal */}
       <AnimatePresence>
         {showDetailsModal && selectedEnrollment && (
           <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Enrollment Details
-            </h2>
-            <div style={{ display: "grid", gap: "16px" }}>
+            <h2 className="enrollment-modal__title">Enrollment Details</h2>
+            <div>
               <DetailRow
                 label="Enrollment Number"
                 value={
@@ -681,19 +445,7 @@ export default function EnrollmentManagement() {
                 label="Status"
                 value={
                   <span
-                    style={{
-                      padding: "4px 12px",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                      fontWeight: "500",
-                      backgroundColor: `${getStatusColor(
-                        selectedEnrollment.status
-                      )}20`,
-                      color: getStatusColor(selectedEnrollment.status),
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
+                    className={`enrollment-status-badge enrollment-status-badge--${selectedEnrollment.status}`}
                   >
                     {getStatusIcon(selectedEnrollment.status)}
                     {selectedEnrollment.status?.charAt(0).toUpperCase() +
@@ -744,47 +496,21 @@ export default function EnrollmentManagement() {
                 value={selectedEnrollment.remarks || "No remarks"}
               />
             </div>
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                gap: "12px",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="enrollment-modal__actions">
               {selectedEnrollment.status === "pending" && (
                 <button
                   onClick={() => {
                     handleConfirmEnrollment(selectedEnrollment.enrollment_id);
                     setShowDetailsModal(false);
                   }}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#10b981",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
+                  className="enrollment-modal__btn enrollment-modal__btn--success"
                 >
                   <Check size={18} /> Confirm Enrollment
                 </button>
               )}
               <button
                 onClick={() => setShowDetailsModal(false)}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#1e40af",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
+                className="enrollment-modal__btn enrollment-modal__btn--primary"
               >
                 Close
               </button>
@@ -796,82 +522,25 @@ export default function EnrollmentManagement() {
   );
 }
 
-// Helper Components
 function StatCard({ title, value, icon, color }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        borderLeft: `4px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p
-            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
-          >
-            {title}
-          </p>
-          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
-            {value}
-          </p>
-        </div>
-        <div style={{ color }}>{icon}</div>
+    <motion.div whileHover={{ scale: 1.02 }} className="enrollment-stat-card">
+      <div className="enrollment-stat-card__content">
+        <p className="enrollment-stat-card__title">{title}</p>
+        <p className="enrollment-stat-card__value">{value}</p>
+      </div>
+      <div className="enrollment-stat-card__icon" style={{ color }}>
+        {icon}
       </div>
     </motion.div>
   );
 }
 
-function ActionButton({ onClick, title, color, disabled, children }) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
-      style={{
-        padding: "6px 12px",
-        backgroundColor: disabled ? "#d1d5db" : color,
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        fontSize: "12px",
-        cursor: disabled ? "not-allowed" : "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: disabled ? 0.6 : 1,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function DetailRow({ label, value }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "180px 1fr",
-        gap: "16px",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
-        {label}:
-      </span>
-      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    <div className="enrollment-detail-row">
+      <span className="enrollment-detail-row__label">{label}:</span>
+      <span className="enrollment-detail-row__value">{value}</span>
     </div>
   );
 }
@@ -883,38 +552,16 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="enrollment-modal-overlay"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          maxWidth: "700px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        }}
+        className="enrollment-modal"
       >
-        {children}
+        <div className="enrollment-modal__content">{children}</div>
       </motion.div>
     </motion.div>
   );

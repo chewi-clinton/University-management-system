@@ -1,0 +1,833 @@
+/* Enrollment Management Styles */
+
+.enrollment-management {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+  animation: pageEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Success Message */
+.enrollment-management__success {
+  position: fixed;
+  top: var(--space-6);
+  right: var(--space-6);
+  background: var(--success-600);
+  color: white;
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--success-600);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  z-index: var(--z-tooltip);
+  box-shadow: var(--shadow-lg);
+  animation: successSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@keyframes successSlide {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Error Message */
+.enrollment-management__error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid var(--error-500);
+  color: var(--error-600);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-6);
+  font-size: var(--font-sm);
+  letter-spacing: -0.01em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: errorShake 0.4s ease;
+}
+
+@keyframes errorShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.enrollment-management__error-close {
+  background: none;
+  border: none;
+  color: var(--error-600);
+  font-size: var(--font-xl);
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.enrollment-management__error-close:hover {
+  transform: scale(1.2);
+  color: var(--error-700);
+}
+
+/* Header */
+.enrollment-management__header {
+  margin-bottom: var(--space-10);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--neutral-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.enrollment-management__header-content h1 {
+  font-size: var(--font-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-2) 0;
+  line-height: 1.1;
+}
+
+.enrollment-management__header-content p {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+  margin: 0;
+  font-weight: var(--font-weight-normal);
+  letter-spacing: -0.01em;
+}
+
+.enrollment-management__refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--accent-500);
+  color: white;
+  border: 1px solid var(--accent-500);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  letter-spacing: -0.01em;
+  position: relative;
+  overflow: hidden;
+}
+
+.enrollment-management__refresh-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: left var(--duration-base) var(--ease-smooth);
+}
+
+.enrollment-management__refresh-btn:hover::before {
+  left: 100%;
+}
+
+.enrollment-management__refresh-btn:hover {
+  background: var(--accent-600);
+  border-color: var(--accent-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.enrollment-management__refresh-btn:active {
+  transform: translateY(0);
+}
+
+/* Stats Grid */
+.enrollment-management__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-10);
+}
+
+.enrollment-stat-card {
+  background: white;
+  border: 1px solid var(--neutral-200);
+  padding: var(--space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all var(--duration-base) var(--ease-smooth);
+  position: relative;
+  animation: statCardEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.enrollment-stat-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.enrollment-stat-card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.enrollment-stat-card:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.enrollment-stat-card:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+@keyframes statCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.enrollment-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--accent-500);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-base) var(--ease-smooth);
+}
+
+.enrollment-stat-card:hover::before {
+  transform: scaleX(1);
+}
+
+.enrollment-stat-card:hover {
+  border-color: var(--neutral-300);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.enrollment-stat-card__content {
+  flex: 1;
+}
+
+.enrollment-stat-card__title {
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-2) 0;
+}
+
+.enrollment-stat-card__value {
+  font-size: var(--font-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.enrollment-stat-card__icon {
+  opacity: 0.8;
+  transition: all var(--duration-base) var(--ease-smooth);
+}
+
+.enrollment-stat-card:hover .enrollment-stat-card__icon {
+  opacity: 1;
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* Filters Section */
+.enrollment-management__filters {
+  background: white;
+  padding: var(--space-6);
+  border: 1px solid var(--neutral-200);
+  margin-bottom: var(--space-6);
+  animation: filtersSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+}
+
+@keyframes filtersSlide {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.enrollment-management__filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.enrollment-management__filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.enrollment-management__filter-label {
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-700);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.enrollment-management__filter-input,
+.enrollment-management__filter-select {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--neutral-300);
+  background: white;
+  color: var(--neutral-900);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-normal);
+  letter-spacing: -0.01em;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.enrollment-management__filter-input::placeholder {
+  color: var(--neutral-500);
+}
+
+.enrollment-management__filter-input:focus,
+.enrollment-management__filter-select:focus {
+  outline: none;
+  border-color: var(--accent-500);
+  background: var(--neutral-50);
+}
+
+/* Enrollments Table */
+.enrollment-management__table-container {
+  background: white;
+  border: 1px solid var(--neutral-200);
+  overflow: hidden;
+  animation: tableEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.35s backwards;
+}
+
+@keyframes tableEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.enrollment-management__table-wrapper {
+  overflow-x: auto;
+}
+
+.enrollment-management__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.enrollment-management__table thead {
+  background: var(--neutral-50);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.enrollment-management__table thead::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--neutral-200);
+}
+
+.enrollment-management__table th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--neutral-600);
+  white-space: nowrap;
+}
+
+.enrollment-management__table tbody tr {
+  transition: all var(--duration-fast) var(--ease-smooth);
+  position: relative;
+  animation: rowEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.enrollment-management__table tbody tr:nth-child(1) {
+  animation-delay: 0.02s;
+}
+.enrollment-management__table tbody tr:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.enrollment-management__table tbody tr:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.enrollment-management__table tbody tr:nth-child(4) {
+  animation-delay: 0.08s;
+}
+.enrollment-management__table tbody tr:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.enrollment-management__table tbody tr:nth-child(6) {
+  animation-delay: 0.12s;
+}
+.enrollment-management__table tbody tr:nth-child(7) {
+  animation-delay: 0.14s;
+}
+.enrollment-management__table tbody tr:nth-child(8) {
+  animation-delay: 0.16s;
+}
+
+@keyframes rowEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.enrollment-management__table tbody tr::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary-500);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--duration-base) var(--ease-smooth);
+}
+
+.enrollment-management__table tbody tr:hover::before {
+  transform: scaleY(1);
+}
+
+.enrollment-management__table tbody tr::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: var(--space-4);
+  right: var(--space-4);
+  height: 1px;
+  background: var(--neutral-200);
+}
+
+.enrollment-management__table tbody tr:hover {
+  background: var(--neutral-50);
+}
+
+.enrollment-management__table td {
+  padding: var(--space-4) var(--space-4);
+  font-size: var(--font-sm);
+  color: var(--neutral-800);
+  letter-spacing: -0.01em;
+  vertical-align: middle;
+}
+
+.enrollment-number {
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-600);
+  font-family: "Courier New", monospace;
+  font-size: var(--font-sm);
+}
+
+.enrollment-student-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--neutral-900);
+}
+
+.enrollment-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--space-3);
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  border: 1px solid;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+
+.enrollment-status-badge--confirmed {
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--success-600);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.enrollment-status-badge--pending {
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--warning-600);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.enrollment-status-badge--rejected {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--error-600);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.enrollment-status-badge--cancelled {
+  background: rgba(115, 115, 115, 0.08);
+  color: var(--neutral-600);
+  border-color: rgba(115, 115, 115, 0.2);
+}
+
+.enrollment-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.enrollment-action-btn {
+  padding: var(--space-2) var(--space-3);
+  color: white;
+  border: none;
+  font-size: var(--font-xs);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.enrollment-action-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: left var(--duration-base) var(--ease-smooth);
+}
+
+.enrollment-action-btn:hover::before {
+  left: 100%;
+}
+
+.enrollment-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.enrollment-action-btn:active {
+  transform: translateY(0);
+}
+
+.enrollment-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.enrollment-action-btn--view {
+  background: var(--info-500);
+}
+
+.enrollment-action-btn--view:hover {
+  background: var(--info-600);
+}
+
+.enrollment-action-btn--confirm {
+  background: var(--success-500);
+}
+
+.enrollment-action-btn--confirm:hover {
+  background: var(--success-600);
+}
+
+.enrollment-action-btn--disabled {
+  background: var(--neutral-400);
+}
+
+/* Empty State */
+.enrollment-management__empty {
+  padding: var(--space-16) var(--space-6);
+  text-align: center;
+  animation: emptyFade 0.5s var(--ease-smooth);
+}
+
+@keyframes emptyFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.enrollment-management__empty-title {
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-700);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.enrollment-management__empty-text {
+  font-size: var(--font-sm);
+  color: var(--neutral-600);
+  margin: 0;
+}
+
+/* Modal */
+.enrollment-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: var(--space-6);
+}
+
+.enrollment-modal {
+  background: white;
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-2xl);
+  animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.enrollment-modal__content {
+  padding: var(--space-8);
+}
+
+.enrollment-modal__title {
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--neutral-900);
+  margin: 0 0 var(--space-6) 0;
+  letter-spacing: -0.02em;
+}
+
+.enrollment-modal__actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--neutral-200);
+}
+
+.enrollment-modal__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  letter-spacing: -0.01em;
+}
+
+.enrollment-modal__btn--primary {
+  background: var(--accent-500);
+  color: white;
+  border-color: var(--accent-500);
+}
+
+.enrollment-modal__btn--primary:hover {
+  background: var(--accent-600);
+  border-color: var(--accent-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.enrollment-modal__btn--success {
+  background: var(--success-500);
+  color: white;
+  border-color: var(--success-500);
+}
+
+.enrollment-modal__btn--success:hover {
+  background: var(--success-600);
+  border-color: var(--success-600);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Detail Row */
+.enrollment-detail-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.enrollment-detail-row__label {
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--neutral-600);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.enrollment-detail-row__value {
+  font-size: var(--font-sm);
+  color: var(--neutral-900);
+  letter-spacing: -0.01em;
+}
+
+/* Loading Spinner */
+.enrollment-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.enrollment-loading__spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--neutral-200);
+  border-top: 3px solid var(--accent-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.enrollment-loading__text {
+  color: var(--neutral-600);
+  font-size: var(--font-sm);
+  letter-spacing: -0.01em;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .enrollment-management {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .enrollment-management__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .enrollment-management__stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .enrollment-management__header-content h1 {
+    font-size: var(--font-2xl);
+  }
+
+  .enrollment-management__filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .enrollment-management__table th,
+  .enrollment-management__table td {
+    padding: var(--space-2);
+    font-size: var(--font-xs);
+  }
+
+  .enrollment-actions {
+    flex-direction: column;
+  }
+
+  .enrollment-modal__content {
+    padding: var(--space-6);
+  }
+
+  .enrollment-detail-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}
+
+/* Print Styles */
+@media print {
+  .enrollment-management__filters,
+  .enrollment-management__refresh-btn,
+  .enrollment-actions {
+    display: none !important;
+  }
+
+  .enrollment-management__table tbody tr::before {
+    display: none;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
