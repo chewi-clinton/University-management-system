@@ -1734,6 +1734,329 @@ const adminService = {
       };
     }
   },
+
+  // ==================== Admission Management (NEW) ====================
+
+  // ==================== Admission Inquiries ====================
+  getAdmissionInquiries: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.status && filters.status !== "all") {
+        params.append("status", filters.status);
+      }
+      if (filters.source && filters.source !== "all") {
+        params.append("source", filters.source);
+      }
+      if (filters.program && filters.program !== "all") {
+        params.append("program_interest", filters.program);
+      }
+      if (filters.search) {
+        params.append("search", filters.search);
+      }
+
+      const response = await api.get(`/admission-inquiries/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching admission inquiries:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load inquiries",
+      };
+    }
+  },
+
+  getAdmissionInquiry: async (inquiryId) => {
+    try {
+      const response = await api.get(`/admission-inquiries/${inquiryId}/`);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error fetching inquiry:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load inquiry",
+      };
+    }
+  },
+
+  createAdmissionInquiry: async (inquiryData) => {
+    try {
+      const response = await api.post("/admission-inquiries/", inquiryData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating inquiry:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail ||
+          error.response?.data ||
+          "Failed to create inquiry",
+      };
+    }
+  },
+
+  updateAdmissionInquiry: async (inquiryId, inquiryData) => {
+    try {
+      const response = await api.patch(
+        `/admission-inquiries/${inquiryId}/`,
+        inquiryData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating inquiry:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update inquiry",
+      };
+    }
+  },
+
+  deleteAdmissionInquiry: async (inquiryId) => {
+    try {
+      await api.delete(`/admission-inquiries/${inquiryId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting inquiry:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete inquiry",
+      };
+    }
+  },
+
+  assignAdmissionInquiry: async (inquiryId, adminId) => {
+    try {
+      const response = await api.post(
+        `/admission-inquiries/${inquiryId}/assign/`,
+        {
+          admin_id: adminId,
+        }
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error assigning inquiry:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to assign inquiry",
+      };
+    }
+  },
+
+  // ==================== Applications (Applicants) ====================
+  getApplicants: async (filters = {}) => {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.status && filters.status !== "all") {
+        params.append("status", filters.status);
+      }
+      if (filters.program && filters.program !== "all") {
+        params.append("program", filters.program);
+      }
+      if (filters.search) {
+        params.append("search", filters.search);
+      }
+
+      const response = await api.get(`/applicants/?${params}`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      return {
+        success: true,
+        data: data,
+      };
+    } catch (error) {
+      console.error("Error fetching applicants:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load applications",
+      };
+    }
+  },
+
+  getApplicant: async (applicantId) => {
+    try {
+      const response = await api.get(`/applicants/${applicantId}/`);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error fetching applicant:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load application",
+      };
+    }
+  },
+
+  createApplicant: async (applicantData) => {
+    try {
+      const response = await api.post("/applicants/", applicantData);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating applicant:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail ||
+          error.response?.data ||
+          "Failed to create application",
+      };
+    }
+  },
+
+  updateApplicant: async (applicantId, applicantData) => {
+    try {
+      const response = await api.patch(
+        `/applicants/${applicantId}/`,
+        applicantData
+      );
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error updating applicant:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to update application",
+      };
+    }
+  },
+
+  deleteApplicant: async (applicantId) => {
+    try {
+      await api.delete(`/applicants/${applicantId}/`);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error deleting applicant:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to delete application",
+      };
+    }
+  },
+
+  acceptApplicant: async (applicantId) => {
+    try {
+      const response = await api.post(`/applicants/${applicantId}/accept/`);
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error accepting applicant:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to accept application",
+      };
+    }
+  },
+
+  // ==================== Admission Statistics ====================
+  getAdmissionStatistics: async () => {
+    try {
+      const [inquiriesRes, applicantsRes] = await Promise.all([
+        api.get("/admission-inquiries/"),
+        api.get("/applicants/"),
+      ]);
+
+      const inquiries = Array.isArray(inquiriesRes.data)
+        ? inquiriesRes.data
+        : inquiriesRes.data.results || [];
+      const applicants = Array.isArray(applicantsRes.data)
+        ? applicantsRes.data
+        : applicantsRes.data.results || [];
+
+      const totalInquiries = inquiries.length;
+      const newInquiries = inquiries.filter((i) => i.status === "new").length;
+      const totalApplications = applicants.length;
+
+      const acceptedApps = applicants.filter(
+        (a) => a.status === "accepted"
+      ).length;
+      const acceptanceRate =
+        totalApplications > 0
+          ? Math.round((acceptedApps / totalApplications) * 100)
+          : 0;
+
+      const pendingReviews = applicants.filter(
+        (a) => a.status === "pending" || a.status === "under-review"
+      ).length;
+
+      const interviewsScheduled = 0; // Placeholder
+
+      return {
+        success: true,
+        data: {
+          totalInquiries,
+          newInquiries,
+          totalApplications,
+          acceptanceRate,
+          pendingReviews,
+          interviewsScheduled,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching admission statistics:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load statistics",
+      };
+    }
+  },
+
+  getAdminsForAssignment: async () => {
+    try {
+      const response = await api.get("/admins/");
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      return {
+        success: true,
+        data: data.map((a) => ({
+          id: a.admin_id,
+          name: `${a.user.first_name} ${a.user.last_name}`,
+          email: a.user.email,
+        })),
+      };
+    } catch (error) {
+      console.error("Error fetching admins for assignment:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load admins",
+      };
+    }
+  },
 };
 
 // Helper function to generate random colors for departments
