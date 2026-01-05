@@ -1,32 +1,32 @@
-/* Admin Portal Styles */
+/* Admin Portal Styles - Updated with User Theme Colors */
 
 /* CSS Variables */
 :root {
-  /* Admin Colors */
-  --admin-primary: #1e40af;
-  --admin-primary-dark: #1e3a8a;
-  --admin-accent: #059669;
-  --admin-warning: #dc2626;
+  /* Admin Colors - Updated to match user theme */
+  --admin-primary: #e87d26;
+  --admin-primary-dark: #c65f0e;
+  --admin-accent: #050041;
+  --admin-warning: #ef4444;
   --admin-success: #10b981;
   --admin-info: #3b82f6;
 
   /* Extended Color Palette */
   --admin-purple: #8b5cf6;
   --admin-yellow: #f59e0b;
-  --admin-orange: #f97316;
+  --admin-orange: #e87d26;
   --admin-pink: #ec4899;
 
   /* Neutral Colors */
-  --admin-gray-50: #f9fafb;
-  --admin-gray-100: #f3f4f6;
-  --admin-gray-200: #e5e7eb;
-  --admin-gray-300: #d1d5db;
-  --admin-gray-400: #9ca3af;
-  --admin-gray-500: #6b7280;
-  --admin-gray-600: #4b5563;
-  --admin-gray-700: #374151;
-  --admin-gray-800: #1f2937;
-  --admin-gray-900: #111827;
+  --admin-gray-50: #fafafa;
+  --admin-gray-100: #f5f5f5;
+  --admin-gray-200: #e5e5e5;
+  --admin-gray-300: #d4d4d4;
+  --admin-gray-400: #a3a3a3;
+  --admin-gray-500: #737373;
+  --admin-gray-600: #525252;
+  --admin-gray-700: #404040;
+  --admin-gray-800: #262626;
+  --admin-gray-900: #171717;
 
   /* Spacing */
   --space-1: 0.25rem;
@@ -75,16 +75,16 @@
 
 /* Dark Mode Variables */
 .dark-mode {
-  --admin-gray-50: #111827;
-  --admin-gray-100: #1f2937;
-  --admin-gray-200: #374151;
-  --admin-gray-300: #4b5563;
-  --admin-gray-400: #6b7280;
-  --admin-gray-500: #9ca3af;
-  --admin-gray-600: #d1d5db;
-  --admin-gray-700: #e5e7eb;
-  --admin-gray-800: #f3f4f6;
-  --admin-gray-900: #f9fafb;
+  --admin-gray-50: #171717;
+  --admin-gray-100: #262626;
+  --admin-gray-200: #404040;
+  --admin-gray-300: #525252;
+  --admin-gray-400: #737373;
+  --admin-gray-500: #a3a3a3;
+  --admin-gray-600: #d4d4d4;
+  --admin-gray-700: #e5e5e5;
+  --admin-gray-800: #f5f5f5;
+  --admin-gray-900: #fafafa;
 }
 
 /* Base Styles */
@@ -112,7 +112,7 @@ body {
 }
 
 .admin-layout__sidebar {
-  background-color: var(--admin-gray-900);
+  background-color: var(--admin-accent);
   color: white;
   position: fixed;
   top: 0;
@@ -179,14 +179,14 @@ body {
   background: transparent;
   border: none;
   border-radius: 0.5rem;
-  color: #4b5563;
+  color: #525252;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .admin-header__menu-btn:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: #f5f5f5;
+  color: #171717;
 }
 
 .admin-header__search {
@@ -196,20 +196,20 @@ body {
   flex: 1;
   max-width: 500px;
   padding: 0.625rem 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
   border-radius: 0.75rem;
   transition: all 0.2s;
 }
 
 .admin-header__search:focus-within {
   background: #ffffff;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #e87d26;
+  box-shadow: 0 0 0 3px rgba(232, 125, 38, 0.1);
 }
 
 .admin-header__search svg {
-  color: #9ca3af;
+  color: #a3a3a3;
   flex-shrink: 0;
 }
 
@@ -219,11 +219,11 @@ body {
   border: none;
   outline: none;
   font-size: 0.875rem;
-  color: #1f2937;
+  color: #171717;
 }
 
 .admin-header__search-input::placeholder {
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 /* ===================================
@@ -246,14 +246,14 @@ body {
   background: transparent;
   border: none;
   border-radius: 0.5rem;
-  color: #4b5563;
+  color: #525252;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .admin-header__icon-btn:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: #f5f5f5;
+  color: #171717;
 }
 
 .admin-header__badge {
@@ -288,7 +288,7 @@ body {
   right: 0;
   width: 360px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e5e5e5;
   border-radius: 0.75rem;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 8px 10px -6px rgba(0, 0, 0, 0.1);
@@ -301,23 +301,23 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .admin-header__dropdown-header h4 {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #171717;
 }
 
 .admin-header__unread-count {
   padding: 0.25rem 0.625rem;
-  background: #dbeafe;
+  background: #fef3e7;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1e40af;
+  color: #c65f0e;
 }
 
 .admin-header__dropdown-content {
@@ -327,7 +327,7 @@ body {
 
 .admin-header__dropdown-footer {
   padding: 0.75rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e5e5;
 }
 
 .admin-header__view-all-btn {
@@ -338,18 +338,18 @@ body {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #3b82f6;
+  color: #e87d26;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .admin-header__view-all-btn:hover {
-  background: #eff6ff;
+  background: #fef3e7;
 }
 
 .admin-header__dropdown-divider {
   height: 1px;
-  background: #e5e7eb;
+  background: #e5e5e5;
   margin: 0.5rem 0;
 }
 
@@ -361,7 +361,7 @@ body {
   display: flex;
   gap: 0.75rem;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f5f5f5;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -371,15 +371,15 @@ body {
 }
 
 .admin-header__notification-item:hover {
-  background: #f9fafb;
+  background: #fafafa;
 }
 
 .admin-header__notification-item.unread {
-  background: #eff6ff;
+  background: #fef3e7;
 }
 
 .admin-header__notification-item.unread:hover {
-  background: #dbeafe;
+  background: #fde8d0;
 }
 
 .admin-header__notification-icon {
@@ -396,19 +396,19 @@ body {
   margin: 0 0 0.25rem 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #171717;
 }
 
 .admin-header__notification-content p {
   margin: 0 0 0.5rem 0;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: #737373;
   line-height: 1.4;
 }
 
 .admin-header__notification-time {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 .admin-header__empty-state {
@@ -421,14 +421,14 @@ body {
 }
 
 .admin-header__empty-state svg {
-  color: #d1d5db;
+  color: #d4d4d4;
   margin-bottom: 0.75rem;
 }
 
 .admin-header__empty-state p {
   margin: 0;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 /* ===================================
@@ -448,8 +448,8 @@ body {
 }
 
 .admin-header__user-trigger:hover {
-  background: #f9fafb;
-  border-color: #e5e7eb;
+  background: #fafafa;
+  border-color: #e5e5e5;
 }
 
 .admin-header__user-avatar {
@@ -469,13 +469,13 @@ body {
 .admin-header__user-name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #1f2937;
+  color: #171717;
   line-height: 1.2;
 }
 
 .admin-header__user-role {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: #737373;
   line-height: 1.2;
 }
 
@@ -506,7 +506,7 @@ body {
   margin: 0 0 0.25rem 0;
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #171717;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -515,7 +515,7 @@ body {
 .admin-header__user-profile-info p {
   margin: 0 0 0.5rem 0;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: #737373;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -524,11 +524,11 @@ body {
 .admin-header__user-badge {
   display: inline-block;
   padding: 0.25rem 0.625rem;
-  background: #f3f4f6;
+  background: #f5f5f5;
   border-radius: 0.375rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #4b5563;
+  color: #525252;
 }
 
 .admin-header__user-menu {
@@ -546,15 +546,15 @@ body {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #4b5563;
+  color: #525252;
   text-align: left;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .admin-header__menu-item:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: #f5f5f5;
+  color: #171717;
 }
 
 .admin-header__logout-btn {
@@ -573,7 +573,7 @@ body {
 
 .admin-header__loading {
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: #a3a3a3;
 }
 
 /* ===================================
@@ -648,7 +648,7 @@ body {
 }
 
 .admin-sidebar__link:hover {
-  background-color: var(--admin-gray-800);
+  background-color: rgba(232, 125, 38, 0.1);
   color: white;
 }
 
@@ -670,7 +670,7 @@ body {
 .admin-sidebar__footer {
   margin-top: auto;
   padding-top: var(--space-6);
-  border-top: 1px solid var(--admin-gray-700);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .admin-sidebar__user {
@@ -752,7 +752,7 @@ body {
 }
 
 .btn--warning:hover {
-  background-color: #b91c1c;
+  background-color: #dc2626;
 }
 
 .btn--sm {
@@ -844,7 +844,7 @@ body {
 .admin-form__input:focus {
   outline: none;
   border-color: var(--admin-primary);
-  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+  box-shadow: 0 0 0 3px rgba(232, 125, 38, 0.1);
 }
 
 .admin-form__input--error {
@@ -853,7 +853,7 @@ body {
 
 .admin-form__input--error:focus {
   border-color: var(--admin-warning);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
 .admin-form__error {
@@ -954,7 +954,7 @@ body {
 }
 
 .status-badge--inactive {
-  background-color: rgba(107, 114, 128, 0.1);
+  background-color: rgba(115, 115, 115, 0.1);
   color: var(--admin-gray-600);
 }
 
