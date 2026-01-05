@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { adminService } from "../services/api/adminService";
 import "../styles/admin-pages/Report.css";
 
 import {
@@ -27,214 +28,25 @@ import {
   Globe,
   Zap,
   UserCheck,
+  RefreshCw,
 } from "lucide-react";
-
-// Mock Data
-const mockData = {
-  overview: {
-    metrics: [
-      {
-        label: "Total Students",
-        value: "1,247",
-        change: "+12%",
-        trend: "up",
-        icon: Users,
-        color: "#3b82f6",
-      },
-      {
-        label: "Total Faculty",
-        value: "89",
-        change: "+5",
-        trend: "up",
-        icon: UserCheck,
-        color: "#10b981",
-      },
-      {
-        label: "Average GPA",
-        value: "3.42",
-        change: "-0.05",
-        trend: "down",
-        icon: Award,
-        color: "#f59e0b",
-      },
-      {
-        label: "Attendance Rate",
-        value: "87.5%",
-        change: "+3.1%",
-        trend: "up",
-        icon: CheckCircle,
-        color: "#8b5cf6",
-      },
-    ],
-    enrollmentTrends: {
-      labels: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
-      datasets: [
-        {
-          label: "2024",
-          data: [
-            850, 920, 980, 1050, 1100, 1150, 1180, 1210, 1230, 1245, 1247, 1250,
-          ],
-          color: "#3b82f6",
-        },
-        {
-          label: "2023",
-          data: [
-            750, 800, 850, 900, 950, 980, 1000, 1020, 1050, 1080, 1100, 1120,
-          ],
-          color: "#94a3b8",
-        },
-      ],
-    },
-    programDistribution: {
-      labels: [
-        "Computer Science",
-        "Business Admin",
-        "Engineering",
-        "Mathematics",
-        "Arts & Sciences",
-      ],
-      data: [31, 25, 24, 13, 7],
-      colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"],
-    },
-  },
-  students: {
-    demographics: {
-      byProgram: {
-        labels: [
-          "Computer Science",
-          "Business Admin",
-          "Engineering",
-          "Mathematics",
-          "Arts & Sciences",
-        ],
-        data: [385, 312, 298, 156, 96],
-        colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"],
-      },
-      byYear: {
-        labels: ["First Year", "Second Year", "Third Year", "Fourth Year"],
-        data: [412, 385, 298, 152],
-        colors: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"],
-      },
-      gpaDistribution: {
-        labels: ["4.0", "3.5-3.9", "3.0-3.4", "2.5-2.9", "<2.5"],
-        data: [89, 312, 498, 256, 92],
-        colors: ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#991b1b"],
-      },
-    },
-    performance: [
-      {
-        program: "Computer Science",
-        students: 385,
-        avgGPA: 3.65,
-        passRate: 94,
-      },
-      { program: "Business Admin", students: 312, avgGPA: 3.42, passRate: 89 },
-      { program: "Engineering", students: 298, avgGPA: 3.58, passRate: 91 },
-      { program: "Mathematics", students: 156, avgGPA: 3.51, passRate: 87 },
-      { program: "Arts & Sciences", students: 96, avgGPA: 3.38, passRate: 85 },
-    ],
-  },
-  academic: {
-    courseCompletion: {
-      labels: [
-        "Computer Science",
-        "Mathematics",
-        "English",
-        "Business",
-        "Physics",
-        "Chemistry",
-      ],
-      data: [94, 87, 91, 89, 93, 85],
-      colors: [
-        "#3b82f6",
-        "#8b5cf6",
-        "#10b981",
-        "#f59e0b",
-        "#ef4444",
-        "#06b6d4",
-      ],
-    },
-    attendance: {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-      data: [89, 91, 88, 90, 85],
-      average: 88.6,
-    },
-    topCourses: [
-      {
-        name: "Introduction to AI",
-        enrollment: 245,
-        rating: 4.8,
-        completion: 96,
-      },
-      { name: "Data Structures", enrollment: 198, rating: 4.6, completion: 94 },
-      {
-        name: "Business Analytics",
-        enrollment: 187,
-        rating: 4.7,
-        completion: 92,
-      },
-      { name: "Calculus II", enrollment: 176, rating: 4.5, completion: 88 },
-      {
-        name: "Digital Marketing",
-        enrollment: 165,
-        rating: 4.9,
-        completion: 95,
-      },
-    ],
-  },
-  attendance: {
-    weekly: {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-      data: [89, 91, 88, 90, 85],
-      average: 88.6,
-    },
-    byDepartment: {
-      labels: [
-        "Computer Science",
-        "Business",
-        "Engineering",
-        "Mathematics",
-        "Arts",
-      ],
-      data: [92, 87, 89, 91, 85],
-      colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"],
-    },
-    monthly: {
-      labels: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
-      data: [85, 86, 87, 88, 89, 88, 87, 89, 90, 89, 88, 87],
-    },
-  },
-};
 
 export default function ReportsAnalytics() {
   const [activeTab, setActiveTab] = useState("overview");
   const [dateRange, setDateRange] = useState("month");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Data state
+  const [overviewData, setOverviewData] = useState(null);
+  const [enrollmentTrends, setEnrollmentTrends] = useState(null);
+  const [programDistribution, setProgramDistribution] = useState(null);
+  const [demographics, setDemographics] = useState(null);
+  const [programPerformance, setProgramPerformance] = useState([]);
+  const [courseCompletion, setCourseCompletion] = useState(null);
+  const [attendanceStats, setAttendanceStats] = useState(null);
+  const [topCourses, setTopCourses] = useState([]);
+  const [monthlyAttendance, setMonthlyAttendance] = useState(null);
 
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
@@ -243,12 +55,103 @@ export default function ReportsAnalytics() {
     { id: "attendance", label: "Attendance", icon: CheckCircle },
   ];
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    loadTabData();
+  }, [activeTab]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await adminService.getOverviewStatistics();
+      if (result.success) {
+        setOverviewData(result.data);
+      }
+      setError(null);
+    } catch (err) {
+      console.error("Error loading data:", err);
+      setError("Failed to load report data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTabData = async () => {
+    setLoading(true);
+    try {
+      switch (activeTab) {
+        case "overview":
+          await loadOverviewData();
+          break;
+        case "students":
+          await loadStudentsData();
+          break;
+        case "academic":
+          await loadAcademicData();
+          break;
+        case "attendance":
+          await loadAttendanceData();
+          break;
+      }
+    } catch (err) {
+      console.error("Error loading tab data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadOverviewData = async () => {
+    const [trends, distribution] = await Promise.all([
+      adminService.getEnrollmentTrends(),
+      adminService.getProgramDistribution(),
+    ]);
+
+    if (trends.success) setEnrollmentTrends(trends.data);
+    if (distribution.success) setProgramDistribution(distribution.data);
+  };
+
+  const loadStudentsData = async () => {
+    const [demo, performance] = await Promise.all([
+      adminService.getStudentDemographics(),
+      adminService.getProgramPerformance(),
+    ]);
+
+    if (demo.success) setDemographics(demo.data);
+    if (performance.success) setProgramPerformance(performance.data);
+  };
+
+  const loadAcademicData = async () => {
+    const [completion, courses] = await Promise.all([
+      adminService.getCourseCompletionRates(),
+      adminService.getTopCourses(),
+    ]);
+
+    if (completion.success) setCourseCompletion(completion.data);
+    if (courses.success) setTopCourses(courses.data);
+  };
+
+  const loadAttendanceData = async () => {
+    const [stats, monthly] = await Promise.all([
+      adminService.getAttendanceStatistics(),
+      adminService.getMonthlyAttendanceTrends(),
+    ]);
+
+    if (stats.success) setAttendanceStats(stats.data);
+    if (monthly.success) setMonthlyAttendance(monthly.data);
+  };
+
   const SimpleLineChart = ({
     data,
     labels,
     color = "#3b82f6",
     height = 200,
   }) => {
+    if (!data || data.length === 0)
+      return <div className="chart-placeholder">No data available</div>;
+
     const max = Math.max(...data);
     const min = Math.min(...data);
     const range = max - min || 1;
@@ -293,6 +196,9 @@ export default function ReportsAnalytics() {
   };
 
   const SimpleBarChart = ({ data, labels, colors, height = 200 }) => {
+    if (!data || data.length === 0)
+      return <div className="chart-placeholder">No data available</div>;
+
     const max = Math.max(...data);
 
     return (
@@ -323,6 +229,9 @@ export default function ReportsAnalytics() {
   };
 
   const SimplePieChart = ({ data, labels, colors, height = 200 }) => {
+    if (!data || data.length === 0)
+      return <div className="chart-placeholder">No data available</div>;
+
     const total = data.reduce((sum, value) => sum + value, 0);
     let currentAngle = -90;
 
@@ -390,6 +299,19 @@ export default function ReportsAnalytics() {
     );
   };
 
+  if (loading && !overviewData) {
+    return (
+      <div className="reports-analytics">
+        <div style={{ textAlign: "center", padding: "4rem" }}>
+          <RefreshCw size={48} className="animate-spin" />
+          <p style={{ marginTop: "1rem", color: "#6b7280" }}>
+            Loading reports...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="reports-analytics">
       {/* Header */}
@@ -411,9 +333,9 @@ export default function ReportsAnalytics() {
             <option value="quarter">This Quarter</option>
             <option value="year">This Year</option>
           </select>
-          <button className="btn-secondary">
-            <Filter size={16} />
-            Filters
+          <button className="btn-secondary" onClick={loadData}>
+            <RefreshCw size={16} />
+            Refresh
           </button>
           <button className="btn-primary">
             <Download size={16} />
@@ -447,75 +369,155 @@ export default function ReportsAnalytics() {
           className="ra-content"
         >
           {/* Overview Tab */}
-          {activeTab === "overview" && (
+          {activeTab === "overview" && overviewData && (
             <div className="ra-overview">
               <div className="metrics-grid">
-                {mockData.overview.metrics.map((metric, index) => (
-                  <motion.div
-                    key={metric.label}
-                    className="metric-card"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -4 }}
+                <motion.div
+                  className="metric-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -4 }}
+                >
+                  <div
+                    className="metric-icon"
+                    style={{
+                      backgroundColor: "#dbeafe",
+                      color: "#3b82f6",
+                    }}
                   >
-                    <div
-                      className="metric-icon"
-                      style={{
-                        backgroundColor: `${metric.color}20`,
-                        color: metric.color,
-                      }}
-                    >
-                      <metric.icon size={24} />
+                    <Users size={24} />
+                  </div>
+                  <div className="metric-content">
+                    <div className="metric-label">Total Students</div>
+                    <div className="metric-value">
+                      {overviewData.totalStudents}
                     </div>
-                    <div className="metric-content">
-                      <div className="metric-label">{metric.label}</div>
-                      <div className="metric-value">{metric.value}</div>
-                      <div
-                        className={`metric-change metric-change--${metric.trend}`}
-                      >
-                        {metric.trend === "up" ? (
-                          <TrendingUp size={14} />
-                        ) : (
-                          <TrendingDown size={14} />
-                        )}
-                        {metric.change}
-                      </div>
+                    <div className="metric-change metric-change--up">
+                      <TrendingUp size={14} />
+                      +12%
                     </div>
-                  </motion.div>
-                ))}
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  className="metric-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  whileHover={{ y: -4 }}
+                >
+                  <div
+                    className="metric-icon"
+                    style={{
+                      backgroundColor: "#dcfce7",
+                      color: "#10b981",
+                    }}
+                  >
+                    <UserCheck size={24} />
+                  </div>
+                  <div className="metric-content">
+                    <div className="metric-label">Total Faculty</div>
+                    <div className="metric-value">
+                      {overviewData.totalFaculty}
+                    </div>
+                    <div className="metric-change metric-change--up">
+                      <TrendingUp size={14} />
+                      +5
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  className="metric-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  whileHover={{ y: -4 }}
+                >
+                  <div
+                    className="metric-icon"
+                    style={{
+                      backgroundColor: "#fef3c7",
+                      color: "#f59e0b",
+                    }}
+                  >
+                    <Award size={24} />
+                  </div>
+                  <div className="metric-content">
+                    <div className="metric-label">Average GPA</div>
+                    <div className="metric-value">
+                      {overviewData.averageGPA}
+                    </div>
+                    <div className="metric-change metric-change--down">
+                      <TrendingDown size={14} />
+                      -0.05
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  className="metric-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  whileHover={{ y: -4 }}
+                >
+                  <div
+                    className="metric-icon"
+                    style={{
+                      backgroundColor: "#ddd6fe",
+                      color: "#8b5cf6",
+                    }}
+                  >
+                    <CheckCircle size={24} />
+                  </div>
+                  <div className="metric-content">
+                    <div className="metric-label">Attendance Rate</div>
+                    <div className="metric-value">
+                      {overviewData.attendanceRate}%
+                    </div>
+                    <div className="metric-change metric-change--up">
+                      <TrendingUp size={14} />
+                      +3.1%
+                    </div>
+                  </div>
+                </motion.div>
               </div>
 
               <div className="charts-grid">
-                <div className="chart-card">
-                  <div className="chart-header">
-                    <h3>Enrollment Trends</h3>
-                    <button className="btn-icon">
-                      <Download size={16} />
-                    </button>
+                {enrollmentTrends && (
+                  <div className="chart-card">
+                    <div className="chart-header">
+                      <h3>Enrollment Trends</h3>
+                      <button className="btn-icon">
+                        <Download size={16} />
+                      </button>
+                    </div>
+                    <SimpleLineChart
+                      data={enrollmentTrends.data}
+                      labels={enrollmentTrends.labels}
+                      color="#3b82f6"
+                      height={250}
+                    />
                   </div>
-                  <SimpleLineChart
-                    data={mockData.overview.enrollmentTrends.datasets[0].data}
-                    labels={mockData.overview.enrollmentTrends.labels}
-                    color="#3b82f6"
-                    height={250}
-                  />
-                </div>
+                )}
 
-                <div className="chart-card">
-                  <div className="chart-header">
-                    <h3>Program Distribution</h3>
-                    <button className="btn-icon">
-                      <Download size={16} />
-                    </button>
+                {programDistribution && (
+                  <div className="chart-card">
+                    <div className="chart-header">
+                      <h3>Program Distribution</h3>
+                      <button className="btn-icon">
+                        <Download size={16} />
+                      </button>
+                    </div>
+                    <SimplePieChart
+                      data={programDistribution.data}
+                      labels={programDistribution.labels}
+                      colors={programDistribution.colors}
+                      height={300}
+                    />
                   </div>
-                  <SimplePieChart
-                    data={mockData.overview.programDistribution.data}
-                    labels={mockData.overview.programDistribution.labels}
-                    colors={mockData.overview.programDistribution.colors}
-                    height={300}
-                  />
-                </div>
+                )}
               </div>
 
               <div className="quick-stats">
@@ -529,7 +531,9 @@ export default function ReportsAnalytics() {
                 <div className="stat-item">
                   <Users size={20} />
                   <div>
-                    <div className="stat-value">89</div>
+                    <div className="stat-value">
+                      {overviewData.totalFaculty}
+                    </div>
                     <div className="stat-label">Faculty Members</div>
                   </div>
                 </div>
@@ -552,7 +556,7 @@ export default function ReportsAnalytics() {
           )}
 
           {/* Students Tab */}
-          {activeTab === "students" && (
+          {activeTab === "students" && demographics && (
             <div className="ra-students">
               <div className="charts-grid">
                 <div className="chart-card">
@@ -563,9 +567,9 @@ export default function ReportsAnalytics() {
                     </button>
                   </div>
                   <SimpleBarChart
-                    data={mockData.students.demographics.byProgram.data}
-                    labels={mockData.students.demographics.byProgram.labels}
-                    colors={mockData.students.demographics.byProgram.colors}
+                    data={demographics.byProgram.data}
+                    labels={demographics.byProgram.labels}
+                    colors={demographics.byProgram.colors}
                     height={250}
                   />
                 </div>
@@ -578,67 +582,65 @@ export default function ReportsAnalytics() {
                     </button>
                   </div>
                   <SimpleBarChart
-                    data={mockData.students.demographics.gpaDistribution.data}
-                    labels={
-                      mockData.students.demographics.gpaDistribution.labels
-                    }
-                    colors={
-                      mockData.students.demographics.gpaDistribution.colors
-                    }
+                    data={demographics.gpaDistribution.data}
+                    labels={demographics.gpaDistribution.labels}
+                    colors={demographics.gpaDistribution.colors}
                     height={250}
                   />
                 </div>
               </div>
 
-              <div className="performance-table-card">
-                <div className="chart-header">
-                  <h3>Program Performance</h3>
-                  <button className="btn-secondary btn-sm">
-                    <Download size={14} /> Export
-                  </button>
-                </div>
-                <div className="table-container">
-                  <table className="performance-table">
-                    <thead>
-                      <tr>
-                        <th>Program</th>
-                        <th>Students</th>
-                        <th>Avg GPA</th>
-                        <th>Pass Rate</th>
-                        <th>Performance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mockData.students.performance.map((item, index) => (
-                        <tr key={item.program}>
-                          <td className="program-name">{item.program}</td>
-                          <td>{item.students}</td>
-                          <td>
-                            <span className="gpa-badge">{item.avgGPA}</span>
-                          </td>
-                          <td>{item.passRate}%</td>
-                          <td>
-                            <div className="progress-bar">
-                              <div
-                                className="progress-fill"
-                                style={{
-                                  width: `${item.passRate}%`,
-                                  backgroundColor:
-                                    item.passRate >= 90
-                                      ? "#10b981"
-                                      : item.passRate >= 85
-                                      ? "#3b82f6"
-                                      : "#f59e0b",
-                                }}
-                              ></div>
-                            </div>
-                          </td>
+              {programPerformance.length > 0 && (
+                <div className="performance-table-card">
+                  <div className="chart-header">
+                    <h3>Program Performance</h3>
+                    <button className="btn-secondary btn-sm">
+                      <Download size={14} /> Export
+                    </button>
+                  </div>
+                  <div className="table-container">
+                    <table className="performance-table">
+                      <thead>
+                        <tr>
+                          <th>Program</th>
+                          <th>Students</th>
+                          <th>Avg GPA</th>
+                          <th>Pass Rate</th>
+                          <th>Performance</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {programPerformance.map((item) => (
+                          <tr key={item.program}>
+                            <td className="program-name">{item.program}</td>
+                            <td>{item.students}</td>
+                            <td>
+                              <span className="gpa-badge">{item.avgGPA}</span>
+                            </td>
+                            <td>{item.passRate}%</td>
+                            <td>
+                              <div className="progress-bar">
+                                <div
+                                  className="progress-fill"
+                                  style={{
+                                    width: `${item.passRate}%`,
+                                    backgroundColor:
+                                      item.passRate >= 90
+                                        ? "#10b981"
+                                        : item.passRate >= 85
+                                        ? "#3b82f6"
+                                        : "#f59e0b",
+                                  }}
+                                ></div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -646,80 +648,86 @@ export default function ReportsAnalytics() {
           {activeTab === "academic" && (
             <div className="ra-academic">
               <div className="charts-grid">
-                <div className="chart-card">
-                  <div className="chart-header">
-                    <h3>Course Completion Rates</h3>
-                    <button className="btn-icon">
-                      <Download size={16} />
-                    </button>
+                {courseCompletion && (
+                  <div className="chart-card">
+                    <div className="chart-header">
+                      <h3>Course Completion Rates</h3>
+                      <button className="btn-icon">
+                        <Download size={16} />
+                      </button>
+                    </div>
+                    <SimpleBarChart
+                      data={courseCompletion.data}
+                      labels={courseCompletion.labels}
+                      colors={courseCompletion.colors}
+                      height={250}
+                    />
                   </div>
-                  <SimpleBarChart
-                    data={mockData.academic.courseCompletion.data}
-                    labels={mockData.academic.courseCompletion.labels}
-                    colors={mockData.academic.courseCompletion.colors}
-                    height={250}
-                  />
-                </div>
+                )}
 
-                <div className="chart-card">
-                  <div className="chart-header">
-                    <h3>Weekly Attendance</h3>
-                    <button className="btn-icon">
-                      <Download size={16} />
-                    </button>
+                {attendanceStats && (
+                  <div className="chart-card">
+                    <div className="chart-header">
+                      <h3>Weekly Attendance</h3>
+                      <button className="btn-icon">
+                        <Download size={16} />
+                      </button>
+                    </div>
+                    <SimpleLineChart
+                      data={attendanceStats.weekly.data}
+                      labels={attendanceStats.weekly.labels}
+                      color="#8b5cf6"
+                      height={250}
+                    />
+                    <div className="chart-footer">
+                      Average: {attendanceStats.weekly.average}%
+                    </div>
                   </div>
-                  <SimpleLineChart
-                    data={mockData.academic.attendance.data}
-                    labels={mockData.academic.attendance.labels}
-                    color="#8b5cf6"
-                    height={250}
-                  />
-                  <div className="chart-footer">
-                    Average: {mockData.academic.attendance.average}%
-                  </div>
-                </div>
+                )}
               </div>
 
-              <div className="top-courses-card">
-                <div className="chart-header">
-                  <h3>Top Performing Courses</h3>
-                  <button className="btn-secondary btn-sm">View All</button>
-                </div>
-                <div className="courses-list">
-                  {mockData.academic.topCourses.map((course, index) => (
-                    <motion.div
-                      key={course.name}
-                      className="course-item"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <div className="course-rank">#{index + 1}</div>
-                      <div className="course-info">
-                        <div className="course-name">{course.name}</div>
-                        <div className="course-meta">
-                          <span>
-                            <Users size={14} /> {course.enrollment} students
-                          </span>
-                          <span>
-                            <Award size={14} /> {course.rating} rating
-                          </span>
-                          <span>
-                            <CheckCircle size={14} /> {course.completion}%
-                            completion
-                          </span>
+              {topCourses.length > 0 && (
+                <div className="top-courses-card">
+                  <div className="chart-header">
+                    <h3>Top Performing Courses</h3>
+                    <button className="btn-secondary btn-sm">View All</button>
+                  </div>
+                  <div className="courses-list">
+                    {topCourses.map((course, index) => (
+                      <motion.div
+                        key={course.name}
+                        className="course-item"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <div className="course-rank">#{index + 1}</div>
+                        <div className="course-info">
+                          <div className="course-name">{course.name}</div>
+                          <div className="course-meta">
+                            <span>
+                              <Users size={14} /> {course.enrollment} students
+                            </span>
+                            <span>
+                              <Award size={14} /> {course.rating} rating
+                            </span>
+                            <span>
+                              <CheckCircle size={14} /> {course.completion}%
+                              completion
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="course-badge">{course.completion}%</div>
-                    </motion.div>
-                  ))}
+                        <div className="course-badge">{course.completion}%</div>
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
           {/* Attendance Tab */}
-          {activeTab === "attendance" && (
+          {activeTab === "attendance" && attendanceStats && (
             <div className="ra-attendance">
               <div className="charts-grid">
                 <div className="chart-card">
@@ -730,8 +738,8 @@ export default function ReportsAnalytics() {
                     </button>
                   </div>
                   <SimpleBarChart
-                    data={mockData.attendance.weekly.data}
-                    labels={mockData.attendance.weekly.labels}
+                    data={attendanceStats.weekly.data}
+                    labels={attendanceStats.weekly.labels}
                     colors={[
                       "#3b82f6",
                       "#3b82f6",
@@ -742,7 +750,7 @@ export default function ReportsAnalytics() {
                     height={250}
                   />
                   <div className="chart-footer">
-                    Weekly Average: {mockData.attendance.weekly.average}%
+                    Weekly Average: {attendanceStats.weekly.average}%
                   </div>
                 </div>
 
@@ -754,30 +762,32 @@ export default function ReportsAnalytics() {
                     </button>
                   </div>
                   <SimpleBarChart
-                    data={mockData.attendance.byDepartment.data}
-                    labels={mockData.attendance.byDepartment.labels}
-                    colors={mockData.attendance.byDepartment.colors}
+                    data={attendanceStats.byDepartment.data}
+                    labels={attendanceStats.byDepartment.labels}
+                    colors={attendanceStats.byDepartment.colors}
                     height={250}
                   />
                 </div>
               </div>
 
-              <div className="charts-grid">
-                <div className="chart-card chart-card--wide">
-                  <div className="chart-header">
-                    <h3>Monthly Attendance Trends</h3>
-                    <button className="btn-icon">
-                      <Download size={16} />
-                    </button>
+              {monthlyAttendance && (
+                <div className="charts-grid">
+                  <div className="chart-card chart-card--wide">
+                    <div className="chart-header">
+                      <h3>Monthly Attendance Trends</h3>
+                      <button className="btn-icon">
+                        <Download size={16} />
+                      </button>
+                    </div>
+                    <SimpleLineChart
+                      data={monthlyAttendance.data}
+                      labels={monthlyAttendance.labels}
+                      color="#8b5cf6"
+                      height={250}
+                    />
                   </div>
-                  <SimpleLineChart
-                    data={mockData.attendance.monthly.data}
-                    labels={mockData.attendance.monthly.labels}
-                    color="#8b5cf6"
-                    height={250}
-                  />
                 </div>
-              </div>
+              )}
 
               <div className="insights-grid">
                 <div className="insight-card">
@@ -788,9 +798,13 @@ export default function ReportsAnalytics() {
                     <CheckCircle size={24} />
                   </div>
                   <div className="insight-content">
-                    <div className="insight-value">92%</div>
+                    <div className="insight-value">
+                      {attendanceStats.byDepartment.data[0]}%
+                    </div>
                     <div className="insight-label">Best Department</div>
-                    <div className="insight-detail">Computer Science</div>
+                    <div className="insight-detail">
+                      {attendanceStats.byDepartment.labels[0]}
+                    </div>
                   </div>
                 </div>
                 <div className="insight-card">
@@ -801,9 +815,19 @@ export default function ReportsAnalytics() {
                     <AlertCircle size={24} />
                   </div>
                   <div className="insight-content">
-                    <div className="insight-value">85%</div>
+                    <div className="insight-value">
+                      {Math.min(...attendanceStats.byDepartment.data)}%
+                    </div>
                     <div className="insight-label">Needs Improvement</div>
-                    <div className="insight-detail">Arts Department</div>
+                    <div className="insight-detail">
+                      {
+                        attendanceStats.byDepartment.labels[
+                          attendanceStats.byDepartment.data.indexOf(
+                            Math.min(...attendanceStats.byDepartment.data)
+                          )
+                        ]
+                      }
+                    </div>
                   </div>
                 </div>
                 <div className="insight-card">
@@ -827,9 +851,16 @@ export default function ReportsAnalytics() {
                     <Users size={24} />
                   </div>
                   <div className="insight-content">
-                    <div className="insight-value">1,089</div>
+                    <div className="insight-value">
+                      {Math.round(
+                        (attendanceStats.weekly.average / 100) *
+                          (overviewData?.totalStudents || 0)
+                      )}
+                    </div>
                     <div className="insight-label">Present Today</div>
-                    <div className="insight-detail">87% of total</div>
+                    <div className="insight-detail">
+                      {attendanceStats.weekly.average}% of total
+                    </div>
                   </div>
                 </div>
               </div>
