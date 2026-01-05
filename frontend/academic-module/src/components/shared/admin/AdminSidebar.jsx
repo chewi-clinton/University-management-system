@@ -1,5 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
@@ -14,29 +15,162 @@ import {
   FileText,
   Bell,
   UserPlus,
-  BarChart3
-} from 'lucide-react';
-
-const menuItems = [
-  { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/admin/students', icon: GraduationCap, label: 'Students' },
-  { path: '/admin/faculty', icon: Briefcase, label: 'Faculty' },
-  { path: '/admin/departments', icon: Building2, label: 'Departments' },
-  { path: '/admin/programs', icon: BookOpen, label: 'Programs' },
-  { path: '/admin/courses', icon: BookOpen, label: 'Courses' },
-  { path: '/admin/enrollments', icon: ClipboardList, label: 'Enrollments' },
-  { path: '/admin/attendance', icon: Calendar, label: 'Attendance' },
-  { path: '/admin/grades', icon: TrendingUp, label: 'Grades' },
-  { path: '/admin/exams', icon: FileText, label: 'Exams' },
-  { path: '/admin/virtual-classes', icon: Video, label: 'Virtual Classes' },
-  { path: '/admin/materials', icon: FileText, label: 'Materials' },
-  { path: '/admin/notices', icon: Bell, label: 'Notices' },
-  { path: '/admin/admissions', icon: UserPlus, label: 'Admissions' },
-  { path: '/admin/reports', icon: BarChart3, label: 'Reports' }
-];
+  BarChart3,
+} from "lucide-react";
+import authService from "../../../services/api/authService"; // FIXED: Default import
 
 export default function AdminSidebar() {
   const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const response = await authService.getCurrentUser();
+      if (response.success) {
+        setUser(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRoleDisplay = (role) => {
+    const roleMap = {
+      super_admin: "Super Admin",
+      academic_admin: "Academic Admin",
+      faculty: "Faculty Member",
+      student: "Student",
+    };
+    return roleMap[role] || role;
+  };
+
+  // Define menu items based on user role
+  const getMenuItems = () => {
+    const baseItems = [
+      {
+        path: "/admin/dashboard",
+        icon: LayoutDashboard,
+        label: "Dashboard",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+    ];
+
+    const adminItems = [
+      {
+        path: "/admin/students",
+        icon: GraduationCap,
+        label: "Students",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/faculty",
+        icon: Briefcase,
+        label: "Faculty",
+        roles: ["super_admin", "academic_admin"],
+      },
+      {
+        path: "/admin/departments",
+        icon: Building2,
+        label: "Departments",
+        roles: ["super_admin", "academic_admin"],
+      },
+      {
+        path: "/admin/programs",
+        icon: BookOpen,
+        label: "Programs",
+        roles: ["super_admin", "academic_admin"],
+      },
+      {
+        path: "/admin/courses",
+        icon: BookOpen,
+        label: "Courses",
+        roles: ["super_admin", "academic_admin"],
+      },
+      {
+        path: "/admin/enrollments",
+        icon: ClipboardList,
+        label: "Enrollments",
+        roles: ["super_admin", "academic_admin"],
+      },
+      {
+        path: "/admin/attendance",
+        icon: Calendar,
+        label: "Attendance",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/grades",
+        icon: TrendingUp,
+        label: "Grades",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/exams",
+        icon: FileText,
+        label: "Exams",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/virtual-classes",
+        icon: Video,
+        label: "Virtual Classes",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/materials",
+        icon: FileText,
+        label: "Materials",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/notices",
+        icon: Bell,
+        label: "Notices",
+        roles: ["super_admin", "academic_admin", "faculty"],
+      },
+      {
+        path: "/admin/admissions",
+        icon: UserPlus,
+        label: "Admissions",
+        roles: ["super_admin", "academic_admin"],
+      },
+      {
+        path: "/admin/reports",
+        icon: BarChart3,
+        label: "Reports",
+        roles: ["super_admin", "academic_admin"],
+      },
+    ];
+
+    const allItems = [...baseItems, ...adminItems];
+
+    // Filter items based on user role
+    if (!user) return allItems;
+    return allItems.filter((item) => item.roles.includes(user.role));
+  };
+
+  const menuItems = getMenuItems();
+
+  if (loading) {
+    return (
+      <aside className="admin-sidebar">
+        <div className="admin-sidebar__logo">
+          <GraduationCap size={32} />
+          <span>Admin Portal</span>
+        </div>
+        <div className="admin-sidebar__loading">
+          <p>Loading...</p>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="admin-sidebar">
@@ -54,7 +188,9 @@ export default function AdminSidebar() {
             <Link
               key={item.path}
               to={item.path}
-              className={`admin-sidebar__link ${isActive ? 'admin-sidebar__link--active' : ''}`}
+              className={`admin-sidebar__link ${
+                isActive ? "admin-sidebar__link--active" : ""
+              }`}
             >
               <Icon size={20} />
               <span>{item.label}</span>
@@ -70,19 +206,25 @@ export default function AdminSidebar() {
         })}
       </nav>
 
-      <div className="admin-sidebar__footer">
-        <div className="admin-sidebar__user">
-          <img 
-            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" 
-            alt="Admin" 
-            className="admin-sidebar__user-avatar"
-          />
-          <div className="admin-sidebar__user-info">
-            <span className="admin-sidebar__user-name">John Anderson</span>
-            <span className="admin-sidebar__user-role">Super Admin</span>
+      {user && (
+        <div className="admin-sidebar__footer">
+          <div className="admin-sidebar__user">
+            <img
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`}
+              alt={`${user.first_name} ${user.last_name}`}
+              className="admin-sidebar__user-avatar"
+            />
+            <div className="admin-sidebar__user-info">
+              <span className="admin-sidebar__user-name">
+                {user.first_name} {user.last_name}
+              </span>
+              <span className="admin-sidebar__user-role">
+                {getRoleDisplay(user.role)}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

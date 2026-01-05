@@ -1,74 +1,135 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  Search, 
-  Settings, 
-  User, 
-  LogOut, 
-  Moon, 
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell,
+  Search,
+  Settings,
+  User,
+  LogOut,
+  Moon,
   Sun,
   Menu,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
+import { adminService } from "../../../services/api/adminService";
+import authService from "../../../services/api/authService";
 
 export default function AdminHeader({
   onToggleSidebar,
   sidebarCollapsed = false,
-  user = {},
-  notifications = [],
   onLogout,
   onToggleTheme,
-  isDarkMode = false
+  isDarkMode = false,
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [user, setUser] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const defaultUser = {
-    name: 'John Anderson',
-    email: 'admin@university.edu',
-    role: 'Super Admin',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John'
+  const notificationsRef = useRef(null);
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    fetchUserData();
+    fetchNotifications();
+  }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target)
+      ) {
+        setShowNotifications(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const response = await authService.getCurrentUser();
+      if (response.success) {
+        setUser(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const displayUser = { ...defaultUser, ...user };
-
-  const defaultNotifications = [
-    {
-      id: 1,
-      type: 'info',
-      title: 'Grade Submission Reminder',
-      message: 'Final grades for Fall 2024 due in 3 days',
-      time: '2 hours ago',
-      isRead: false
-    },
-    {
-      id: 2,
-      type: 'warning',
-      title: 'Low Attendance Alert',
-      message: '15 students have attendance below 75%',
-      time: '4 hours ago',
-      isRead: false
-    },
-    {
-      id: 3,
-      type: 'success',
-      title: 'Enrollment Complete',
-      message: 'Spring 2025 enrollment period closed successfully',
-      time: '1 day ago',
-      isRead: true
+  const fetchNotifications = async () => {
+    try {
+      const response = await adminService.getSystemNotifications();
+      if (response.success) {
+        setNotifications(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
     }
-  ];
+  };
 
-  const displayNotifications = notifications.length > 0 ? notifications : defaultNotifications;
-  const unreadCount = displayNotifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleSearch = (e) => {
     e.preventDefault();
-    // Implement search functionality
-    console.log('Searching for:', searchQuery);
+    console.log("Searching for:", searchQuery);
   };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "info":
+        return "ℹ️";
+      case "warning":
+        return "⚠️";
+      case "success":
+        return "✅";
+      case "error":
+        return "❌";
+      default:
+        return "ℹ️";
+    }
+  };
+
+  const getRoleDisplay = (role) => {
+    const roleMap = {
+      super_admin: "Super Admin",
+      academic_admin: "Academic Admin",
+      faculty: "Faculty Member",
+      student: "Student",
+    };
+    return roleMap[role] || role;
+  };
+
+  if (loading || !user) {
+    return (
+      <header className="admin-header">
+        <div className="admin-header__container">
+          <div className="admin-header__left">
+            <button
+              className="admin-header__menu-btn"
+              onClick={onToggleSidebar}
+              aria-label="Toggle sidebar"
+            >
+              {sidebarCollapsed ? <Menu size={20} /> : <X size={20} />}
+            </button>
+          </div>
+          <div className="admin-header__right">
+            <div className="admin-header__loading">Loading...</div>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="admin-header">
@@ -83,159 +144,196 @@ export default function AdminHeader({
             {sidebarCollapsed ? <Menu size={20} /> : <X size={20} />}
           </button>
 
-          <form onSubmit={handleSearch} className="admin-header__search">
+          <div className="admin-header__search">
             <Search size={18} />
             <input
               type="text"
               placeholder="Search students, faculty, courses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch(e);
+                }
+              }}
               className="admin-header__search-input"
             />
-          </form>
+          </div>
         </div>
 
         {/* Right Section */}
         <div className="admin-header__right">
           {/* Theme Toggle */}
           <button
-            className="admin-header__theme-btn"
+            className="admin-header__icon-btn"
             onClick={onToggleTheme}
             aria-label="Toggle theme"
+            title="Toggle theme"
           >
-            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
           {/* Settings */}
           <button
-            className="admin-header__settings-btn"
+            className="admin-header__icon-btn"
             aria-label="Settings"
+            title="Settings"
           >
-            <Settings size={18} />
+            <Settings size={20} />
           </button>
 
-          {/* Notifications */}
-          <div className="admin-header__notifications">
+          {/* Notifications Dropdown */}
+          <div
+            className="admin-header__dropdown-wrapper"
+            ref={notificationsRef}
+          >
             <button
-              className="admin-header__notifications-btn"
-              onClick={() => setShowNotifications(!showNotifications)}
+              className="admin-header__icon-btn admin-header__notifications-trigger"
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                setShowUserMenu(false);
+              }}
               aria-label="View notifications"
+              title="Notifications"
             >
-              <Bell size={18} />
+              <Bell size={20} />
               {unreadCount > 0 && (
-                <span className="admin-header__notifications-badge">
-                  {unreadCount}
-                </span>
+                <span className="admin-header__badge">{unreadCount}</span>
               )}
             </button>
 
             <AnimatePresence>
               {showNotifications && (
                 <motion.div
-                  className="admin-header__notifications-dropdown"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
+                  className="admin-header__dropdown admin-header__notifications-dropdown"
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.15 }}
                 >
-                  <div className="admin-header__notifications-header">
+                  <div className="admin-header__dropdown-header">
                     <h4>Notifications</h4>
                     {unreadCount > 0 && (
-                      <span className="admin-header__notifications-count">
+                      <span className="admin-header__unread-count">
                         {unreadCount} new
                       </span>
                     )}
                   </div>
 
-                  <div className="admin-header__notifications-list">
-                    {displayNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`admin-header__notification ${!notification.isRead ? 'admin-header__notification--unread' : ''}`}
-                      >
-                        <div className={`admin-header__notification-icon admin-header__notification-icon--${notification.type}`}>
-                          {notification.type === 'info' && 'i'}
-                          {notification.type === 'warning' && '!'}
-                          {notification.type === 'success' && '✓'}
-                          {notification.type === 'error' && '×'}
+                  <div className="admin-header__dropdown-content">
+                    {notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`admin-header__notification-item ${
+                            !notification.isRead ? "unread" : ""
+                          }`}
+                        >
+                          <div className="admin-header__notification-icon">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div className="admin-header__notification-content">
+                            <h5>{notification.title}</h5>
+                            <p>{notification.message}</p>
+                            <span className="admin-header__notification-time">
+                              {notification.timestamp}
+                            </span>
+                          </div>
                         </div>
-                        <div className="admin-header__notification-content">
-                          <h5>{notification.title}</h5>
-                          <p>{notification.message}</p>
-                          <span>{notification.time}</span>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="admin-header__empty-state">
+                        <Bell size={32} />
+                        <p>No notifications</p>
                       </div>
-                    ))}
+                    )}
                   </div>
 
-                  <div className="admin-header__notifications-footer">
-                    <button className="admin-header__notifications-view-all">
-                      View all notifications
-                    </button>
-                  </div>
+                  {notifications.length > 0 && (
+                    <div className="admin-header__dropdown-footer">
+                      <button className="admin-header__view-all-btn">
+                        View all notifications
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* User Menu */}
-          <div className="admin-header__user">
+          {/* User Menu Dropdown */}
+          <div className="admin-header__dropdown-wrapper" ref={userMenuRef}>
             <button
-              className="admin-header__user-btn"
-              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="admin-header__user-trigger"
+              onClick={() => {
+                setShowUserMenu(!showUserMenu);
+                setShowNotifications(false);
+              }}
               aria-label="User menu"
             >
               <img
-                src={displayUser.avatar}
-                alt={displayUser.name}
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`}
+                alt={`${user.first_name} ${user.last_name}`}
                 className="admin-header__user-avatar"
               />
               <div className="admin-header__user-info">
-                <span className="admin-header__user-name">{displayUser.name}</span>
-                <span className="admin-header__user-role">{displayUser.role}</span>
+                <span className="admin-header__user-name">
+                  {user.first_name} {user.last_name}
+                </span>
+                <span className="admin-header__user-role">
+                  {getRoleDisplay(user.role)}
+                </span>
               </div>
             </button>
 
             <AnimatePresence>
               {showUserMenu && (
                 <motion.div
-                  className="admin-header__user-dropdown"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
+                  className="admin-header__dropdown admin-header__user-dropdown"
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  transition={{ duration: 0.15 }}
                 >
-                  <div className="admin-header__user-header">
+                  <div className="admin-header__user-profile">
                     <img
-                      src={displayUser.avatar}
-                      alt={displayUser.name}
-                      className="admin-header__user-header-avatar"
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`}
+                      alt={`${user.first_name} ${user.last_name}`}
+                      className="admin-header__user-profile-avatar"
                     />
-                    <div>
-                      <h4>{displayUser.name}</h4>
-                      <p>{displayUser.email}</p>
-                      <span>{displayUser.role}</span>
+                    <div className="admin-header__user-profile-info">
+                      <h4>
+                        {user.first_name} {user.last_name}
+                      </h4>
+                      <p>{user.email}</p>
+                      <span className="admin-header__user-badge">
+                        {getRoleDisplay(user.role)}
+                      </span>
                     </div>
                   </div>
 
+                  <div className="admin-header__dropdown-divider"></div>
+
                   <div className="admin-header__user-menu">
-                    <button className="admin-header__user-menu-item">
-                      <User size={16} />
-                      Profile
+                    <button className="admin-header__menu-item">
+                      <User size={18} />
+                      <span>My Profile</span>
                     </button>
-                    <button className="admin-header__user-menu-item">
-                      <Settings size={16} />
-                      Settings
-                    </button>
-                    <div className="admin-header__user-divider"></div>
-                    <button
-                      className="admin-header__user-menu-item admin-header__user-menu-item--logout"
-                      onClick={onLogout}
-                    >
-                      <LogOut size={16} />
-                      Logout
+                    <button className="admin-header__menu-item">
+                      <Settings size={18} />
+                      <span>Settings</span>
                     </button>
                   </div>
+
+                  <div className="admin-header__dropdown-divider"></div>
+
+                  <button
+                    className="admin-header__menu-item admin-header__logout-btn"
+                    onClick={onLogout}
+                  >
+                    <LogOut size={18} />
+                    <span>Logout</span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
