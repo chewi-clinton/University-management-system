@@ -1,6 +1,14 @@
-import { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, MoreVertical, Download, Trash2, Mail } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo } from "react";
+import {
+  ChevronUp,
+  ChevronDown,
+  MoreVertical,
+  Download,
+  Trash2,
+  Mail,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import "../../../styles/components/admin/admin-components.css";
 
 export default function AdminDataTable({
   columns,
@@ -10,10 +18,10 @@ export default function AdminDataTable({
   selectable = true,
   actions = [],
   loading = false,
-  emptyMessage = 'No data found'
+  emptyMessage = "No data found",
 }) {
   const [selectedRows, setSelectedRows] = useState([]);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -24,8 +32,8 @@ export default function AdminDataTable({
       const aVal = a[sortConfig.key];
       const bVal = b[sortConfig.key];
 
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
   }, [data, sortConfig]);
@@ -40,7 +48,7 @@ export default function AdminDataTable({
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
 
@@ -109,7 +117,9 @@ export default function AdminDataTable({
                 <th className="admin-data-table__checkbox-col">
                   <input
                     type="checkbox"
-                    checked={selectedRows.length === data.length && data.length > 0}
+                    checked={
+                      selectedRows.length === data.length && data.length > 0
+                    }
                     onChange={handleSelectAll}
                     disabled={data.length === 0}
                   />
@@ -119,18 +129,26 @@ export default function AdminDataTable({
                 <th
                   key={col.key}
                   onClick={() => col.sortable && handleSort(col.key)}
-                  className={`${col.sortable ? 'admin-data-table__sortable' : ''} ${col.className || ''}`}
-                  style={{ width: col.width || 'auto' }}
+                  className={`${
+                    col.sortable ? "admin-data-table__sortable" : ""
+                  } ${col.className || ""}`}
+                  style={{ width: col.width || "auto" }}
                 >
                   <div className="admin-data-table__header">
                     {col.label}
-                    {col.sortable && sortConfig.key === col.key && (
-                      sortConfig.direction === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
-                    )}
+                    {col.sortable &&
+                      sortConfig.key === col.key &&
+                      (sortConfig.direction === "asc" ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
+                      ))}
                   </div>
                 </th>
               ))}
-              {actions.length > 0 && <th className="admin-data-table__actions-col">Actions</th>}
+              {actions.length > 0 && (
+                <th className="admin-data-table__actions-col">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -143,7 +161,11 @@ export default function AdminDataTable({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className={`${selectedRows.includes(row.id) ? 'admin-data-table__row--selected' : ''} ${onRowClick ? 'admin-data-table__row--clickable' : ''}`}
+                    className={`${
+                      selectedRows.includes(row.id)
+                        ? "admin-data-table__row--selected"
+                        : ""
+                    } ${onRowClick ? "admin-data-table__row--clickable" : ""}`}
                     onClick={() => onRowClick && onRowClick(row)}
                   >
                     {selectable && (
@@ -156,8 +178,10 @@ export default function AdminDataTable({
                       </td>
                     )}
                     {columns.map((col) => (
-                      <td key={col.key} className={col.className || ''}>
-                        {col.render ? col.render(row[col.key], row) : row[col.key]}
+                      <td key={col.key} className={col.className || ""}>
+                        {col.render
+                          ? col.render(row[col.key], row)
+                          : row[col.key]}
                       </td>
                     ))}
                     {actions.length > 0 && (
@@ -180,7 +204,13 @@ export default function AdminDataTable({
                 ))
               ) : (
                 <tr className="admin-data-table__empty-row">
-                  <td colSpan={columns.length + (selectable ? 1 : 0) + (actions.length > 0 ? 1 : 0)}>
+                  <td
+                    colSpan={
+                      columns.length +
+                      (selectable ? 1 : 0) +
+                      (actions.length > 0 ? 1 : 0)
+                    }
+                  >
                     <div className="admin-data-table__empty-message">
                       {emptyMessage}
                     </div>
@@ -195,7 +225,9 @@ export default function AdminDataTable({
       {totalPages > 1 && (
         <div className="admin-data-table__pagination">
           <div className="admin-data-table__pagination-info">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedData.length)} of {sortedData.length} entries
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, sortedData.length)} of{" "}
+            {sortedData.length} entries
           </div>
           <div className="admin-data-table__pagination-controls">
             <button
@@ -209,13 +241,19 @@ export default function AdminDataTable({
               <button
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`admin-data-table__pagination-btn ${currentPage === i + 1 ? 'admin-data-table__pagination-btn--active' : ''}`}
+                className={`admin-data-table__pagination-btn ${
+                  currentPage === i + 1
+                    ? "admin-data-table__pagination-btn--active"
+                    : ""
+                }`}
               >
                 {i + 1}
               </button>
             ))}
             <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, currentPage + 1))
+              }
               disabled={currentPage === totalPages}
               className="admin-data-table__pagination-btn"
             >

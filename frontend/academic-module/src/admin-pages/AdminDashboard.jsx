@@ -172,7 +172,7 @@ export default function AdminDashboard() {
   const SimpleLineChart = ({
     data,
     labels,
-    color = "#3b82f6",
+    color = "#e87d26",
     height = 200,
   }) => {
     if (!data || data.length === 0) {
@@ -185,7 +185,7 @@ export default function AdminDashboard() {
             justifyContent: "center",
           }}
         >
-          <p style={{ color: "var(--gray-500)" }}>No data available</p>
+          <p style={{ color: "var(--neutral-500)" }}>No data available</p>
         </div>
       );
     }
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
             justifyContent: "center",
           }}
         >
-          <p style={{ color: "var(--gray-500)" }}>No data available</p>
+          <p style={{ color: "var(--neutral-500)" }}>No data available</p>
         </div>
       );
     }
@@ -289,7 +289,7 @@ export default function AdminDashboard() {
             justifyContent: "center",
           }}
         >
-          <p style={{ color: "var(--gray-500)" }}>No data available</p>
+          <p style={{ color: "var(--neutral-500)" }}>No data available</p>
         </div>
       );
     }
@@ -359,7 +359,7 @@ export default function AdminDashboard() {
           style={{
             padding: "2rem",
             textAlign: "center",
-            color: "var(--danger)",
+            color: "var(--error-500)",
           }}
         >
           <AlertTriangle size={48} style={{ marginBottom: "1rem" }} />
@@ -518,7 +518,7 @@ export default function AdminDashboard() {
           <SimpleLineChart
             data={dashboardData.enrollmentTrends.data}
             labels={dashboardData.enrollmentTrends.labels}
-            color="#3b82f6"
+            color="#e87d26"
             height={250}
           />
         </motion.div>
@@ -693,7 +693,7 @@ export default function AdminDashboard() {
           </div>
           <div className="activities-list">
             {dashboardData.recentActivities.length === 0 ? (
-              <p style={{ textAlign: "center", color: "var(--gray-500)" }}>
+              <p style={{ textAlign: "center", color: "var(--neutral-500)" }}>
                 No recent activities
               </p>
             ) : (
@@ -742,7 +742,7 @@ export default function AdminDashboard() {
         </div>
         <div className="notifications-list">
           {dashboardData.systemNotifications.length === 0 ? (
-            <p style={{ textAlign: "center", color: "var(--gray-500)" }}>
+            <p style={{ textAlign: "center", color: "var(--neutral-500)" }}>
               No notifications
             </p>
           ) : (

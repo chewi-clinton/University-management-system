@@ -13,6 +13,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { adminService } from "../services/api/adminService";
+import "../styles/admin-pages/course-management.css";
 
 export default function AdminCourseManagement() {
   const [courses, setCourses] = useState([]);
@@ -28,7 +29,6 @@ export default function AdminCourseManagement() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     course_code: "",
     course_name: "",
@@ -43,7 +43,6 @@ export default function AdminCourseManagement() {
     is_active: true,
   });
 
-  // Load initial data
   useEffect(() => {
     loadData();
   }, []);
@@ -76,7 +75,6 @@ export default function AdminCourseManagement() {
     }
   };
 
-  // Calculate statistics
   const stats = {
     total: courses.length,
     active: courses.filter((c) => c.is_active !== false).length,
@@ -84,7 +82,6 @@ export default function AdminCourseManagement() {
     elective: courses.filter((c) => c.is_elective).length,
   };
 
-  // Filter courses
   const filteredCourses = courses.filter((course) => {
     const matchesSearch =
       course.course_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -235,29 +232,9 @@ export default function AdminCourseManagement() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #1e40af",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280" }}>Loading courses...</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      <div className="course-loading">
+        <div className="course-loading__spinner" />
+        <p className="course-loading__text">Loading courses...</p>
       </div>
     );
   }
@@ -266,89 +243,39 @@ export default function AdminCourseManagement() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ padding: "24px" }}
+      className="course-management"
     >
-      {/* Success Message */}
       <AnimatePresence>
         {successMessage && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "16px 24px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="course-management__success"
           >
             ✓ {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Error Message */}
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            color: "#c33",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="course-management__error">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#c33",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
+            className="course-management__error-close"
           >
             ×
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ marginBottom: "32px" }}>
-        <h1
-          style={{
-            fontSize: "32px",
-            fontWeight: "700",
-            color: "#111827",
-            marginBottom: "8px",
-          }}
-        >
-          Course Management
-        </h1>
-        <p style={{ color: "#6b7280", fontSize: "16px" }}>
-          Manage courses, curriculum, and academic programs
-        </p>
+      <div className="course-management__header">
+        <h1>Course Management</h1>
+        <p>Manage courses, curriculum, and academic programs</p>
       </div>
 
-      {/* Statistics Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "20px",
-          marginBottom: "32px",
-        }}
-      >
+      <div className="course-management__stats">
         <StatCard
           title="Total Courses"
           value={stats.total}
@@ -375,33 +302,10 @@ export default function AdminCourseManagement() {
         />
       </div>
 
-      {/* Filters and Search */}
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "24px",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          marginBottom: "24px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+      <div className="course-management__filters">
+        <div className="course-management__filters-grid">
+          <div className="course-management__filter-group">
+            <label className="course-management__filter-label">
               Search Courses
             </label>
             <input
@@ -409,38 +313,18 @@ export default function AdminCourseManagement() {
               placeholder="Search by name or code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="course-management__filter-input"
             />
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="course-management__filter-group">
+            <label className="course-management__filter-label">
               Department
             </label>
             <select
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="course-management__filter-select"
             >
               <option value="all">All Departments</option>
               {departments.map((dept) => (
@@ -451,28 +335,12 @@ export default function AdminCourseManagement() {
             </select>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
-              Status
-            </label>
+          <div className="course-management__filter-group">
+            <label className="course-management__filter-label">Status</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="course-management__filter-select"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -481,222 +349,119 @@ export default function AdminCourseManagement() {
           </div>
         </div>
 
-        <div
-          style={{
-            marginTop: "16px",
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        <div className="course-management__filters-actions">
           <button
             onClick={() => setShowCreateModal(true)}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#1e40af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className="course-management__create-btn"
           >
             <Plus size={18} /> Create New Course
           </button>
         </div>
       </div>
 
-      {/* Courses Table */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="course-management__table-container">
         {filteredCourses.length === 0 ? (
-          <div
-            style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              color: "#6b7280",
-            }}
-          >
-            <p style={{ fontSize: "18px", marginBottom: "8px" }}>
-              No courses found
-            </p>
-            <p style={{ fontSize: "14px" }}>
+          <div className="course-management__empty">
+            <p className="course-management__empty-title">No courses found</p>
+            <p className="course-management__empty-text">
               {searchTerm || filterDepartment !== "all"
                 ? "Try adjusting your filters"
                 : "Create your first course to get started"}
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead
-                style={{
-                  backgroundColor: "#f9fafb",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
+          <div className="course-management__table-wrapper">
+            <table className="course-management__table">
+              <thead>
                 <tr>
-                  {[
-                    "Course Code",
-                    "Course Name",
-                    "Department",
-                    "Credits",
-                    "Type",
-                    "Hours",
-                    "Status",
-                    "Actions",
-                  ].map((header) => (
-                    <th
-                      key={header}
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {header}
-                    </th>
-                  ))}
+                  <th>Course Code</th>
+                  <th>Course Name</th>
+                  <th>Department</th>
+                  <th>Credits</th>
+                  <th>Type</th>
+                  <th>Hours</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCourses.map((course) => (
-                  <tr
-                    key={course.course_id}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
-                  >
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                        color: "#1e40af",
-                      }}
-                    >
-                      {course.course_code}
+                  <tr key={course.course_id}>
+                    <td>
+                      <span className="course-code">{course.course_code}</span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#111827",
-                      }}
-                    >
-                      {course.course_name}
+                    <td>
+                      <span className="course-name">{course.course_name}</span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {course.department?.department_name || "N/A"}
-                    </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {course.credit_hours}
-                    </td>
-                    <td style={{ padding: "16px" }}>
+                    <td>{course.department?.department_name || "N/A"}</td>
+                    <td>{course.credit_hours}</td>
+                    <td>
                       <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          backgroundColor: course.is_elective
-                            ? "#8b5cf620"
-                            : "#3b82f620",
-                          color: course.is_elective ? "#8b5cf6" : "#3b82f6",
-                        }}
+                        className={`course-type-badge ${
+                          course.is_elective
+                            ? "course-type-badge--elective"
+                            : "course-type-badge--core"
+                        }`}
                       >
                         {course.is_elective ? "Elective" : "Core"}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td>
                       L:{course.lecture_hours || 0} Lab:{course.lab_hours || 0}
                     </td>
-                    <td style={{ padding: "16px" }}>
+                    <td>
                       <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          backgroundColor:
-                            course.is_active !== false
-                              ? "#10b98120"
-                              : "#6b728020",
-                          color:
-                            course.is_active !== false ? "#10b981" : "#6b7280",
-                        }}
+                        className={`course-status-badge ${
+                          course.is_active !== false
+                            ? "course-status-badge--active"
+                            : "course-status-badge--inactive"
+                        }`}
                       >
                         {course.is_active !== false ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <ActionButton
+                    <td>
+                      <div className="course-actions">
+                        <button
                           onClick={() => openDetailsModal(course)}
                           title="View"
-                          color="#3b82f6"
+                          className="course-action-btn course-action-btn--view"
                         >
                           <Eye size={16} />
-                        </ActionButton>
-                        <ActionButton
+                        </button>
+                        <button
                           onClick={() => openEditModal(course)}
                           title="Edit"
-                          color="#f59e0b"
+                          className="course-action-btn course-action-btn--edit"
                         >
                           <Edit size={16} />
-                        </ActionButton>
-                        <ActionButton
+                        </button>
+                        <button
                           onClick={() => toggleCourseStatus(course)}
                           title={
                             course.is_active !== false
                               ? "Deactivate"
                               : "Activate"
                           }
-                          color={
-                            course.is_active !== false ? "#6b7280" : "#10b981"
-                          }
+                          className={`course-action-btn ${
+                            course.is_active !== false
+                              ? "course-action-btn--toggle-inactive"
+                              : "course-action-btn--toggle-active"
+                          }`}
                         >
                           {course.is_active !== false ? (
                             <ToggleRight size={16} />
                           ) : (
                             <ToggleLeft size={16} />
                           )}
-                        </ActionButton>
-                        <ActionButton
+                        </button>
+                        <button
                           onClick={() => handleDeleteCourse(course.course_id)}
                           title="Delete"
-                          color="#dc2626"
+                          className="course-action-btn course-action-btn--delete"
                         >
                           <Trash2 size={16} />
-                        </ActionButton>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -707,7 +472,6 @@ export default function AdminCourseManagement() {
         )}
       </div>
 
-      {/* Create Modal */}
       <AnimatePresence>
         {showCreateModal && (
           <Modal
@@ -716,58 +480,27 @@ export default function AdminCourseManagement() {
               resetForm();
             }}
           >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Create New Course
-            </h2>
+            <h2 className="course-modal__title">Create New Course</h2>
             <form onSubmit={handleCreateCourse}>
               <CourseForm
                 formData={formData}
                 setFormData={setFormData}
                 departments={departments}
               />
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "flex-end",
-                  marginTop: "24px",
-                }}
-              >
+              <div className="course-modal__actions">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#e5e7eb",
-                    color: "#374151",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="course-modal__btn course-modal__btn--secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#1e40af",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="course-modal__btn course-modal__btn--primary"
                 >
                   Create Course
                 </button>
@@ -777,7 +510,6 @@ export default function AdminCourseManagement() {
         )}
       </AnimatePresence>
 
-      {/* Edit Modal */}
       <AnimatePresence>
         {showEditModal && (
           <Modal
@@ -786,58 +518,27 @@ export default function AdminCourseManagement() {
               resetForm();
             }}
           >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Edit Course
-            </h2>
+            <h2 className="course-modal__title">Edit Course</h2>
             <form onSubmit={handleEditCourse}>
               <CourseForm
                 formData={formData}
                 setFormData={setFormData}
                 departments={departments}
               />
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "flex-end",
-                  marginTop: "24px",
-                }}
-              >
+              <div className="course-modal__actions">
                 <button
                   type="button"
                   onClick={() => {
                     setShowEditModal(false);
                     resetForm();
                   }}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#e5e7eb",
-                    color: "#374151",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="course-modal__btn course-modal__btn--secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#1e40af",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="course-modal__btn course-modal__btn--primary"
                 >
                   Save Changes
                 </button>
@@ -847,20 +548,11 @@ export default function AdminCourseManagement() {
         )}
       </AnimatePresence>
 
-      {/* Details Modal */}
       <AnimatePresence>
         {showDetailsModal && selectedCourse && (
           <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Course Details
-            </h2>
-            <div style={{ display: "grid", gap: "16px" }}>
+            <h2 className="course-modal__title">Course Details</h2>
+            <div>
               <DetailRow
                 label="Course Code"
                 value={selectedCourse.course_code}
@@ -908,24 +600,10 @@ export default function AdminCourseManagement() {
                 }
               />
             </div>
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="course-modal__actions">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#1e40af",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
+                className="course-modal__btn course-modal__btn--primary"
               >
                 Close
               </button>
@@ -937,72 +615,26 @@ export default function AdminCourseManagement() {
   );
 }
 
-// Helper Components
 function StatCard({ title, value, icon, color }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        borderLeft: `4px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p
-            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
-          >
-            {title}
-          </p>
-          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
-            {value}
-          </p>
-        </div>
-        <div style={{ color }}>{icon}</div>
+    <motion.div whileHover={{ scale: 1.02 }} className="course-stat-card">
+      <div className="course-stat-card__content">
+        <p className="course-stat-card__title">{title}</p>
+        <p className="course-stat-card__value">{value}</p>
+      </div>
+      <div className="course-stat-card__icon" style={{ color }}>
+        {icon}
       </div>
     </motion.div>
   );
 }
 
-function ActionButton({ onClick, title, color, children }) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        padding: "6px 12px",
-        backgroundColor: color,
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        fontSize: "12px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function CourseForm({ formData, setFormData, departments }) {
   return (
-    <div style={{ display: "grid", gap: "16px" }}>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}
-      >
-        <FormField label="Course Code *" required>
+    <div className="course-form">
+      <div className="course-form__row">
+        <div className="course-form__group">
+          <label className="course-form__label">Course Code *</label>
           <input
             type="text"
             required
@@ -1010,9 +642,11 @@ function CourseForm({ formData, setFormData, departments }) {
             onChange={(e) =>
               setFormData({ ...formData, course_code: e.target.value })
             }
+            className="course-form__input"
           />
-        </FormField>
-        <FormField label="Credit Hours *" required>
+        </div>
+        <div className="course-form__group">
+          <label className="course-form__label">Credit Hours *</label>
           <input
             type="number"
             required
@@ -1025,11 +659,13 @@ function CourseForm({ formData, setFormData, departments }) {
                 credit_hours: parseInt(e.target.value),
               })
             }
+            className="course-form__input"
           />
-        </FormField>
+        </div>
       </div>
 
-      <FormField label="Course Name *" required>
+      <div className="course-form__group">
+        <label className="course-form__label">Course Name *</label>
         <input
           type="text"
           required
@@ -1037,16 +673,19 @@ function CourseForm({ formData, setFormData, departments }) {
           onChange={(e) =>
             setFormData({ ...formData, course_name: e.target.value })
           }
+          className="course-form__input"
         />
-      </FormField>
+      </div>
 
-      <FormField label="Department *" required>
+      <div className="course-form__group">
+        <label className="course-form__label">Department *</label>
         <select
           required
           value={formData.department_id}
           onChange={(e) =>
             setFormData({ ...formData, department_id: e.target.value })
           }
+          className="course-form__select"
         >
           <option value="">Select Department</option>
           {departments.map((dept) => (
@@ -1055,12 +694,11 @@ function CourseForm({ formData, setFormData, departments }) {
             </option>
           ))}
         </select>
-      </FormField>
+      </div>
 
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}
-      >
-        <FormField label="Lecture Hours">
+      <div className="course-form__row">
+        <div className="course-form__group">
+          <label className="course-form__label">Lecture Hours</label>
           <input
             type="number"
             min="0"
@@ -1072,9 +710,11 @@ function CourseForm({ formData, setFormData, departments }) {
                 lecture_hours: parseInt(e.target.value),
               })
             }
+            className="course-form__input"
           />
-        </FormField>
-        <FormField label="Lab Hours">
+        </div>
+        <div className="course-form__group">
+          <label className="course-form__label">Lab Hours</label>
           <input
             type="number"
             min="0"
@@ -1083,42 +723,49 @@ function CourseForm({ formData, setFormData, departments }) {
             onChange={(e) =>
               setFormData({ ...formData, lab_hours: parseInt(e.target.value) })
             }
+            className="course-form__input"
           />
-        </FormField>
+        </div>
       </div>
 
-      <FormField label="Description">
+      <div className="course-form__group">
+        <label className="course-form__label">Description</label>
         <textarea
           rows="4"
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
+          className="course-form__textarea"
         />
-      </FormField>
+      </div>
 
-      <FormField label="Prerequisites">
+      <div className="course-form__group">
+        <label className="course-form__label">Prerequisites</label>
         <textarea
           rows="2"
           value={formData.prerequisites}
           onChange={(e) =>
             setFormData({ ...formData, prerequisites: e.target.value })
           }
+          className="course-form__textarea"
         />
-      </FormField>
+      </div>
 
-      <FormField label="Learning Outcomes">
+      <div className="course-form__group">
+        <label className="course-form__label">Learning Outcomes</label>
         <textarea
           rows="3"
           value={formData.learning_outcomes}
           onChange={(e) =>
             setFormData({ ...formData, learning_outcomes: e.target.value })
           }
+          className="course-form__textarea"
         />
-      </FormField>
+      </div>
 
-      <div style={{ display: "flex", gap: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div className="course-form__checkbox-group">
+        <div className="course-form__checkbox-item">
           <input
             type="checkbox"
             id="is_elective"
@@ -1126,16 +773,13 @@ function CourseForm({ formData, setFormData, departments }) {
             onChange={(e) =>
               setFormData({ ...formData, is_elective: e.target.checked })
             }
-            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+            className="course-form__checkbox"
           />
-          <label
-            htmlFor="is_elective"
-            style={{ fontSize: "14px", color: "#374151", cursor: "pointer" }}
-          >
+          <label htmlFor="is_elective" className="course-form__checkbox-label">
             Elective Course
           </label>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div className="course-form__checkbox-item">
           <input
             type="checkbox"
             id="is_active"
@@ -1143,12 +787,9 @@ function CourseForm({ formData, setFormData, departments }) {
             onChange={(e) =>
               setFormData({ ...formData, is_active: e.target.checked })
             }
-            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+            className="course-form__checkbox"
           />
-          <label
-            htmlFor="is_active"
-            style={{ fontSize: "14px", color: "#374151", cursor: "pointer" }}
-          >
+          <label htmlFor="is_active" className="course-form__checkbox-label">
             Course is active
           </label>
         </div>
@@ -1157,51 +798,11 @@ function CourseForm({ formData, setFormData, departments }) {
   );
 }
 
-function FormField({ label, required, children }) {
-  return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontSize: "14px",
-          fontWeight: "500",
-          marginBottom: "8px",
-          color: "#374151",
-        }}
-      >
-        {label}
-      </label>
-      <div style={{ width: "100%" }}>
-        {React.cloneElement(children, {
-          style: {
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontFamily: "inherit",
-          },
-        })}
-      </div>
-    </div>
-  );
-}
-
 function DetailRow({ label, value }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "180px 1fr",
-        gap: "16px",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
-        {label}:
-      </span>
-      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    <div className="course-detail-row">
+      <span className="course-detail-row__label">{label}:</span>
+      <span className="course-detail-row__value">{value}</span>
     </div>
   );
 }
@@ -1213,38 +814,16 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="course-modal-overlay"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          maxWidth: "600px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        }}
+        className="course-modal"
       >
-        {children}
+        <div className="course-modal__content">{children}</div>
       </motion.div>
     </motion.div>
   );

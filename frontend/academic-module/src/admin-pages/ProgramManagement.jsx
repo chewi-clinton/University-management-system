@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  BookOpen,
+  CheckCircle,
+  GraduationCap,
+  ScrollText,
+  Microscope,
+  Plus,
+  Search,
+  Eye,
+  Edit,
+  Play,
+  Pause,
+  Trash2,
+  X,
+  AlertCircle,
+} from "lucide-react";
 import { adminService } from "../services/api/adminService";
+import "../styles/admin-pages/program-management.css";
 
 export default function ProgramManagement() {
   const [programs, setPrograms] = useState([]);
@@ -17,7 +34,6 @@ export default function ProgramManagement() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     program_code: "",
     program_name: "",
@@ -38,7 +54,6 @@ export default function ProgramManagement() {
     "diploma",
   ];
 
-  // Load initial data
   useEffect(() => {
     loadData();
   }, []);
@@ -71,7 +86,6 @@ export default function ProgramManagement() {
     }
   };
 
-  // Statistics
   const stats = {
     total: programs.length,
     active: programs.filter((p) => p.is_active).length,
@@ -82,7 +96,6 @@ export default function ProgramManagement() {
     doctoral: programs.filter((p) => p.program_type === "doctoral").length,
   };
 
-  // Filter programs
   const filteredPrograms = programs.filter((program) => {
     const matchesSearch =
       program.program_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -242,35 +255,9 @@ export default function ProgramManagement() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #1e40af",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280" }}>Loading programs...</p>
-        </div>
-        <style>
-          {`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}
-        </style>
+      <div className="program-loading">
+        <div className="program-loading__spinner" />
+        <p className="program-loading__text">Loading programs...</p>
       </div>
     );
   }
@@ -279,187 +266,99 @@ export default function ProgramManagement() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ padding: "24px" }}
+      className="program-management"
     >
-      {/* Success Message */}
       <AnimatePresence>
         {successMessage && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "16px 24px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="program-management__success"
           >
-            ✓ {successMessage}
+            <CheckCircle size={20} style={{ marginRight: "8px" }} />
+            {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Error Message */}
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            color: "#c33",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="program-management__error">
+          <AlertCircle size={18} style={{ marginRight: "8px" }} />
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#c33",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
+            className="program-management__error-close"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ marginBottom: "32px" }}>
-        <h1
-          style={{
-            fontSize: "32px",
-            fontWeight: "700",
-            color: "#111827",
-            marginBottom: "8px",
-          }}
-        >
-          Program Management
-        </h1>
-        <p style={{ color: "#6b7280", fontSize: "16px" }}>
-          Manage academic programs and degree offerings
-        </p>
+      <div className="program-management__header">
+        <h1>Program Management</h1>
+        <p>Manage academic programs and degree offerings</p>
       </div>
 
-      {/* Statistics Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "20px",
-          marginBottom: "32px",
-        }}
-      >
+      <div className="program-management__stats">
         <StatCard
           title="Total Programs"
           value={stats.total}
-          icon="📚"
+          icon={<BookOpen size={28} />}
           color="#3b82f6"
         />
         <StatCard
           title="Active Programs"
           value={stats.active}
-          icon="✓"
+          icon={<CheckCircle size={28} />}
           color="#10b981"
         />
         <StatCard
           title="Undergraduate"
           value={stats.undergraduate}
-          icon="🎓"
+          icon={<GraduationCap size={28} />}
           color="#f59e0b"
         />
         <StatCard
           title="Postgraduate"
           value={stats.postgraduate}
-          icon="📖"
+          icon={<ScrollText size={28} />}
           color="#8b5cf6"
         />
         <StatCard
           title="Doctoral"
           value={stats.doctoral}
-          icon="🔬"
+          icon={<Microscope size={28} />}
           color="#ec4899"
         />
       </div>
 
-      {/* Filters and Search */}
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "24px",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          marginBottom: "24px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+      <div className="program-management__filters">
+        <div className="program-management__filters-grid">
+          <div className="program-management__filter-group">
+            <label className="program-management__filter-label">
               Search Programs
             </label>
-            <input
-              type="text"
-              placeholder="Search by name or code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
-            />
+            <div className="program-management__search-wrapper">
+              <Search size={18} className="program-management__search-icon" />
+              <input
+                type="text"
+                placeholder="Search by name or code..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="program-management__filter-input"
+              />
+            </div>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="program-management__filter-group">
+            <label className="program-management__filter-label">
               Program Type
             </label>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="program-management__filter-select"
             >
               <option value="all">All Types</option>
               {PROGRAM_TYPES.map((type) => (
@@ -470,28 +369,14 @@ export default function ProgramManagement() {
             </select>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="program-management__filter-group">
+            <label className="program-management__filter-label">
               Department
             </label>
             <select
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="program-management__filter-select"
             >
               <option value="all">All Departments</option>
               {departments.map((dept) => (
@@ -502,28 +387,12 @@ export default function ProgramManagement() {
             </select>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
-              Status
-            </label>
+          <div className="program-management__filter-group">
+            <label className="program-management__filter-label">Status</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="program-management__filter-select"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -532,315 +401,123 @@ export default function ProgramManagement() {
           </div>
         </div>
 
-        <div
-          style={{
-            marginTop: "16px",
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        <div className="program-management__filters-actions">
           <button
             onClick={() => setShowCreateModal(true)}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#1e40af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-            }}
+            className="program-management__create-btn"
           >
-            ➕ Create New Program
+            <Plus size={20} style={{ marginRight: "8px" }} />
+            Create New Program
           </button>
         </div>
       </div>
 
-      {/* Programs Table */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="program-management__table-container">
         {filteredPrograms.length === 0 ? (
-          <div
-            style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              color: "#6b7280",
-            }}
-          >
-            <p style={{ fontSize: "18px", marginBottom: "8px" }}>
-              No programs found
-            </p>
-            <p style={{ fontSize: "14px" }}>
+          <div className="program-management__empty">
+            <p className="program-management__empty-title">No programs found</p>
+            <p className="program-management__empty-text">
               {searchTerm || filterType !== "all" || filterDepartment !== "all"
                 ? "Try adjusting your filters"
                 : "Create your first program to get started"}
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead
-                style={{
-                  backgroundColor: "#f9fafb",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
+          <div className="program-management__table-wrapper">
+            <table className="program-management__table">
+              <thead>
                 <tr>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Program Code
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Program Name
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Type
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Department
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Duration
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Credits
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Status
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Actions
-                  </th>
+                  <th>Program Code</th>
+                  <th>Program Name</th>
+                  <th>Type</th>
+                  <th>Department</th>
+                  <th>Duration</th>
+                  <th>Credits</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPrograms.map((program) => (
-                  <tr
-                    key={program.program_id}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
-                  >
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                        color: "#1e40af",
-                      }}
-                    >
-                      {program.program_code}
+                  <tr key={program.program_id}>
+                    <td>
+                      <span className="program-code">
+                        {program.program_code}
+                      </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#111827",
-                      }}
-                    >
-                      {program.program_name}
+                    <td>
+                      <span className="program-name">
+                        {program.program_name}
+                      </span>
                     </td>
-                    <td style={{ padding: "16px" }}>
+                    <td>
                       <span
+                        className="program-type-badge"
                         style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
                           backgroundColor: `${getProgramTypeColor(
                             program.program_type
                           )}20`,
                           color: getProgramTypeColor(program.program_type),
+                          borderColor: `${getProgramTypeColor(
+                            program.program_type
+                          )}40`,
                         }}
                       >
                         {program.program_type.charAt(0).toUpperCase() +
                           program.program_type.slice(1)}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {program.department?.department_name || "N/A"}
-                    </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {program.duration_years} years
-                    </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {program.total_credits}
-                    </td>
-                    <td style={{ padding: "16px" }}>
+                    <td>{program.department?.department_name || "N/A"}</td>
+                    <td>{program.duration_years} years</td>
+                    <td>{program.total_credits}</td>
+                    <td>
                       <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          backgroundColor: program.is_active
-                            ? "#10b98120"
-                            : "#6b728020",
-                          color: program.is_active ? "#10b981" : "#6b7280",
-                        }}
+                        className={`program-status-badge program-status-badge--${
+                          program.is_active ? "active" : "inactive"
+                        }`}
                       >
                         {program.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", gap: "8px" }}>
+                    <td>
+                      <div className="program-actions">
                         <button
                           onClick={() => openDetailsModal(program)}
-                          style={{
-                            padding: "6px 12px",
-                            backgroundColor: "#3b82f6",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            cursor: "pointer",
-                          }}
+                          className="program-action-btn program-action-btn--view"
                           title="View Details"
                         >
-                          👁️
+                          <Eye size={18} />
                         </button>
                         <button
                           onClick={() => openEditModal(program)}
-                          style={{
-                            padding: "6px 12px",
-                            backgroundColor: "#f59e0b",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            cursor: "pointer",
-                          }}
+                          className="program-action-btn program-action-btn--edit"
                           title="Edit"
                         >
-                          ✏️
+                          <Edit size={18} />
                         </button>
                         <button
                           onClick={() => toggleProgramStatus(program)}
-                          style={{
-                            padding: "6px 12px",
-                            backgroundColor: program.is_active
-                              ? "#6b7280"
-                              : "#10b981",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            cursor: "pointer",
-                          }}
+                          className={`program-action-btn ${
+                            program.is_active
+                              ? "program-action-btn--toggle-inactive"
+                              : "program-action-btn--toggle-active"
+                          }`}
                           title={program.is_active ? "Deactivate" : "Activate"}
                         >
-                          {program.is_active ? "⏸️" : "▶️"}
+                          {program.is_active ? (
+                            <Pause size={18} />
+                          ) : (
+                            <Play size={18} />
+                          )}
                         </button>
                         <button
                           onClick={() =>
                             handleDeleteProgram(program.program_id)
                           }
-                          style={{
-                            padding: "6px 12px",
-                            backgroundColor: "#dc2626",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            cursor: "pointer",
-                          }}
+                          className="program-action-btn program-action-btn--delete"
                           title="Delete"
                         >
-                          🗑️
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </td>
@@ -852,7 +529,6 @@ export default function ProgramManagement() {
         )}
       </div>
 
-      {/* Create Modal */}
       <AnimatePresence>
         {showCreateModal && (
           <Modal
@@ -861,15 +537,7 @@ export default function ProgramManagement() {
               resetForm();
             }}
           >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Create New Program
-            </h2>
+            <h2 className="program-modal__title">Create New Program</h2>
             <form onSubmit={handleCreateProgram}>
               <ProgramForm
                 formData={formData}
@@ -877,43 +545,20 @@ export default function ProgramManagement() {
                 departments={departments}
                 programTypes={PROGRAM_TYPES}
               />
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "flex-end",
-                  marginTop: "24px",
-                }}
-              >
+              <div className="program-modal__actions">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#e5e7eb",
-                    color: "#374151",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="program-modal__btn program-modal__btn--secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#1e40af",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="program-modal__btn program-modal__btn--primary"
                 >
                   Create Program
                 </button>
@@ -923,7 +568,6 @@ export default function ProgramManagement() {
         )}
       </AnimatePresence>
 
-      {/* Edit Modal */}
       <AnimatePresence>
         {showEditModal && (
           <Modal
@@ -932,15 +576,7 @@ export default function ProgramManagement() {
               resetForm();
             }}
           >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Edit Program
-            </h2>
+            <h2 className="program-modal__title">Edit Program</h2>
             <form onSubmit={handleEditProgram}>
               <ProgramForm
                 formData={formData}
@@ -948,43 +584,20 @@ export default function ProgramManagement() {
                 departments={departments}
                 programTypes={PROGRAM_TYPES}
               />
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "flex-end",
-                  marginTop: "24px",
-                }}
-              >
+              <div className="program-modal__actions">
                 <button
                   type="button"
                   onClick={() => {
                     setShowEditModal(false);
                     resetForm();
                   }}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#e5e7eb",
-                    color: "#374151",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="program-modal__btn program-modal__btn--secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#1e40af",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="program-modal__btn program-modal__btn--primary"
                 >
                   Save Changes
                 </button>
@@ -994,20 +607,11 @@ export default function ProgramManagement() {
         )}
       </AnimatePresence>
 
-      {/* Details Modal */}
       <AnimatePresence>
         {showDetailsModal && selectedProgram && (
           <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Program Details
-            </h2>
-            <div style={{ display: "grid", gap: "20px" }}>
+            <h2 className="program-modal__title">Program Details</h2>
+            <div>
               <DetailRow
                 label="Program Code"
                 value={selectedProgram.program_code}
@@ -1020,15 +624,15 @@ export default function ProgramManagement() {
                 label="Program Type"
                 value={
                   <span
+                    className="program-type-badge"
                     style={{
-                      padding: "4px 12px",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                      fontWeight: "500",
                       backgroundColor: `${getProgramTypeColor(
                         selectedProgram.program_type
                       )}20`,
                       color: getProgramTypeColor(selectedProgram.program_type),
+                      borderColor: `${getProgramTypeColor(
+                        selectedProgram.program_type
+                      )}40`,
                     }}
                   >
                     {selectedProgram.program_type.charAt(0).toUpperCase() +
@@ -1069,16 +673,9 @@ export default function ProgramManagement() {
                 label="Status"
                 value={
                   <span
-                    style={{
-                      padding: "4px 12px",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                      fontWeight: "500",
-                      backgroundColor: selectedProgram.is_active
-                        ? "#10b98120"
-                        : "#6b728020",
-                      color: selectedProgram.is_active ? "#10b981" : "#6b7280",
-                    }}
+                    className={`program-status-badge program-status-badge--${
+                      selectedProgram.is_active ? "active" : "inactive"
+                    }`}
                   >
                     {selectedProgram.is_active ? "Active" : "Inactive"}
                   </span>
@@ -1093,24 +690,10 @@ export default function ProgramManagement() {
                 }
               />
             </div>
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="program-modal__actions">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#1e40af",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
+                className="program-modal__btn program-modal__btn--primary"
               >
                 Close
               </button>
@@ -1122,37 +705,15 @@ export default function ProgramManagement() {
   );
 }
 
-// Helper Components
 function StatCard({ title, value, icon, color }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        borderLeft: `4px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p
-            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
-          >
-            {title}
-          </p>
-          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
-            {value}
-          </p>
-        </div>
-        <div style={{ fontSize: "40px" }}>{icon}</div>
+    <motion.div whileHover={{ scale: 1.02 }} className="program-stat-card">
+      <div className="program-stat-card__content">
+        <p className="program-stat-card__title">{title}</p>
+        <p className="program-stat-card__value">{value}</p>
+      </div>
+      <div className="program-stat-card__icon" style={{ color }}>
+        {icon}
       </div>
     </motion.div>
   );
@@ -1160,22 +721,10 @@ function StatCard({ title, value, icon, color }) {
 
 function ProgramForm({ formData, setFormData, departments, programTypes }) {
   return (
-    <div style={{ display: "grid", gap: "16px" }}>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}
-      >
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "500",
-              marginBottom: "8px",
-              color: "#374151",
-            }}
-          >
-            Program Code *
-          </label>
+    <div className="program-form">
+      <div className="program-form__row">
+        <div className="program-form__group">
+          <label className="program-form__label">Program Code *</label>
           <input
             type="text"
             required
@@ -1183,40 +732,18 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
             onChange={(e) =>
               setFormData({ ...formData, program_code: e.target.value })
             }
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              fontSize: "14px",
-            }}
+            className="program-form__input"
           />
         </div>
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "500",
-              marginBottom: "8px",
-              color: "#374151",
-            }}
-          >
-            Program Type *
-          </label>
+        <div className="program-form__group">
+          <label className="program-form__label">Program Type *</label>
           <select
             required
             value={formData.program_type}
             onChange={(e) =>
               setFormData({ ...formData, program_type: e.target.value })
             }
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              fontSize: "14px",
-            }}
+            className="program-form__select"
           >
             {programTypes.map((type) => (
               <option key={type} value={type}>
@@ -1227,18 +754,8 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
         </div>
       </div>
 
-      <div>
-        <label
-          style={{
-            display: "block",
-            fontSize: "14px",
-            fontWeight: "500",
-            marginBottom: "8px",
-            color: "#374151",
-          }}
-        >
-          Program Name *
-        </label>
+      <div className="program-form__group">
+        <label className="program-form__label">Program Name *</label>
         <input
           type="text"
           required
@@ -1246,41 +763,19 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
           onChange={(e) =>
             setFormData({ ...formData, program_name: e.target.value })
           }
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-          }}
+          className="program-form__input"
         />
       </div>
 
-      <div>
-        <label
-          style={{
-            display: "block",
-            fontSize: "14px",
-            fontWeight: "500",
-            marginBottom: "8px",
-            color: "#374151",
-          }}
-        >
-          Department *
-        </label>
+      <div className="program-form__group">
+        <label className="program-form__label">Department *</label>
         <select
           required
           value={formData.department_id}
           onChange={(e) =>
             setFormData({ ...formData, department_id: e.target.value })
           }
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-          }}
+          className="program-form__select"
         >
           <option value="">Select Department</option>
           {departments.map((dept) => (
@@ -1291,21 +786,9 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
         </select>
       </div>
 
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}
-      >
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "500",
-              marginBottom: "8px",
-              color: "#374151",
-            }}
-          >
-            Duration (Years) *
-          </label>
+      <div className="program-form__row">
+        <div className="program-form__group">
+          <label className="program-form__label">Duration (Years) *</label>
           <input
             type="number"
             required
@@ -1318,27 +801,11 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
                 duration_years: parseInt(e.target.value),
               })
             }
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              fontSize: "14px",
-            }}
+            className="program-form__input"
           />
         </div>
-        <div>
-          <label
-            style={{
-              display: "block",
-              fontSize: "14px",
-              fontWeight: "500",
-              marginBottom: "8px",
-              color: "#374151",
-            }}
-          >
-            Total Credits *
-          </label>
+        <div className="program-form__group">
+          <label className="program-form__label">Total Credits *</label>
           <input
             type="number"
             required
@@ -1350,76 +817,36 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
                 total_credits: parseInt(e.target.value),
               })
             }
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              fontSize: "14px",
-            }}
+            className="program-form__input"
           />
         </div>
       </div>
 
-      <div>
-        <label
-          style={{
-            display: "block",
-            fontSize: "14px",
-            fontWeight: "500",
-            marginBottom: "8px",
-            color: "#374151",
-          }}
-        >
-          Description
-        </label>
+      <div className="program-form__group">
+        <label className="program-form__label">Description</label>
         <textarea
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
           rows="4"
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontFamily: "inherit",
-          }}
+          className="program-form__textarea"
         />
       </div>
 
-      <div>
-        <label
-          style={{
-            display: "block",
-            fontSize: "14px",
-            fontWeight: "500",
-            marginBottom: "8px",
-            color: "#374151",
-          }}
-        >
-          Admission Requirements
-        </label>
+      <div className="program-form__group">
+        <label className="program-form__label">Admission Requirements</label>
         <textarea
           value={formData.admission_requirements}
           onChange={(e) =>
             setFormData({ ...formData, admission_requirements: e.target.value })
           }
           rows="3"
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontFamily: "inherit",
-          }}
+          className="program-form__textarea"
         />
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div className="program-form__checkbox-group">
         <input
           type="checkbox"
           id="is_active"
@@ -1427,12 +854,9 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
           onChange={(e) =>
             setFormData({ ...formData, is_active: e.target.checked })
           }
-          style={{ width: "16px", height: "16px", cursor: "pointer" }}
+          className="program-form__checkbox"
         />
-        <label
-          htmlFor="is_active"
-          style={{ fontSize: "14px", color: "#374151", cursor: "pointer" }}
-        >
+        <label htmlFor="is_active" className="program-form__checkbox-label">
           Program is active
         </label>
       </div>
@@ -1442,19 +866,9 @@ function ProgramForm({ formData, setFormData, departments, programTypes }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "200px 1fr",
-        gap: "16px",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
-        {label}:
-      </span>
-      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    <div className="program-detail-row">
+      <span className="program-detail-row__label">{label}:</span>
+      <span className="program-detail-row__value">{value}</span>
     </div>
   );
 }
@@ -1466,38 +880,16 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="program-modal-overlay"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          maxWidth: "600px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        }}
+        className="program-modal"
       >
-        {children}
+        <div className="program-modal__content">{children}</div>
       </motion.div>
     </motion.div>
   );

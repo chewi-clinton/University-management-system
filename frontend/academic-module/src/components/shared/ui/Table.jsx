@@ -11,12 +11,11 @@ const Table = ({
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-  // Normalize columns: support both string[] and object[]
   const normalizedColumns = React.useMemo(() => {
     return columns.map((col, index) => {
       if (typeof col === "string") {
         return {
-          key: `col-${index}`, // fallback unique key
+          key: `col-${index}`,
           label: col,
           sortable: sortable,
         };

@@ -39,13 +39,11 @@ export default function StudentManagement() {
     avgGPA: 0,
   });
 
-  // Fetch students and programs on mount
   useEffect(() => {
     fetchStudents();
     fetchPrograms();
   }, []);
 
-  // Search Logic
   useEffect(() => {
     let result = [...students];
 
@@ -290,7 +288,6 @@ export default function StudentManagement() {
     setLoading(true);
     try {
       if (modalMode === "add") {
-        // Create new student
         const response = await adminService.createStudent({
           first_name: formData.first_name,
           last_name: formData.last_name,
@@ -299,8 +296,7 @@ export default function StudentManagement() {
           program_id: formData.program_id,
           enrollment_date: formData.enrollment_date,
           current_status: formData.current_status,
-          // User data for backend
-          user_id: null, // Backend will create user
+          user_id: null,
           email: formData.email,
         });
 
@@ -312,7 +308,6 @@ export default function StudentManagement() {
           alert(`Failed to add student: ${response.error}`);
         }
       } else {
-        // Update existing student
         const response = await adminService.updateStudent(
           selectedStudent.student_id,
           {
@@ -447,7 +442,6 @@ export default function StudentManagement() {
       transition={{ duration: 0.3 }}
       className="student-management"
     >
-      {/* Header */}
       <div className="student-management__header">
         <div>
           <h1>Student Management</h1>
@@ -462,7 +456,6 @@ export default function StudentManagement() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="student-management__stats">
         <div className="stat-card">
           <div className="stat-card__icon">
@@ -493,7 +486,6 @@ export default function StudentManagement() {
         </div>
       </div>
 
-      {/* Search */}
       <div className="student-management__toolbar">
         <div className="student-management__search">
           <Search size={20} />
@@ -507,14 +499,12 @@ export default function StudentManagement() {
         </div>
       </div>
 
-      {/* Bulk Actions */}
       <BulkActionBar
         selectedCount={selectedRows.length}
         onAction={handleBulkAction}
         show={selectedRows.length > 0}
       />
 
-      {/* Table */}
       <div className="student-management__table-wrapper">
         <AdminDataTable
           columns={columns}
@@ -547,7 +537,6 @@ export default function StudentManagement() {
         />
       </div>
 
-      {/* Modal */}
       <AnimatePresence>
         {showModal && (
           <AdminModal
