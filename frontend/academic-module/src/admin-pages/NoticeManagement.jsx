@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/admin-pages/NoticeManagement.css";
+import { adminService } from "../services/api/adminService";
 import {
   Bell,
   Plus,
@@ -20,201 +21,131 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  Tag,
   FileText,
   Download,
-  Upload,
-  Archive,
-  TrendingUp,
-  MessageSquare,
-  ExternalLink,
-  Copy,
   Hash,
-  Target,
-  Megaphone,
   AlertTriangle,
   Info,
   Star,
   BookOpen,
   GraduationCap,
+  Loader,
+  Megaphone,
+  TrendingUp,
+  MessageSquare,
 } from "lucide-react";
 
-// Mock Data
-const mockNotices = [
-  {
-    id: 1,
-    noticeId: "NOT-2026-001",
-    title: "Mid-Term Examination Schedule Released",
-    content:
-      "The mid-term examination schedule for Spring 2026 semester has been released. Students are advised to check their respective portals for detailed timings and venues. All examinations will be conducted from January 15-25, 2026.",
-    priority: "high",
-    category: "examination",
-    targetAudience: "students",
-    department: "All Departments",
-    postedBy: "Academic Office",
-    postedDate: "2026-01-01T09:00:00",
-    expiryDate: "2026-01-25T23:59:59",
-    isPinned: true,
-    isPublished: true,
-    views: 1247,
-    attachments: ["exam_schedule.pdf"],
-    tags: ["examination", "schedule", "important"],
-  },
-  {
-    id: 2,
-    noticeId: "NOT-2026-002",
-    title: "Holiday Notice - National Day Celebration",
-    content:
-      "The university will remain closed on January 10, 2026, in observance of National Day. All classes and administrative offices will be closed. Regular operations will resume on January 11, 2026.",
-    priority: "medium",
-    category: "holiday",
-    targetAudience: "all",
-    department: "All Departments",
-    postedBy: "Administration",
-    postedDate: "2025-12-28T14:00:00",
-    expiryDate: "2026-01-11T00:00:00",
-    isPinned: true,
-    isPublished: true,
-    views: 892,
-    attachments: [],
-    tags: ["holiday", "closure"],
-  },
-  {
-    id: 3,
-    noticeId: "NOT-2026-003",
-    title: "Workshop on AI and Machine Learning",
-    content:
-      "Department of Computer Science is organizing a 3-day workshop on Artificial Intelligence and Machine Learning from January 20-22, 2026. Interested students can register at the department office. Limited seats available.",
-    priority: "medium",
-    category: "event",
-    targetAudience: "students",
-    department: "Computer Science",
-    postedBy: "Dr. Sarah Johnson",
-    postedDate: "2025-12-27T11:00:00",
-    expiryDate: "2026-01-22T23:59:59",
-    isPinned: false,
-    isPublished: true,
-    views: 456,
-    attachments: ["workshop_details.pdf"],
-    tags: ["workshop", "AI", "ML", "event"],
-  },
-  {
-    id: 4,
-    noticeId: "NOT-2026-004",
-    title: "Library Timings Extended During Exams",
-    content:
-      "The university library will extend its operating hours during the examination period. Library will be open from 7:00 AM to 11:00 PM (January 15-25). Students are requested to follow library rules and maintain silence.",
-    priority: "low",
-    category: "general",
-    targetAudience: "students",
-    department: "Library",
-    postedBy: "Library Administration",
-    postedDate: "2025-12-26T10:00:00",
-    expiryDate: "2026-01-26T00:00:00",
-    isPinned: false,
-    isPublished: true,
-    views: 678,
-    attachments: [],
-    tags: ["library", "examination", "facility"],
-  },
-  {
-    id: 5,
-    noticeId: "NOT-2026-005",
-    title: "Faculty Meeting - January 8, 2026",
-    content:
-      "All faculty members are required to attend the monthly faculty meeting scheduled for January 8, 2026, at 10:00 AM in the Main Conference Hall. Agenda includes curriculum review and semester planning.",
-    priority: "high",
-    category: "meeting",
-    targetAudience: "faculty",
-    department: "All Departments",
-    postedBy: "Dean of Academics",
-    postedDate: "2025-12-25T15:00:00",
-    expiryDate: "2026-01-08T23:59:59",
-    isPinned: false,
-    isPublished: true,
-    views: 234,
-    attachments: ["meeting_agenda.pdf"],
-    tags: ["meeting", "faculty", "mandatory"],
-  },
-];
-
-const mockStats = {
-  totalNotices: 45,
-  activeNotices: 28,
-  pinnedNotices: 3,
-  totalViews: 12847,
-  publishedThisMonth: 12,
-  drafts: 5,
-};
-
-const categories = [
-  "examination",
-  "holiday",
-  "event",
-  "meeting",
-  "general",
-  "academic",
-  "administrative",
-];
 const priorities = ["high", "medium", "low"];
 const audiences = ["all", "students", "faculty", "staff"];
-const departments = [
-  "All Departments",
-  "Computer Science",
-  "Business Administration",
-  "Engineering",
-  "Arts & Sciences",
-  "Library",
-];
 
 export default function NoticeManagement() {
   const [selectedTab, setSelectedTab] = useState("all");
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterAudience, setFilterAudience] = useState("all");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [notices, setNotices] = useState(mockNotices);
+  const [notices, setNotices] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     content: "",
     priority: "medium",
-    category: "general",
-    targetAudience: "all",
-    department: "All Departments",
-    expiryDate: "",
-    isPinned: false,
-    tags: "",
+    target_audience: "all",
+    department_id: "",
+    expiry_date: "",
+    is_pinned: false,
   });
+
+  // Load initial data
+  useEffect(() => {
+    loadNotices();
+    loadDepartments();
+  }, []);
+
+  const loadNotices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await adminService.getAllNotices();
+      if (result.success) {
+        setNotices(result.data);
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      console.error("Error loading notices:", err);
+      setError("Failed to load notices");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const result = await adminService.getDepartments();
+      if (result.success) {
+        setDepartments(result.data);
+      }
+    } catch (err) {
+      console.error("Error loading departments:", err);
+    }
+  };
+
+  // Calculate stats from loaded notices
+  const calculateStats = () => {
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+
+    return {
+      totalNotices: notices.length,
+      activeNotices: notices.filter((n) => {
+        if (!n.expiry_date) return true;
+        return new Date(n.expiry_date) > now;
+      }).length,
+      pinnedNotices: notices.filter((n) => n.is_pinned).length,
+      totalViews: notices.reduce((sum, n) => sum + (n.views || 0), 0),
+      publishedThisMonth: notices.filter((n) => {
+        const postDate = new Date(n.post_date);
+        return (
+          postDate.getMonth() === thisMonth &&
+          postDate.getFullYear() === thisYear
+        );
+      }).length,
+      drafts: 0,
+    };
+  };
+
+  const stats = calculateStats();
 
   // Filter notices
   const filteredNotices = notices.filter((notice) => {
     const matchesSearch =
-      notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notice.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notice.noticeId.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      filterCategory === "all" || notice.category === filterCategory;
+      notice.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      notice.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      notice.notice_id
+        ?.toString()
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
     const matchesPriority =
       filterPriority === "all" || notice.priority === filterPriority;
     const matchesAudience =
-      filterAudience === "all" || notice.targetAudience === filterAudience;
+      filterAudience === "all" || notice.target_audience === filterAudience;
+
     const matchesTab =
       selectedTab === "all" ||
-      (selectedTab === "pinned" && notice.isPinned) ||
-      (selectedTab === "published" && notice.isPublished) ||
-      (selectedTab === "drafts" && !notice.isPublished);
+      (selectedTab === "pinned" && notice.is_pinned) ||
+      (selectedTab === "published" && notice.is_published);
 
-    return (
-      matchesSearch &&
-      matchesCategory &&
-      matchesPriority &&
-      matchesAudience &&
-      matchesTab
-    );
+    return matchesSearch && matchesPriority && matchesAudience && matchesTab;
   });
 
   const getPriorityColor = (priority) => {
@@ -235,20 +166,8 @@ export default function NoticeManagement() {
     return icons[priority] || <Info size={14} />;
   };
 
-  const getCategoryIcon = (category) => {
-    const icons = {
-      examination: <BookOpen size={16} />,
-      holiday: <Calendar size={16} />,
-      event: <Star size={16} />,
-      meeting: <Users size={16} />,
-      general: <Bell size={16} />,
-      academic: <GraduationCap size={16} />,
-      administrative: <Building size={16} />,
-    };
-    return icons[category] || <Bell size={16} />;
-  };
-
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -258,6 +177,7 @@ export default function NoticeManagement() {
   };
 
   const formatDateTime = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleString("en-US", {
       month: "short",
@@ -268,35 +188,61 @@ export default function NoticeManagement() {
     });
   };
 
-  const handleTogglePin = (noticeId) => {
-    setNotices((prev) =>
-      prev.map((notice) =>
-        notice.id === noticeId
-          ? { ...notice, isPinned: !notice.isPinned }
-          : notice
-      )
-    );
+  const handleTogglePin = async (noticeId) => {
+    try {
+      const notice = notices.find((n) => n.notice_id === noticeId);
+      const result = await adminService.updateNotice(noticeId, {
+        is_pinned: !notice.is_pinned,
+      });
+
+      if (result.success) {
+        setNotices((prev) =>
+          prev.map((n) =>
+            n.notice_id === noticeId ? { ...n, is_pinned: !n.is_pinned } : n
+          )
+        );
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (err) {
+      console.error("Error toggling pin:", err);
+      alert("Failed to update notice");
+    }
     setShowActionMenu(null);
   };
 
-  const handleDeleteNotice = (noticeId) => {
+  const handleDeleteNotice = async (noticeId) => {
     if (window.confirm("Are you sure you want to delete this notice?")) {
-      setNotices((prev) => prev.filter((notice) => notice.id !== noticeId));
-      setShowActionMenu(null);
+      try {
+        const result = await adminService.deleteNotice(noticeId);
+        if (result.success) {
+          setNotices((prev) => prev.filter((n) => n.notice_id !== noticeId));
+          if (selectedNotice?.notice_id === noticeId) {
+            setSelectedNotice(null);
+          }
+        } else {
+          alert(`Error: ${result.error}`);
+        }
+      } catch (err) {
+        console.error("Error deleting notice:", err);
+        alert("Failed to delete notice");
+      }
     }
+    setShowActionMenu(null);
   };
 
-  const handleDuplicateNotice = (notice) => {
-    const newNotice = {
-      ...notice,
-      id: notices.length + 1,
-      noticeId: `NOT-2026-${String(notices.length + 1).padStart(3, "0")}`,
-      title: `${notice.title} (Copy)`,
-      postedDate: new Date().toISOString(),
-      isPublished: false,
-      views: 0,
-    };
-    setNotices((prev) => [newNotice, ...prev]);
+  const handleEditNotice = (notice) => {
+    setFormData({
+      title: notice.title,
+      content: notice.content,
+      priority: notice.priority,
+      target_audience: notice.target_audience,
+      department_id: notice.department?.department_id || "",
+      expiry_date: notice.expiry_date ? notice.expiry_date.split("T")[0] : "",
+      is_pinned: notice.is_pinned,
+    });
+    setSelectedNotice(notice);
+    setShowEditModal(true);
     setShowActionMenu(null);
   };
 
@@ -304,35 +250,106 @@ export default function NoticeManagement() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
-    const newNotice = {
-      id: notices.length + 1,
-      noticeId: `NOT-2026-${String(notices.length + 1).padStart(3, "0")}`,
-      ...formData,
-      postedBy: "Current User",
-      postedDate: new Date().toISOString(),
-      isPublished: true,
-      views: 0,
-      attachments: [],
-      tags: formData.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    };
-    setNotices((prev) => [newNotice, ...prev]);
-    setShowAddModal(false);
+  const handleSubmit = async () => {
+    if (!formData.title.trim() || !formData.content.trim()) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const submitData = {
+        title: formData.title,
+        content: formData.content,
+        priority: formData.priority,
+        target_audience: formData.target_audience,
+        department_id: formData.department_id || null,
+        expiry_date: formData.expiry_date || null,
+        is_pinned: formData.is_pinned,
+      };
+
+      const result = await adminService.createNotice(submitData);
+
+      if (result.success) {
+        setNotices((prev) => [result.data, ...prev]);
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (err) {
+      console.error("Error creating notice:", err);
+      alert("Failed to create notice");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!formData.title.trim() || !formData.content.trim()) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const updateData = {
+        title: formData.title,
+        content: formData.content,
+        priority: formData.priority,
+        target_audience: formData.target_audience,
+        department_id: formData.department_id || null,
+        expiry_date: formData.expiry_date || null,
+        is_pinned: formData.is_pinned,
+      };
+
+      const result = await adminService.updateNotice(
+        selectedNotice.notice_id,
+        updateData
+      );
+
+      if (result.success) {
+        setNotices((prev) =>
+          prev.map((n) =>
+            n.notice_id === selectedNotice.notice_id ? result.data : n
+          )
+        );
+        setShowEditModal(false);
+        setSelectedNotice(null);
+        resetForm();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (err) {
+      console.error("Error updating notice:", err);
+      alert("Failed to update notice");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
     setFormData({
       title: "",
       content: "",
       priority: "medium",
-      category: "general",
-      targetAudience: "all",
-      department: "All Departments",
-      expiryDate: "",
-      isPinned: false,
-      tags: "",
+      target_audience: "all",
+      department_id: "",
+      expiry_date: "",
+      is_pinned: false,
     });
   };
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <Loader className="loading-spinner" size={48} />
+        <p>Loading notices...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="notice-management">
@@ -349,6 +366,16 @@ export default function NoticeManagement() {
         </button>
       </div>
 
+      {error && (
+        <div className="error-banner">
+          <AlertCircle size={20} />
+          <span>{error}</span>
+          <button onClick={() => setError(null)}>
+            <XCircle size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="nm-stats">
         <motion.div className="stat-card" whileHover={{ y: -4 }}>
@@ -359,7 +386,7 @@ export default function NoticeManagement() {
             <Bell size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.totalNotices}</div>
+            <div className="stat-value">{stats.totalNotices}</div>
             <div className="stat-label">Total Notices</div>
           </div>
         </motion.div>
@@ -372,7 +399,7 @@ export default function NoticeManagement() {
             <CheckCircle size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.activeNotices}</div>
+            <div className="stat-value">{stats.activeNotices}</div>
             <div className="stat-label">Active Notices</div>
           </div>
         </motion.div>
@@ -385,7 +412,7 @@ export default function NoticeManagement() {
             <Pin size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.pinnedNotices}</div>
+            <div className="stat-value">{stats.pinnedNotices}</div>
             <div className="stat-label">Pinned</div>
           </div>
         </motion.div>
@@ -399,13 +426,9 @@ export default function NoticeManagement() {
           </div>
           <div className="stat-content">
             <div className="stat-value">
-              {mockStats.totalViews.toLocaleString()}
+              {stats.totalViews.toLocaleString()}
             </div>
             <div className="stat-label">Total Views</div>
-          </div>
-          <div className="stat-trend">
-            <TrendingUp size={16} />
-            <span>+15%</span>
           </div>
         </motion.div>
 
@@ -417,7 +440,7 @@ export default function NoticeManagement() {
             <Megaphone size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.publishedThisMonth}</div>
+            <div className="stat-value">{stats.publishedThisMonth}</div>
             <div className="stat-label">This Month</div>
           </div>
         </motion.div>
@@ -430,7 +453,7 @@ export default function NoticeManagement() {
             <FileText size={24} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{mockStats.drafts}</div>
+            <div className="stat-value">{stats.drafts}</div>
             <div className="stat-label">Drafts</div>
           </div>
         </motion.div>
@@ -450,21 +473,14 @@ export default function NoticeManagement() {
           onClick={() => setSelectedTab("pinned")}
         >
           <Pin size={18} />
-          Pinned ({notices.filter((n) => n.isPinned).length})
+          Pinned ({notices.filter((n) => n.is_pinned).length})
         </button>
         <button
           className={`tab ${selectedTab === "published" ? "tab--active" : ""}`}
           onClick={() => setSelectedTab("published")}
         >
           <CheckCircle size={18} />
-          Published ({notices.filter((n) => n.isPublished).length})
-        </button>
-        <button
-          className={`tab ${selectedTab === "drafts" ? "tab--active" : ""}`}
-          onClick={() => setSelectedTab("drafts")}
-        >
-          <FileText size={18} />
-          Drafts ({notices.filter((n) => !n.isPublished).length})
+          Published ({notices.length})
         </button>
       </div>
 
@@ -501,29 +517,14 @@ export default function NoticeManagement() {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <div className="filter-section">
-                    <label>Category</label>
-                    <select
-                      value={filterCategory}
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                    >
-                      <option value="all">All Categories</option>
-                      {categories.map((cat, index) => (
-                        <option key={index} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="filter-section">
                     <label>Priority</label>
                     <select
                       value={filterPriority}
                       onChange={(e) => setFilterPriority(e.target.value)}
                     >
                       <option value="all">All Priorities</option>
-                      {priorities.map((priority, index) => (
-                        <option key={index} value={priority}>
+                      {priorities.map((priority) => (
+                        <option key={priority} value={priority}>
                           {priority}
                         </option>
                       ))}
@@ -537,8 +538,8 @@ export default function NoticeManagement() {
                       onChange={(e) => setFilterAudience(e.target.value)}
                     >
                       <option value="all">All Audiences</option>
-                      {audiences.map((audience, index) => (
-                        <option key={index} value={audience}>
+                      {audiences.map((audience) => (
+                        <option key={audience} value={audience}>
                           {audience}
                         </option>
                       ))}
@@ -549,7 +550,6 @@ export default function NoticeManagement() {
                     <button
                       className="btn-clear"
                       onClick={() => {
-                        setFilterCategory("all");
                         setFilterPriority("all");
                         setFilterAudience("all");
                       }}
@@ -562,8 +562,8 @@ export default function NoticeManagement() {
             </AnimatePresence>
           </div>
 
-          <button className="btn-secondary">
-            <Download size={18} /> Export
+          <button className="btn-secondary" onClick={loadNotices}>
+            <Download size={18} /> Refresh
           </button>
         </div>
       </div>
@@ -572,14 +572,14 @@ export default function NoticeManagement() {
       <div className="nm-list">
         {filteredNotices.map((notice) => (
           <motion.div
-            key={notice.id}
+            key={notice.notice_id}
             className={`notice-card ${
-              notice.isPinned ? "notice-card--pinned" : ""
+              notice.is_pinned ? "notice-card--pinned" : ""
             }`}
             whileHover={{ x: 4 }}
             layout
           >
-            {notice.isPinned && (
+            {notice.is_pinned && (
               <div className="notice-pin-indicator">
                 <Pin size={14} />
                 Pinned
@@ -595,10 +595,11 @@ export default function NoticeManagement() {
                   {notice.title}
                 </h3>
                 <div className="notice-meta-top">
-                  <span className="notice-id">{notice.noticeId}</span>
+                  <span className="notice-id">#{notice.notice_id}</span>
                   <span className="notice-dot">•</span>
                   <span className="notice-posted">
-                    Posted by {notice.postedBy}
+                    Posted by {notice.posted_by_user?.first_name || "Admin"}{" "}
+                    {notice.posted_by_user?.last_name || ""}
                   </span>
                 </div>
               </div>
@@ -619,7 +620,9 @@ export default function NoticeManagement() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowActionMenu(
-                        showActionMenu === notice.id ? null : notice.id
+                        showActionMenu === notice.notice_id
+                          ? null
+                          : notice.notice_id
                       );
                     }}
                   >
@@ -627,7 +630,7 @@ export default function NoticeManagement() {
                   </button>
 
                   <AnimatePresence>
-                    {showActionMenu === notice.id && (
+                    {showActionMenu === notice.notice_id && (
                       <motion.div
                         className="action-menu"
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -635,30 +638,26 @@ export default function NoticeManagement() {
                         exit={{ opacity: 0, scale: 0.95 }}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <button onClick={() => setSelectedNotice(notice)}>
+                        <button
+                          onClick={() => {
+                            setSelectedNotice(notice);
+                            setShowActionMenu(null);
+                          }}
+                        >
                           <Eye size={16} /> View Details
                         </button>
-                        <button onClick={() => console.log("Edit", notice.id)}>
+                        <button onClick={() => handleEditNotice(notice)}>
                           <Edit3 size={16} /> Edit Notice
                         </button>
-                        <button onClick={() => handleTogglePin(notice.id)}>
-                          <Pin size={16} /> {notice.isPinned ? "Unpin" : "Pin"}{" "}
-                          Notice
-                        </button>
-                        <button onClick={() => handleDuplicateNotice(notice)}>
-                          <Copy size={16} /> Duplicate
-                        </button>
-                        <button onClick={() => console.log("Send", notice.id)}>
-                          <Send size={16} /> Send Notification
-                        </button>
                         <button
-                          onClick={() => console.log("Archive", notice.id)}
+                          onClick={() => handleTogglePin(notice.notice_id)}
                         >
-                          <Archive size={16} /> Archive
+                          <Pin size={16} /> {notice.is_pinned ? "Unpin" : "Pin"}{" "}
+                          Notice
                         </button>
                         <button
                           className="danger"
-                          onClick={() => handleDeleteNotice(notice.id)}
+                          onClick={() => handleDeleteNotice(notice.notice_id)}
                         >
                           <Trash2 size={16} /> Delete
                         </button>
@@ -677,51 +676,28 @@ export default function NoticeManagement() {
             </div>
 
             <div className="notice-badges">
-              <span className="category-badge">
-                {getCategoryIcon(notice.category)}
-                {notice.category}
-              </span>
               <span className="audience-badge">
                 <Users size={14} />
-                {notice.targetAudience}
+                {notice.target_audience}
               </span>
-              {notice.department !== "All Departments" && (
+              {notice.department && (
                 <span className="department-badge">
                   <Building size={14} />
-                  {notice.department}
+                  {notice.department.department_name}
                 </span>
               )}
             </div>
-
-            {notice.tags.length > 0 && (
-              <div className="notice-tags">
-                {notice.tags.map((tag, index) => (
-                  <span key={index} className="tag">
-                    <Hash size={12} />
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
 
             <div className="notice-footer">
               <div className="notice-meta">
                 <div className="meta-item">
                   <Calendar size={14} />
-                  <span>Posted: {formatDate(notice.postedDate)}</span>
+                  <span>Posted: {formatDate(notice.post_date)}</span>
                 </div>
-                <div className="meta-item">
-                  <Clock size={14} />
-                  <span>Expires: {formatDate(notice.expiryDate)}</span>
-                </div>
-                <div className="meta-item">
-                  <Eye size={14} />
-                  <span>{notice.views} views</span>
-                </div>
-                {notice.attachments.length > 0 && (
+                {notice.expiry_date && (
                   <div className="meta-item">
-                    <FileText size={14} />
-                    <span>{notice.attachments.length} attachment(s)</span>
+                    <Clock size={14} />
+                    <span>Expires: {formatDate(notice.expiry_date)}</span>
                   </div>
                 )}
               </div>
@@ -738,15 +714,18 @@ export default function NoticeManagement() {
         )}
       </div>
 
-      {/* Create Notice Modal */}
+      {/* Create/Edit Notice Modal */}
       <AnimatePresence>
-        {showAddModal && (
+        {(showAddModal || showEditModal) && (
           <motion.div
             className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowAddModal(false)}
+            onClick={() => {
+              setShowAddModal(false);
+              setShowEditModal(false);
+            }}
           >
             <motion.div
               className="modal modal--large"
@@ -756,10 +735,13 @@ export default function NoticeManagement() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h2>Create New Notice</h2>
+                <h2>{showEditModal ? "Edit Notice" : "Create New Notice"}</h2>
                 <button
                   className="modal-close"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setShowEditModal(false);
+                  }}
                 >
                   <XCircle size={20} />
                 </button>
@@ -790,21 +772,6 @@ export default function NoticeManagement() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Category *</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) =>
-                        handleFormChange("category", e.target.value)
-                      }
-                    >
-                      {categories.map((cat, index) => (
-                        <option key={index} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
                     <label>Priority *</label>
                     <select
                       value={formData.priority}
@@ -812,9 +779,24 @@ export default function NoticeManagement() {
                         handleFormChange("priority", e.target.value)
                       }
                     >
-                      {priorities.map((priority, index) => (
-                        <option key={index} value={priority}>
+                      {priorities.map((priority) => (
+                        <option key={priority} value={priority}>
                           {priority}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Target Audience *</label>
+                    <select
+                      value={formData.target_audience}
+                      onChange={(e) =>
+                        handleFormChange("target_audience", e.target.value)
+                      }
+                    >
+                      {audiences.map((audience) => (
+                        <option key={audience} value={audience}>
+                          {audience}
                         </option>
                       ))}
                     </select>
@@ -823,64 +805,30 @@ export default function NoticeManagement() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Target Audience *</label>
+                    <label>Department (Optional)</label>
                     <select
-                      value={formData.targetAudience}
+                      value={formData.department_id}
                       onChange={(e) =>
-                        handleFormChange("targetAudience", e.target.value)
+                        handleFormChange("department_id", e.target.value)
                       }
                     >
-                      {audiences.map((audience, index) => (
-                        <option key={index} value={audience}>
-                          {audience}
+                      <option value="">All Departments</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {dept.name}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Department</label>
-                    <select
-                      value={formData.department}
+                    <label>Expiry Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={formData.expiry_date}
                       onChange={(e) =>
-                        handleFormChange("department", e.target.value)
+                        handleFormChange("expiry_date", e.target.value)
                       }
-                    >
-                      {departments.map((dept, index) => (
-                        <option key={index} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Expiry Date *</label>
-                  <input
-                    type="datetime-local"
-                    value={formData.expiryDate}
-                    onChange={(e) =>
-                      handleFormChange("expiryDate", e.target.value)
-                    }
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. important, deadline, examination"
-                    value={formData.tags}
-                    onChange={(e) => handleFormChange("tags", e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Attachments</label>
-                  <div className="upload-area">
-                    <Upload size={24} />
-                    <p>Click to upload or drag and drop</p>
-                    <span>PDF, DOC, JPG up to 10MB</span>
+                    />
                   </div>
                 </div>
 
@@ -888,9 +836,9 @@ export default function NoticeManagement() {
                   <input
                     type="checkbox"
                     id="pinNotice"
-                    checked={formData.isPinned}
+                    checked={formData.is_pinned}
                     onChange={(e) =>
-                      handleFormChange("isPinned", e.target.checked)
+                      handleFormChange("is_pinned", e.target.checked)
                     }
                   />
                   <label htmlFor="pinNotice">Pin this notice to the top</label>
@@ -900,12 +848,32 @@ export default function NoticeManagement() {
               <div className="modal-footer">
                 <button
                   className="btn-secondary"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setShowEditModal(false);
+                  }}
                 >
-                  Save as Draft
+                  Cancel
                 </button>
-                <button className="btn-primary" onClick={handleSubmit}>
-                  <Send size={18} /> Publish Notice
+                <button
+                  className="btn-primary"
+                  onClick={showEditModal ? handleUpdate : handleSubmit}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <Loader className="spinning" size={18} />
+                  ) : showEditModal ? (
+                    <Edit3 size={18} />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                  {submitting
+                    ? showEditModal
+                      ? "Updating..."
+                      : "Publishing..."
+                    : showEditModal
+                    ? "Update Notice"
+                    : "Publish Notice"}
                 </button>
               </div>
             </motion.div>
@@ -915,7 +883,7 @@ export default function NoticeManagement() {
 
       {/* Notice Detail Modal */}
       <AnimatePresence>
-        {selectedNotice && (
+        {selectedNotice && !showEditModal && (
           <motion.div
             className="modal-overlay"
             initial={{ opacity: 0 }}
@@ -933,26 +901,20 @@ export default function NoticeManagement() {
               <div className="modal-header">
                 <div className="detail-header-content">
                   <h2>{selectedNotice.title}</h2>
-                  <p>{selectedNotice.noticeId}</p>
+                  <p>#{selectedNotice.notice_id}</p>
                 </div>
                 <div className="detail-header-actions">
                   <button
                     className="btn-icon"
-                    onClick={() => console.log("Edit")}
+                    onClick={() => handleEditNotice(selectedNotice)}
                   >
                     <Edit3 size={18} />
                   </button>
                   <button
                     className="btn-icon"
-                    onClick={() => handleTogglePin(selectedNotice.id)}
+                    onClick={() => handleTogglePin(selectedNotice.notice_id)}
                   >
                     <Pin size={18} />
-                  </button>
-                  <button
-                    className="btn-icon"
-                    onClick={() => console.log("Download")}
-                  >
-                    <Download size={18} />
                   </button>
                   <button
                     className="modal-close"
@@ -978,27 +940,12 @@ export default function NoticeManagement() {
                       {getPriorityIcon(selectedNotice.priority)}
                       {selectedNotice.priority} Priority
                     </span>
-                    <span className="category-badge category-badge--large">
-                      {getCategoryIcon(selectedNotice.category)}
-                      {selectedNotice.category}
-                    </span>
-                    {selectedNotice.isPinned && (
+                    {selectedNotice.is_pinned && (
                       <span className="pinned-badge">
                         <Pin size={14} />
                         Pinned
                       </span>
                     )}
-                  </div>
-
-                  <div className="notice-detail-stats">
-                    <div className="stat-item">
-                      <Eye size={16} />
-                      <span>{selectedNotice.views} views</span>
-                    </div>
-                    <div className="stat-item">
-                      <MessageSquare size={16} />
-                      <span>0 comments</span>
-                    </div>
                   </div>
                 </div>
 
@@ -1013,139 +960,50 @@ export default function NoticeManagement() {
                   <h3>Notice Information</h3>
                   <div className="detail-grid">
                     <div className="detail-item">
-                      <label>Category</label>
-                      <div className="detail-value">
-                        {getCategoryIcon(selectedNotice.category)}
-                        <span>{selectedNotice.category}</span>
-                      </div>
-                    </div>
-                    <div className="detail-item">
                       <label>Target Audience</label>
                       <div className="detail-value">
                         <Users size={16} />
-                        <span>{selectedNotice.targetAudience}</span>
+                        <span>{selectedNotice.target_audience}</span>
                       </div>
                     </div>
                     <div className="detail-item">
                       <label>Department</label>
                       <div className="detail-value">
                         <Building size={16} />
-                        <span>{selectedNotice.department}</span>
+                        <span>
+                          {selectedNotice.department?.department_name ||
+                            "All Departments"}
+                        </span>
                       </div>
                     </div>
                     <div className="detail-item">
                       <label>Posted By</label>
                       <div className="detail-value">
                         <Users size={16} />
-                        <span>{selectedNotice.postedBy}</span>
+                        <span>
+                          {selectedNotice.posted_by_user?.first_name || "Admin"}{" "}
+                          {selectedNotice.posted_by_user?.last_name || ""}
+                        </span>
                       </div>
                     </div>
                     <div className="detail-item">
                       <label>Posted Date</label>
                       <div className="detail-value">
                         <Calendar size={16} />
-                        <span>{formatDateTime(selectedNotice.postedDate)}</span>
+                        <span>{formatDateTime(selectedNotice.post_date)}</span>
                       </div>
                     </div>
-                    <div className="detail-item">
-                      <label>Expiry Date</label>
-                      <div className="detail-value">
-                        <Clock size={16} />
-                        <span>{formatDateTime(selectedNotice.expiryDate)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedNotice.tags.length > 0 && (
-                  <div className="detail-section">
-                    <h3>Tags</h3>
-                    <div className="notice-tags">
-                      {selectedNotice.tags.map((tag, index) => (
-                        <span key={index} className="tag tag--large">
-                          <Hash size={14} />
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedNotice.attachments.length > 0 && (
-                  <div className="detail-section">
-                    <h3>Attachments ({selectedNotice.attachments.length})</h3>
-                    <div className="attachments-list">
-                      {selectedNotice.attachments.map((attachment, index) => (
-                        <div key={index} className="attachment-item">
-                          <FileText size={20} />
-                          <div className="attachment-info">
-                            <span className="attachment-name">
-                              {attachment}
-                            </span>
-                            <span className="attachment-size">2.4 MB</span>
-                          </div>
-                          <button className="btn-link">
-                            <Download size={14} /> Download
-                          </button>
+                    {selectedNotice.expiry_date && (
+                      <div className="detail-item">
+                        <label>Expiry Date</label>
+                        <div className="detail-value">
+                          <Clock size={16} />
+                          <span>
+                            {formatDateTime(selectedNotice.expiry_date)}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="detail-section">
-                  <h3>Activity & Engagement</h3>
-                  <div className="activity-stats">
-                    <div className="activity-item">
-                      <div
-                        className="activity-icon"
-                        style={{ background: "#dbeafe", color: "#3b82f6" }}
-                      >
-                        <Eye size={20} />
                       </div>
-                      <div className="activity-content">
-                        <div className="activity-value">
-                          {selectedNotice.views}
-                        </div>
-                        <div className="activity-label">Total Views</div>
-                      </div>
-                    </div>
-                    <div className="activity-item">
-                      <div
-                        className="activity-icon"
-                        style={{ background: "#dcfce7", color: "#10b981" }}
-                      >
-                        <CheckCircle size={20} />
-                      </div>
-                      <div className="activity-content">
-                        <div className="activity-value">0</div>
-                        <div className="activity-label">Acknowledged</div>
-                      </div>
-                    </div>
-                    <div className="activity-item">
-                      <div
-                        className="activity-icon"
-                        style={{ background: "#fef3c7", color: "#f59e0b" }}
-                      >
-                        <MessageSquare size={20} />
-                      </div>
-                      <div className="activity-content">
-                        <div className="activity-value">0</div>
-                        <div className="activity-label">Comments</div>
-                      </div>
-                    </div>
-                    <div className="activity-item">
-                      <div
-                        className="activity-icon"
-                        style={{ background: "#e0e7ff", color: "#6366f1" }}
-                      >
-                        <Send size={20} />
-                      </div>
-                      <div className="activity-content">
-                        <div className="activity-value">0</div>
-                        <div className="activity-label">Shared</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1157,11 +1015,11 @@ export default function NoticeManagement() {
                 >
                   Close
                 </button>
-                <button className="btn-secondary">
+                <button
+                  className="btn-secondary"
+                  onClick={() => handleEditNotice(selectedNotice)}
+                >
                   <Edit3 size={18} /> Edit Notice
-                </button>
-                <button className="btn-primary">
-                  <Send size={18} /> Send Notification
                 </button>
               </div>
             </motion.div>
