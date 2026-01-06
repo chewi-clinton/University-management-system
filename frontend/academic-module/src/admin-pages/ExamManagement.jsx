@@ -22,6 +22,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { adminService } from "../services/api/adminService";
+import "../styles/admin-pages/exam-management.css";
 
 export default function AdminExamManagement() {
   const [examinations, setExaminations] = useState([]);
@@ -272,39 +273,19 @@ export default function AdminExamManagement() {
 
   const getExamTypeColor = (type) => {
     const colors = {
-      final: "#dc2626",
-      midterm: "#f59e0b",
-      quiz: "#3b82f6",
-      practical: "#8b5cf6",
+      final: "#8c2828",
+      midterm: "#8a5c1f",
+      quiz: "#1e4a7a",
+      practical: "#524a75",
     };
-    return colors[type] || "#6b7280";
+    return colors[type] || "#525252";
   };
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #1e40af",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280" }}>Loading exam data...</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      <div className="exam-management__loading">
+        <div className="exam-management__spinner" />
+        <p>Loading exam data...</p>
       </div>
     );
   }
@@ -313,7 +294,7 @@ export default function AdminExamManagement() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ padding: "24px" }}
+      className="exam-management"
     >
       <AnimatePresence>
         {successMessage && (
@@ -321,283 +302,137 @@ export default function AdminExamManagement() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "16px 24px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
+            className="exam-management__success"
           >
-            ✓ {successMessage}
+            <CheckCircle size={16} />
+            {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            color: "#c33",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="exam-management__error">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#c33",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
+            className="exam-management__error-close"
           >
             ×
           </button>
         </div>
       )}
 
-      <div
-        style={{
-          marginBottom: "32px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "32px",
-              fontWeight: "700",
-              color: "#111827",
-              marginBottom: "8px",
-            }}
-          >
-            Exam Management
-          </h1>
-          <p style={{ color: "#6b7280", fontSize: "16px" }}>
+      <div className="exam-management__header">
+        <div className="exam-management__header-content">
+          <h1 className="exam-management__title">Exam Management</h1>
+          <p className="exam-management__subtitle">
             Manage examinations, schedules, and admit cards
           </p>
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            onClick={loadData}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#6b7280",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <RefreshCw size={18} /> Refresh
+        <div className="exam-management__actions">
+          <button onClick={loadData} className="btn btn--secondary">
+            <RefreshCw size={16} />
+            Refresh
           </button>
           {activeTab === "examinations" && (
             <button
               onClick={() => setShowCreateModal(true)}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#1e40af",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "14px",
-                fontWeight: "500",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
+              className="btn btn--primary"
             >
-              <Plus size={18} /> Create Exam
+              <Plus size={16} />
+              Create Exam
             </button>
           )}
           {activeTab === "schedules" && (
             <button
               onClick={() => setShowScheduleModal(true)}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#1e40af",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "14px",
-                fontWeight: "500",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
+              className="btn btn--primary"
             >
-              <Plus size={18} /> Schedule Exam
+              <Plus size={16} />
+              Schedule Exam
             </button>
           )}
         </div>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          marginBottom: "24px",
-          borderBottom: "2px solid #e5e7eb",
-        }}
-      >
+      <div className="exam-management__tabs">
         <TabButton
           active={activeTab === "examinations"}
           onClick={() => setActiveTab("examinations")}
-          icon={<BookOpen size={18} />}
+          icon={<BookOpen size={16} />}
           label="Examinations"
         />
         <TabButton
           active={activeTab === "schedules"}
           onClick={() => setActiveTab("schedules")}
-          icon={<Calendar size={18} />}
+          icon={<Calendar size={16} />}
           label="Schedules"
         />
         <TabButton
           active={activeTab === "admit-cards"}
           onClick={() => setActiveTab("admit-cards")}
-          icon={<FileText size={18} />}
+          icon={<FileText size={16} />}
           label="Admit Cards"
         />
         <TabButton
           active={activeTab === "rooms"}
           onClick={() => setActiveTab("rooms")}
-          icon={<Building size={18} />}
+          icon={<Building size={16} />}
           label="Exam Rooms"
         />
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "20px",
-          marginBottom: "32px",
-        }}
-      >
+      <div className="exam-management__stats">
         <StatCard
-          icon={<BookOpen size={24} />}
+          icon={<BookOpen size={20} />}
           title="Total Exams"
           value={stats.totalExams}
-          color="#3b82f6"
+          color="#2c4a6e"
         />
         <StatCard
-          icon={<Calendar size={24} />}
+          icon={<Calendar size={20} />}
           title="Scheduled"
           value={stats.scheduledExams}
-          color="#10b981"
+          color="#1a5c3a"
         />
         <StatCard
-          icon={<FileText size={24} />}
+          icon={<FileText size={20} />}
           title="Admit Cards"
           value={stats.totalAdmitCards}
-          color="#f59e0b"
+          color="#8a5c1f"
         />
         <StatCard
-          icon={<CheckCircle size={24} />}
+          icon={<CheckCircle size={20} />}
           title="Eligible Students"
           value={stats.eligibleStudents}
-          color="#8b5cf6"
+          color="#524a75"
         />
       </div>
 
       {activeTab === "examinations" && (
         <>
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "24px",
-              borderRadius: "12px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              marginBottom: "24px",
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: "16px",
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Search
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Search
-                    size={18}
-                    style={{
-                      position: "absolute",
-                      left: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#6b7280",
-                    }}
-                  />
+          <div className="exam-management__filters">
+            <div className="filter-group filter-group--two">
+              <div className="filter-field">
+                <label>Search</label>
+                <div className="filter-field__input-wrapper">
+                  <Search size={16} className="filter-field__icon" />
                   <input
                     type="text"
                     placeholder="Search examinations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px 10px 40px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                    }}
+                    className="filter-field__input"
                   />
                 </div>
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Exam Type
-                </label>
+              <div className="filter-field">
+                <label>Exam Type</label>
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                  }}
+                  className="filter-field__select"
                 >
                   <option value="all">All Types</option>
                   {examTypes.map((type) => (
@@ -611,30 +446,16 @@ export default function AdminExamManagement() {
           </div>
 
           {filteredExaminations.length === 0 ? (
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: "60px 20px",
-                borderRadius: "12px",
-                textAlign: "center",
-                color: "#6b7280",
-              }}
-            >
-              <p style={{ fontSize: "18px", marginBottom: "8px" }}>
+            <div className="exam-management__empty">
+              <p className="exam-management__empty-title">
                 No examinations found
               </p>
-              <p style={{ fontSize: "14px" }}>
+              <p className="exam-management__empty-text">
                 Create your first examination to get started
               </p>
             </div>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-                gap: "20px",
-              }}
-            >
+            <div className="exam-management__grid">
               {filteredExaminations.map((exam) => (
                 <ExamCard
                   key={exam.exam_id}
@@ -651,11 +472,23 @@ export default function AdminExamManagement() {
 
       {activeTab === "schedules" && (
         <>
-          <SearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            placeholder="Search schedules..."
-          />
+          <div className="exam-management__filters">
+            <div className="filter-group filter-group--two">
+              <div className="filter-field">
+                <label>Search</label>
+                <div className="filter-field__input-wrapper">
+                  <Search size={16} className="filter-field__icon" />
+                  <input
+                    type="text"
+                    placeholder="Search schedules..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="filter-field__input"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
           {filteredSchedules.length === 0 ? (
             <EmptyState
@@ -674,22 +507,28 @@ export default function AdminExamManagement() {
 
       {activeTab === "admit-cards" && (
         <>
-          <SearchBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            placeholder="Search admit cards..."
-          />
+          <div className="exam-management__filters">
+            <div className="filter-group filter-group--two">
+              <div className="filter-field">
+                <label>Search</label>
+                <div className="filter-field__input-wrapper">
+                  <Search size={16} className="filter-field__icon" />
+                  <input
+                    type="text"
+                    placeholder="Search admit cards..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="filter-field__input"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
           {filteredAdmitCards.length === 0 ? (
             <EmptyState message="No admit cards found" />
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-                gap: "20px",
-              }}
-            >
+            <div className="exam-management__grid">
               {filteredAdmitCards.map((card) => (
                 <AdmitCardItem key={card.admit_card_id} card={card} />
               ))}
@@ -703,13 +542,7 @@ export default function AdminExamManagement() {
           {examRooms.length === 0 ? (
             <EmptyState message="No exam rooms found" />
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                gap: "20px",
-              }}
-            >
+            <div className="exam-management__grid exam-management__grid--three">
               {examRooms.map((room) => (
                 <RoomCard key={room.room_id} room={room} />
               ))}
@@ -779,94 +612,44 @@ export default function AdminExamManagement() {
   );
 }
 
-// Component Definitions
 function ExamCard({ exam, onView, onDelete, getExamTypeColor }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{
-        backgroundColor: "white",
-        padding: "24px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-      }}
+      className="exam-card"
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "start",
-          marginBottom: "16px",
-        }}
-      >
+      <div className="exam-card__header">
         <div>
-          <h3
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "#111827",
-              marginBottom: "4px",
-            }}
-          >
-            {exam.exam_name}
-          </h3>
-          <p style={{ fontSize: "14px", color: "#6b7280" }}>
+          <h3 className="exam-card__title">{exam.exam_name}</h3>
+          <p className="exam-card__course">
             {exam.offering?.course?.course_code} -{" "}
             {exam.offering?.course?.course_name}
           </p>
         </div>
         <span
+          className="exam-card__type-badge"
           style={{
-            padding: "4px 12px",
-            borderRadius: "12px",
-            fontSize: "12px",
-            fontWeight: "600",
-            backgroundColor: `${getExamTypeColor(exam.exam_type)}20`,
+            backgroundColor: `${getExamTypeColor(exam.exam_type)}15`,
             color: getExamTypeColor(exam.exam_type),
-            textTransform: "uppercase",
           }}
         >
           {exam.exam_type}
         </span>
       </div>
 
-      <div style={{ display: "grid", gap: "8px", marginBottom: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
-            color: "#6b7280",
-          }}
-        >
-          <Clock size={16} />
+      <div className="exam-card__details">
+        <div className="exam-card__detail">
+          <Clock size={14} />
           <span>{exam.duration_minutes} minutes</span>
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
-            color: "#6b7280",
-          }}
-        >
-          <FileText size={16} />
+        <div className="exam-card__detail">
+          <FileText size={14} />
           <span>{exam.total_marks} marks</span>
         </div>
         {exam.offering?.faculty && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "14px",
-              color: "#6b7280",
-            }}
-          >
-            <Users size={16} />
+          <div className="exam-card__detail">
+            <Users size={14} />
             <span>
               {exam.offering.faculty.user?.first_name}{" "}
               {exam.offering.faculty.user?.last_name}
@@ -875,23 +658,16 @@ function ExamCard({ exam, onView, onDelete, getExamTypeColor }) {
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          paddingTop: "16px",
-          borderTop: "1px solid #f3f4f6",
-        }}
-      >
-        <ActionButton onClick={() => onView(exam)} title="View" color="#3b82f6">
-          <Eye size={16} />
+      <div className="exam-card__actions">
+        <ActionButton onClick={() => onView(exam)} title="View" variant="view">
+          <Eye size={14} />
         </ActionButton>
         <ActionButton
           onClick={() => onDelete(exam.exam_id)}
           title="Delete"
-          color="#dc2626"
+          variant="delete"
         >
-          <Trash2 size={16} />
+          <Trash2 size={14} />
         </ActionButton>
       </div>
     </motion.div>
@@ -900,160 +676,86 @@ function ExamCard({ exam, onView, onDelete, getExamTypeColor }) {
 
 function ScheduleTable({ schedules, onGenerateAdmitCards, onDelete }) {
   return (
-    <div
-      style={{
-        backgroundColor: "white",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead
-            style={{
-              backgroundColor: "#f9fafb",
-              borderBottom: "1px solid #e5e7eb",
-            }}
-          >
+    <div className="schedule-table__wrapper">
+      <div className="schedule-table__container">
+        <table className="schedule-table">
+          <thead>
             <tr>
               {["Exam", "Date & Time", "Room", "Invigilator", "Actions"].map(
                 (header) => (
-                  <th
-                    key={header}
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {header}
-                  </th>
+                  <th key={header}>{header}</th>
                 )
               )}
             </tr>
           </thead>
           <tbody>
             {schedules.map((schedule) => (
-              <tr
-                key={schedule.schedule_id}
-                style={{ borderBottom: "1px solid #f3f4f6" }}
-              >
-                <td style={{ padding: "16px" }}>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "14px",
-                        fontWeight: "500",
-                        color: "#111827",
-                      }}
-                    >
+              <tr key={schedule.schedule_id}>
+                <td>
+                  <div className="schedule-table__exam">
+                    <div className="schedule-table__exam-name">
                       {schedule.exam?.exam_name || "N/A"}
                     </div>
-                    <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                    <div className="schedule-table__exam-code">
                       {schedule.exam?.offering?.course?.course_code}
                     </div>
                   </div>
                 </td>
-                <td
-                  style={{
-                    padding: "16px",
-                    fontSize: "14px",
-                    color: "#6b7280",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    <Calendar size={14} />
-                    <span>
-                      {schedule.exam_date
-                        ? new Date(schedule.exam_date).toLocaleDateString()
-                        : "N/A"}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <Clock size={14} />
-                    <span>
-                      {schedule.start_time} - {schedule.end_time}
-                    </span>
+                <td>
+                  <div className="schedule-table__datetime">
+                    <div className="schedule-table__date">
+                      <Calendar size={12} />
+                      <span>
+                        {schedule.exam_date
+                          ? new Date(schedule.exam_date).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div className="schedule-table__time">
+                      <Clock size={12} />
+                      <span>
+                        {schedule.start_time} - {schedule.end_time}
+                      </span>
+                    </div>
                   </div>
                 </td>
-                <td style={{ padding: "16px" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <MapPin size={14} style={{ color: "#6b7280" }} />
+                <td>
+                  <div className="schedule-table__room">
+                    <MapPin size={12} />
                     <div>
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: "500",
-                          color: "#111827",
-                        }}
-                      >
+                      <div className="schedule-table__room-number">
                         {schedule.room?.room_number || "N/A"}
                       </div>
-                      <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                      <div className="schedule-table__room-building">
                         {schedule.room?.building || ""}
                       </div>
                     </div>
                   </div>
                 </td>
-                <td
-                  style={{
-                    padding: "16px",
-                    fontSize: "14px",
-                    color: "#6b7280",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <UserCheck size={14} />
+                <td>
+                  <div className="schedule-table__invigilator">
+                    <UserCheck size={12} />
                     <span>
                       {schedule.invigilator?.user?.first_name}{" "}
                       {schedule.invigilator?.user?.last_name}
                     </span>
                   </div>
                 </td>
-                <td style={{ padding: "16px" }}>
-                  <div style={{ display: "flex", gap: "8px" }}>
+                <td>
+                  <div className="schedule-table__actions">
                     <ActionButton
                       onClick={() => onGenerateAdmitCards(schedule.schedule_id)}
                       title="Generate Admit Cards"
-                      color="#10b981"
+                      variant="generate"
                     >
-                      <QrCode size={16} />
+                      <QrCode size={14} />
                     </ActionButton>
                     <ActionButton
                       onClick={() => onDelete(schedule.schedule_id)}
                       title="Delete"
-                      color="#dc2626"
+                      variant="delete"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </ActionButton>
                   </div>
                 </td>
@@ -1071,103 +773,57 @@ function AdmitCardItem({ card }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{
-        backgroundColor: "white",
-        padding: "24px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-      }}
+      className="admit-card"
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "16px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div className="admit-card__header">
+        <div className="admit-card__student">
           <div
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              backgroundColor: "#3b82f6",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "600",
-            }}
+            className="admit-card__avatar"
+            style={{ backgroundColor: "#2c4a6e" }}
           >
             {card.student?.first_name?.charAt(0) || "?"}
           </div>
           <div>
-            <h4
-              style={{ fontSize: "16px", fontWeight: "600", color: "#111827" }}
-            >
+            <h4 className="admit-card__student-name">
               {card.student
                 ? `${card.student.first_name || ""} ${
                     card.student.last_name || ""
                   }`.trim()
                 : "N/A"}
             </h4>
-            <p style={{ fontSize: "12px", color: "#6b7280" }}>
+            <p className="admit-card__reg-number">
               {card.student?.university_reg_number || "N/A"}
             </p>
           </div>
         </div>
         <span
-          style={{
-            padding: "4px 12px",
-            borderRadius: "12px",
-            fontSize: "12px",
-            fontWeight: "500",
-            backgroundColor:
-              card.eligibility_status === "eligible"
-                ? "#10b98120"
-                : "#ef444420",
-            color:
-              card.eligibility_status === "eligible" ? "#10b981" : "#ef4444",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "4px",
-            height: "fit-content",
-          }}
+          className={`admit-card__status ${
+            card.eligibility_status === "eligible"
+              ? "admit-card__status--eligible"
+              : "admit-card__status--not-eligible"
+          }`}
         >
           {card.eligibility_status === "eligible" ? (
             <>
-              <CheckCircle size={14} /> Eligible
+              <CheckCircle size={12} />
+              Eligible
             </>
           ) : (
             <>
-              <AlertCircle size={14} /> Not Eligible
+              <AlertCircle size={12} />
+              Not Eligible
             </>
           )}
         </span>
       </div>
 
-      <div style={{ marginBottom: "16px" }}>
-        <h5
-          style={{
-            fontSize: "14px",
-            fontWeight: "600",
-            color: "#111827",
-            marginBottom: "8px",
-          }}
-        >
+      <div className="admit-card__content">
+        <h5 className="admit-card__exam-name">
           {card.exam?.exam_name || "N/A"}
         </h5>
-        <div style={{ display: "grid", gap: "6px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "13px",
-              color: "#6b7280",
-            }}
-          >
-            <Calendar size={14} />
+        <div className="admit-card__details">
+          <div className="admit-card__detail">
+            <Calendar size={12} />
             <span>
               {card.exam?.schedules?.[0]?.exam_date
                 ? new Date(
@@ -1176,103 +832,42 @@ function AdmitCardItem({ card }) {
                 : "N/A"}
             </span>
           </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "13px",
-              color: "#6b7280",
-            }}
-          >
-            <Clock size={14} />
+          <div className="admit-card__detail">
+            <Clock size={12} />
             <span>{card.exam?.schedules?.[0]?.start_time || "N/A"}</span>
           </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "13px",
-              color: "#6b7280",
-            }}
-          >
-            <MapPin size={14} />
+          <div className="admit-card__detail">
+            <MapPin size={12} />
             <span>Room {card.seat_number || "TBA"}</span>
           </div>
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "8px",
-          padding: "12px 0",
-          borderTop: "1px solid #f3f4f6",
-          fontSize: "13px",
-        }}
-      >
-        <div>
-          <span style={{ color: "#6b7280" }}>Seat:</span>
-          <span
-            style={{ color: "#111827", marginLeft: "4px", fontWeight: "500" }}
-          >
+      <div className="admit-card__info">
+        <div className="admit-card__info-item">
+          <span className="admit-card__info-label">Seat:</span>
+          <span className="admit-card__info-value">
             {card.seat_number || "N/A"}
           </span>
         </div>
-        <div>
-          <span style={{ color: "#6b7280" }}>Downloaded:</span>
+        <div className="admit-card__info-item">
+          <span className="admit-card__info-label">Downloaded:</span>
           {card.is_downloaded ? (
-            <CheckCircle
-              size={14}
-              style={{ color: "#10b981", marginLeft: "4px" }}
-            />
+            <CheckCircle size={12} className="admit-card__info-icon--success" />
           ) : (
-            <XCircle
-              size={14}
-              style={{ color: "#f59e0b", marginLeft: "4px" }}
-            />
+            <XCircle size={12} className="admit-card__info-icon--warning" />
           )}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-        <button
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            backgroundColor: "#f3f4f6",
-            color: "#374151",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "13px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-          }}
-        >
-          <Eye size={14} /> Preview
+      <div className="admit-card__actions">
+        <button className="admit-card__btn admit-card__btn--secondary">
+          <Eye size={12} />
+          Preview
         </button>
-        <button
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            backgroundColor: "#1e40af",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: "13px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-          }}
-        >
-          <Download size={14} /> Download
+        <button className="admit-card__btn admit-card__btn--primary">
+          <Download size={12} />
+          Download
         </button>
       </div>
     </motion.div>
@@ -1284,43 +879,19 @@ function RoomCard({ room }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{
-        backgroundColor: "white",
-        padding: "24px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-      }}
+      className="room-card"
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "16px",
-        }}
-      >
-        <Building size={24} style={{ color: "#3b82f6" }} />
+      <div className="room-card__header">
+        <Building size={20} className="room-card__icon" />
         <div>
-          <h3 style={{ fontSize: "18px", fontWeight: "600", color: "#111827" }}>
-            {room.room_number}
-          </h3>
-          <p style={{ fontSize: "14px", color: "#6b7280" }}>{room.building}</p>
+          <h3 className="room-card__title">{room.room_number}</h3>
+          <p className="room-card__building">{room.building}</p>
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: "8px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
-            color: "#6b7280",
-          }}
-        >
-          <Users size={16} />
-          <span>Capacity: {room.capacity}</span>
-        </div>
+      <div className="room-card__capacity">
+        <Users size={14} />
+        <span>Capacity: {room.capacity}</span>
       </div>
     </motion.div>
   );
@@ -1336,15 +907,11 @@ function CreateExamForm({
 }) {
   return (
     <>
-      <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>
-        Create New Examination
-      </h2>
-      <p style={{ color: "#6b7280", marginBottom: "24px" }}>
-        Enter the examination details
-      </p>
+      <h2 className="modal__title">Create New Examination</h2>
+      <p className="modal__subtitle">Enter the examination details</p>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: "16px" }}>
-        <FormField label="Course Offering *" required>
+      <form onSubmit={onSubmit} className="exam-form">
+        <FormField label="Course Offering" required>
           <select
             required
             value={examForm.offering_id}
@@ -1361,7 +928,7 @@ function CreateExamForm({
           </select>
         </FormField>
 
-        <FormField label="Exam Name *" required>
+        <FormField label="Exam Name" required>
           <input
             type="text"
             required
@@ -1373,14 +940,8 @@ function CreateExamForm({
           />
         </FormField>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-          }}
-        >
-          <FormField label="Exam Type *" required>
+        <div className="exam-form__grid">
+          <FormField label="Exam Type" required>
             <select
               required
               value={examForm.exam_type}
@@ -1396,7 +957,7 @@ function CreateExamForm({
             </select>
           </FormField>
 
-          <FormField label="Duration (minutes) *" required>
+          <FormField label="Duration (minutes)" required>
             <input
               type="number"
               required
@@ -1409,14 +970,8 @@ function CreateExamForm({
           </FormField>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-          }}
-        >
-          <FormField label="Total Marks *" required>
+        <div className="exam-form__grid">
+          <FormField label="Total Marks" required>
             <input
               type="number"
               required
@@ -1428,7 +983,7 @@ function CreateExamForm({
             />
           </FormField>
 
-          <FormField label="Passing Marks *" required>
+          <FormField label="Passing Marks" required>
             <input
               type="number"
               required
@@ -1452,45 +1007,17 @@ function CreateExamForm({
           />
         </FormField>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            justifyContent: "flex-end",
-            marginTop: "8px",
-          }}
-        >
+        <div className="modal__actions">
           <button
             type="button"
             onClick={onCancel}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#e5e7eb",
-              color: "#374151",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
+            className="btn btn--secondary"
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#1e40af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <Plus size={18} /> Create Exam
+          <button type="submit" className="btn btn--primary">
+            <Plus size={16} />
+            Create Exam
           </button>
         </div>
       </form>
@@ -1508,15 +1035,11 @@ function ScheduleExamForm({
 }) {
   return (
     <>
-      <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>
-        Schedule Examination
-      </h2>
-      <p style={{ color: "#6b7280", marginBottom: "24px" }}>
-        Set the exam date, time, and location
-      </p>
+      <h2 className="modal__title">Schedule Examination</h2>
+      <p className="modal__subtitle">Set the exam date, time, and location</p>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: "16px" }}>
-        <FormField label="Select Exam *" required>
+      <form onSubmit={onSubmit} className="exam-form">
+        <FormField label="Select Exam" required>
           <select
             required
             value={scheduleForm.exam_id}
@@ -1533,7 +1056,7 @@ function ScheduleExamForm({
           </select>
         </FormField>
 
-        <FormField label="Exam Date *" required>
+        <FormField label="Exam Date" required>
           <input
             type="date"
             required
@@ -1544,14 +1067,8 @@ function ScheduleExamForm({
           />
         </FormField>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "16px",
-          }}
-        >
-          <FormField label="Start Time *" required>
+        <div className="exam-form__grid">
+          <FormField label="Start Time" required>
             <input
               type="time"
               required
@@ -1562,7 +1079,7 @@ function ScheduleExamForm({
             />
           </FormField>
 
-          <FormField label="End Time *" required>
+          <FormField label="End Time" required>
             <input
               type="time"
               required
@@ -1574,7 +1091,7 @@ function ScheduleExamForm({
           </FormField>
         </div>
 
-        <FormField label="Exam Room *" required>
+        <FormField label="Exam Room" required>
           <select
             required
             value={scheduleForm.room_id}
@@ -1591,45 +1108,17 @@ function ScheduleExamForm({
           </select>
         </FormField>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            justifyContent: "flex-end",
-            marginTop: "8px",
-          }}
-        >
+        <div className="modal__actions">
           <button
             type="button"
             onClick={onCancel}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#e5e7eb",
-              color: "#374151",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
+            className="btn btn--secondary"
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#1e40af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <Calendar size={18} /> Schedule Exam
+          <button type="submit" className="btn btn--primary">
+            <Calendar size={16} />
+            Schedule Exam
           </button>
         </div>
       </form>
@@ -1640,55 +1129,31 @@ function ScheduleExamForm({
 function ExamDetails({ exam, getExamTypeColor, onClose }) {
   return (
     <>
-      <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "24px" }}>
-        Examination Details
-      </h2>
+      <h2 className="modal__title">Examination Details</h2>
 
-      <div style={{ display: "grid", gap: "24px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "start",
-          }}
-        >
+      <div className="exam-details">
+        <div className="exam-details__header">
           <div>
-            <h3
-              style={{ fontSize: "20px", fontWeight: "600", color: "#111827" }}
-            >
-              {exam.exam_name}
-            </h3>
-            <p style={{ fontSize: "14px", color: "#6b7280" }}>
+            <h3 className="exam-details__exam-name">{exam.exam_name}</h3>
+            <p className="exam-details__course">
               {exam.offering?.course?.course_code} -{" "}
               {exam.offering?.course?.course_name}
             </p>
           </div>
           <span
+            className="exam-details__type-badge"
             style={{
-              padding: "6px 14px",
-              borderRadius: "12px",
-              fontSize: "14px",
-              fontWeight: "600",
-              backgroundColor: `${getExamTypeColor(exam.exam_type)}20`,
+              backgroundColor: `${getExamTypeColor(exam.exam_type)}15`,
               color: getExamTypeColor(exam.exam_type),
-              textTransform: "uppercase",
             }}
           >
             {exam.exam_type}
           </span>
         </div>
 
-        <div>
-          <h4
-            style={{
-              fontSize: "16px",
-              fontWeight: "600",
-              marginBottom: "12px",
-            }}
-          >
-            Exam Details
-          </h4>
-          <div style={{ display: "grid", gap: "8px" }}>
+        <div className="exam-details__section">
+          <h4 className="exam-details__section-title">Exam Details</h4>
+          <div className="exam-details__rows">
             <DetailRow label="Total Marks" value={exam.total_marks} />
             <DetailRow label="Passing Marks" value={exam.passing_marks} />
             <DetailRow
@@ -1699,44 +1164,15 @@ function ExamDetails({ exam, getExamTypeColor, onClose }) {
         </div>
 
         {exam.instructions && (
-          <div>
-            <h4
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                marginBottom: "12px",
-              }}
-            >
-              Instructions
-            </h4>
-            <p
-              style={{ fontSize: "14px", color: "#6b7280", lineHeight: "1.6" }}
-            >
-              {exam.instructions}
-            </p>
+          <div className="exam-details__section">
+            <h4 className="exam-details__section-title">Instructions</h4>
+            <p className="exam-details__instructions">{exam.instructions}</p>
           </div>
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          marginTop: "24px",
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#1e40af",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "14px",
-            cursor: "pointer",
-          }}
-        >
+      <div className="modal__actions">
+        <button onClick={onClose} className="btn btn--primary">
           Close
         </button>
       </div>
@@ -1744,94 +1180,26 @@ function ExamDetails({ exam, getExamTypeColor, onClose }) {
   );
 }
 
-function SearchBar({ searchTerm, setSearchTerm, placeholder }) {
-  return (
-    <div
-      style={{
-        backgroundColor: "white",
-        padding: "24px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        marginBottom: "24px",
-      }}
-    >
-      <div style={{ position: "relative" }}>
-        <Search
-          size={18}
-          style={{
-            position: "absolute",
-            left: "12px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "#6b7280",
-          }}
-        />
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px 12px 10px 40px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function EmptyState({ message, subMessage }) {
   return (
-    <div
-      style={{
-        backgroundColor: "white",
-        padding: "60px 20px",
-        borderRadius: "12px",
-        textAlign: "center",
-        color: "#6b7280",
-      }}
-    >
-      <p style={{ fontSize: "18px", marginBottom: "8px" }}>{message}</p>
-      {subMessage && <p style={{ fontSize: "14px" }}>{subMessage}</p>}
+    <div className="exam-management__empty">
+      <p className="exam-management__empty-title">{message}</p>
+      {subMessage && (
+        <p className="exam-management__empty-text">{subMessage}</p>
+      )}
     </div>
   );
 }
 
-// Helper Components
 function StatCard({ icon, title, value, color }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        borderLeft: `4px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p
-            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
-          >
-            {title}
-          </p>
-          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
-            {value}
-          </p>
-        </div>
-        <div style={{ color }}>{icon}</div>
+    <motion.div whileHover={{ scale: 1.01 }} className="stat-card">
+      <div className="stat-card__icon" style={{ color }}>
+        {icon}
+      </div>
+      <div className="stat-card__content">
+        <p className="stat-card__title">{title}</p>
+        <p className="stat-card__value">{value}</p>
       </div>
     </motion.div>
   );
@@ -1839,46 +1207,19 @@ function StatCard({ icon, title, value, color }) {
 
 function TabButton({ active, onClick, icon, label }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "12px 24px",
-        backgroundColor: "transparent",
-        color: active ? "#1e40af" : "#6b7280",
-        border: "none",
-        borderBottom: active ? "2px solid #1e40af" : "2px solid transparent",
-        cursor: "pointer",
-        fontSize: "14px",
-        fontWeight: "500",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        transition: "all 0.2s",
-      }}
-    >
+    <button onClick={onClick} className={`tab ${active ? "tab--active" : ""}`}>
       {icon}
       {label}
     </button>
   );
 }
 
-function ActionButton({ onClick, title, color, children }) {
+function ActionButton({ onClick, title, variant, children }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      style={{
-        padding: "6px 12px",
-        backgroundColor: color,
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        fontSize: "12px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className={`action-btn action-btn--${variant}`}
     >
       {children}
     </button>
@@ -1887,28 +1228,14 @@ function ActionButton({ onClick, title, color, children }) {
 
 function FormField({ label, required, children }) {
   return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontSize: "14px",
-          fontWeight: "500",
-          marginBottom: "8px",
-          color: "#374151",
-        }}
-      >
+    <div className="form-field">
+      <label className="form-field__label">
         {label}
+        {required && <span className="form-field__required">*</span>}
       </label>
-      <div style={{ width: "100%" }}>
+      <div className="form-field__input">
         {React.cloneElement(children, {
-          style: {
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontFamily: "inherit",
-          },
+          className: "form-field__control",
         })}
       </div>
     </div>
@@ -1917,19 +1244,9 @@ function FormField({ label, required, children }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "150px 1fr",
-        gap: "16px",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
-        {label}:
-      </span>
-      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    <div className="detail-row">
+      <span className="detail-row__label">{label}</span>
+      <span className="detail-row__value">{value}</span>
     </div>
   );
 }
@@ -1941,36 +1258,14 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="modal-overlay"
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          maxWidth: "600px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        }}
+        className="modal"
       >
         {children}
       </motion.div>
