@@ -1,33 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Calendar,
   CheckCircle,
   Clock,
   AlertTriangle,
-  Eye,
-  Edit,
-  RefreshCw,
-  Filter,
+  Calendar,
   Download,
+  RefreshCw,
+  Eye,
+  X,
 } from "lucide-react";
 import { adminService } from "../services/api/adminService";
+import "../styles/admin-pages/attendance-management.css";
 
 export default function AttendanceManagement() {
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [attendanceSummaries, setAttendanceSummaries] = useState([]);
+  const [records, setRecords] = useState([]);
   const [courseOfferings, setCourseOfferings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCourse, setFilterCourse] = useState("all");
   const [filterDate, setFilterDate] = useState("");
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
 
-  // Load initial data
   useEffect(() => {
     loadData();
   }, []);
@@ -36,24 +35,21 @@ export default function AttendanceManagement() {
     setLoading(true);
     setError(null);
     try {
-      const [attendanceRes, summariesRes, offeringsRes] = await Promise.all([
-        adminService.getAttendance(),
-        adminService.getAttendanceSummaries(),
+      const [recordsRes, offeringsRes] = await Promise.all([
+        adminService.getAttendanceRecords(),
         adminService.getCourseOfferings(),
       ]);
 
-      if (attendanceRes.success) {
-        setAttendanceRecords(attendanceRes.data);
+      if (recordsRes.success) {
+        setRecords(recordsRes.data);
       } else {
-        setError(attendanceRes.error);
-      }
-
-      if (summariesRes.success) {
-        setAttendanceSummaries(summariesRes.data);
+        setError(recordsRes.error || "Failed to load attendance records");
       }
 
       if (offeringsRes.success) {
         setCourseOfferings(offeringsRes.data);
+      } else {
+        setError(offeringsRes.error || "Failed to load course offerings");
       }
     } catch (err) {
       setError("Failed to load data");
@@ -63,56 +59,38 @@ export default function AttendanceManagement() {
     }
   };
 
-  // Calculate statistics for today
-  const getTodayStats = () => {
-    const today = new Date().toISOString().split("T")[0];
-    const todayRecords = attendanceRecords.filter((record) =>
-      record.attendance_date?.startsWith(today)
-    );
+  // Calculate stats for today
+  const today = new Date().toISOString().split("T")[0];
+  const todayRecords = records.filter((r) => r.attendance_date === today);
 
-    const present = todayRecords.filter((r) => r.status === "present").length;
-    const late = todayRecords.filter((r) => r.status === "late").length;
-    const absent = todayRecords.filter((r) => r.status === "absent").length;
-    const total = present + late + absent;
-    const rate = total > 0 ? (((present + late) / total) * 100).toFixed(1) : 0;
-
-    return { present, late, absent, rate };
+  const stats = {
+    present: todayRecords.filter((r) => r.status === "present").length,
+    late: todayRecords.filter((r) => r.status === "late").length,
+    absent: todayRecords.filter((r) => r.status === "absent").length,
+    rate:
+      todayRecords.length > 0
+        ? Math.round(
+            (todayRecords.filter((r) => r.status === "present").length /
+              todayRecords.length) *
+              100
+          )
+        : 0,
   };
 
-  // Calculate overall statistics from summaries
-  const getOverallStats = () => {
-    if (attendanceSummaries.length === 0) {
-      return getTodayStats();
-    }
+  const filteredRecords = records.filter((record) => {
+    const matchesSearch =
+      !searchTerm ||
+      `${record.student?.first_name || ""} ${record.student?.last_name || ""}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
-    const totalAttendance = attendanceSummaries.reduce(
-      (sum, s) => sum + (s.attendance_percentage || 0),
-      0
-    );
-    const avgRate =
-      attendanceSummaries.length > 0
-        ? (totalAttendance / attendanceSummaries.length).toFixed(1)
-        : 0;
-
-    const today = getTodayStats();
-    return { ...today, rate: avgRate };
-  };
-
-  const stats = getOverallStats();
-
-  // Filter attendance records
-  const filteredRecords = attendanceRecords.filter((record) => {
-    const studentName = record.student
-      ? `${record.student.first_name || ""} ${
-          record.student.last_name || ""
-        }`.toLowerCase()
-      : "";
-    const matchesSearch = studentName.includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "all" || record.status === filterStatus;
+
     const matchesCourse =
       filterCourse === "all" ||
       record.offering?.offering_id === parseInt(filterCourse);
+
     const matchesDate =
       !filterDate || record.attendance_date?.startsWith(filterDate);
 
@@ -131,12 +109,12 @@ export default function AttendanceManagement() {
 
   const getStatusColor = (status) => {
     const colors = {
-      present: "#10b981",
-      late: "#f59e0b",
-      absent: "#ef4444",
-      excused: "#3b82f6",
+      present: "present",
+      late: "late",
+      absent: "absent",
+      excused: "excused",
     };
-    return colors[status] || "#6b7280";
+    return colors[status] || "";
   };
 
   const getStatusIcon = (status) => {
@@ -199,29 +177,13 @@ export default function AttendanceManagement() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #1e40af",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280" }}>Loading attendance records...</p>
+      <div className="attendance-management__loading">
+        <div className="attendance-management__loading-content">
+          <div className="attendance-management__spinner" />
+          <p className="attendance-management__loading-text">
+            Loading attendance records...
+          </p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
       </div>
     );
   }
@@ -230,189 +192,93 @@ export default function AttendanceManagement() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ padding: "24px" }}
+      className="attendance-management"
     >
-      {/* Success Message */}
       <AnimatePresence>
         {successMessage && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "16px 24px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
+            className="attendance-management__success"
           >
-            ✓ {successMessage}
+            <CheckCircle size={18} />
+            {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Error Message */}
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            color: "#c33",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="attendance-management__error">
+          <AlertTriangle size={18} style={{ marginRight: "8px" }} />
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#c33",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
+            className="attendance-management__error-close"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "32px",
-              fontWeight: "700",
-              color: "#111827",
-              marginBottom: "8px",
-            }}
-          >
+      <div className="attendance-management__header">
+        <div className="attendance-management__header-content">
+          <h1 className="attendance-management__title">
             Attendance Management
           </h1>
-          <p style={{ color: "#6b7280", fontSize: "16px" }}>
+          <p className="attendance-management__subtitle">
             Monitor and manage student attendance records
           </p>
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
+        <div className="attendance-management__actions">
           <button
             onClick={exportToCSV}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className="attendance-management__button attendance-management__button--export"
           >
-            <Download size={18} /> Export CSV
+            <Download size={18} style={{ marginRight: "8px" }} />
+            Export CSV
           </button>
           <button
             onClick={loadData}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#1e40af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className="attendance-management__button attendance-management__button--refresh"
           >
-            <RefreshCw size={18} /> Refresh
+            <RefreshCw size={18} style={{ marginRight: "8px" }} />
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "20px",
-          marginBottom: "32px",
-        }}
-      >
+      <div className="attendance-management__stats">
         <StatCard
           title="Present Today"
           value={stats.present}
           icon={<CheckCircle size={24} />}
-          color="#10b981"
+          variant="present"
         />
         <StatCard
           title="Late Today"
           value={stats.late}
           icon={<Clock size={24} />}
-          color="#f59e0b"
+          variant="late"
         />
         <StatCard
           title="Absent Today"
           value={stats.absent}
           icon={<AlertTriangle size={24} />}
-          color="#ef4444"
+          variant="absent"
         />
         <StatCard
           title="Attendance Rate"
           value={`${stats.rate}%`}
           icon={<Calendar size={24} />}
-          color="#3b82f6"
+          variant="rate"
         />
       </div>
 
-      {/* Filters and Search */}
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "24px",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          marginBottom: "24px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+      <div className="attendance-management__filters">
+        <div className="attendance-management__filters-grid">
+          <div className="attendance-management__filter-group">
+            <label className="attendance-management__filter-label">
               Search Students
             </label>
             <input
@@ -420,38 +286,18 @@ export default function AttendanceManagement() {
               placeholder="Search by student name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="attendance-management__filter-input"
             />
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="attendance-management__filter-group">
+            <label className="attendance-management__filter-label">
               Course
             </label>
             <select
               value={filterCourse}
               onChange={(e) => setFilterCourse(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="attendance-management__filter-select"
             >
               <option value="all">All Courses</option>
               {courseOfferings.map((offering) => (
@@ -463,28 +309,14 @@ export default function AttendanceManagement() {
             </select>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
+          <div className="attendance-management__filter-group">
+            <label className="attendance-management__filter-label">
               Status
             </label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="attendance-management__filter-select"
             >
               <option value="all">All Status</option>
               <option value="present">Present</option>
@@ -494,55 +326,25 @@ export default function AttendanceManagement() {
             </select>
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                marginBottom: "8px",
-                color: "#374151",
-              }}
-            >
-              Date
-            </label>
+          <div className="attendance-management__filter-group">
+            <label className="attendance-management__filter-label">Date</label>
             <input
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "14px",
-              }}
+              className="attendance-management__filter-input"
             />
           </div>
         </div>
       </div>
 
-      {/* Attendance Table */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          overflow: "hidden",
-        }}
-      >
+      <div className="attendance-management__table-container">
         {filteredRecords.length === 0 ? (
-          <div
-            style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              color: "#6b7280",
-            }}
-          >
-            <p style={{ fontSize: "18px", marginBottom: "8px" }}>
+          <div className="attendance-management__empty">
+            <p className="attendance-management__empty-title">
               No attendance records found
             </p>
-            <p style={{ fontSize: "14px" }}>
+            <p className="attendance-management__empty-text">
               {searchTerm ||
               filterStatus !== "all" ||
               filterCourse !== "all" ||
@@ -552,14 +354,9 @@ export default function AttendanceManagement() {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead
-                style={{
-                  backgroundColor: "#f9fafb",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
+          <div className="attendance-management__table-wrapper">
+            <table className="attendance-management__table">
+              <thead className="attendance-management__table-header">
                 <tr>
                   {[
                     "Student",
@@ -572,105 +369,60 @@ export default function AttendanceManagement() {
                   ].map((header) => (
                     <th
                       key={header}
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                      }}
+                      className="attendance-management__table-header-cell"
                     >
                       {header}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="attendance-management__table-body">
                 {filteredRecords.map((record) => (
                   <tr
                     key={record.attendance_id}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
+                    className="attendance-management__table-row"
                   >
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#111827",
-                      }}
-                    >
+                    <td className="attendance-management__table-cell">
                       {record.student
                         ? `${record.student.first_name || ""} ${
                             record.student.last_name || ""
                           }`.trim() || "N/A"
                         : "N/A"}
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: "500", color: "#1e40af" }}>
+                    <td className="attendance-management__table-cell">
+                      <div className="attendance-management__course-info">
+                        <div className="attendance-management__course-code">
                           {record.offering?.course?.course_code || "N/A"}
                         </div>
-                        <div style={{ fontSize: "12px" }}>
+                        <div className="attendance-management__course-name">
                           {record.offering?.course?.course_name || ""}
                         </div>
                       </div>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td className="attendance-management__table-cell attendance-management__table-cell--secondary">
                       {record.attendance_date
                         ? new Date(record.attendance_date).toLocaleDateString()
                         : "N/A"}
                     </td>
-                    <td style={{ padding: "16px" }}>
+                    <td className="attendance-management__table-cell">
                       <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          backgroundColor: `${getStatusColor(record.status)}20`,
-                          color: getStatusColor(record.status),
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
+                        className={`attendance-management__status-badge attendance-management__status-badge--${getStatusColor(
+                          record.status
+                        )}`}
                       >
                         {getStatusIcon(record.status)}
                         {record.status?.charAt(0).toUpperCase() +
                           record.status?.slice(1) || "Unknown"}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td className="attendance-management__table-cell attendance-management__table-cell--secondary">
                       {record.marked_by_faculty
                         ? `${record.marked_by_faculty.user?.first_name || ""} ${
                             record.marked_by_faculty.user?.last_name || ""
                           }`.trim()
                         : "System"}
                     </td>
-                    <td
-                      style={{
-                        padding: "16px",
-                        fontSize: "14px",
-                        color: "#6b7280",
-                      }}
-                    >
+                    <td className="attendance-management__table-cell attendance-management__table-cell--secondary">
                       {record.marked_at
                         ? new Date(record.marked_at).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -678,12 +430,12 @@ export default function AttendanceManagement() {
                           })
                         : "N/A"}
                     </td>
-                    <td style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", gap: "8px" }}>
+                    <td className="attendance-management__table-cell">
+                      <div className="attendance-management__actions-cell">
                         <ActionButton
                           onClick={() => openDetailsModal(record)}
                           title="View Details"
-                          color="#3b82f6"
+                          variant="view"
                         >
                           <Eye size={16} />
                         </ActionButton>
@@ -697,20 +449,13 @@ export default function AttendanceManagement() {
         )}
       </div>
 
-      {/* Details Modal */}
       <AnimatePresence>
         {showDetailsModal && selectedRecord && (
           <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
+            <h2 className="attendance-management__modal-title">
               Attendance Details
             </h2>
-            <div style={{ display: "grid", gap: "16px" }}>
+            <div className="attendance-management__modal-content">
               <DetailRow
                 label="Student"
                 value={
@@ -751,19 +496,9 @@ export default function AttendanceManagement() {
                 label="Status"
                 value={
                   <span
-                    style={{
-                      padding: "4px 12px",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                      fontWeight: "500",
-                      backgroundColor: `${getStatusColor(
-                        selectedRecord.status
-                      )}20`,
-                      color: getStatusColor(selectedRecord.status),
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
+                    className={`attendance-management__status-badge attendance-management__status-badge--${getStatusColor(
+                      selectedRecord.status
+                    )}`}
                   >
                     {getStatusIcon(selectedRecord.status)}
                     {selectedRecord.status?.charAt(0).toUpperCase() +
@@ -805,24 +540,10 @@ export default function AttendanceManagement() {
                 value={selectedRecord.remarks || "No remarks"}
               />
             </div>
-            <div
-              style={{
-                marginTop: "24px",
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className="attendance-management__modal-actions">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#1e40af",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
+                className="attendance-management__modal-button"
               >
                 Close
               </button>
@@ -834,59 +555,33 @@ export default function AttendanceManagement() {
   );
 }
 
-// Helper Components
-function StatCard({ title, value, icon, color }) {
+function StatCard({ title, value, icon, variant }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        borderLeft: `4px solid ${color}`,
-      }}
+      className={`attendance-management__stat-card attendance-management__stat-card--${variant}`}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p
-            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
-          >
-            {title}
-          </p>
-          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
-            {value}
-          </p>
+      <div className="attendance-management__stat-card-content">
+        <div className="attendance-management__stat-card-details">
+          <p className="attendance-management__stat-card-title">{title}</p>
+          <p className="attendance-management__stat-card-value">{value}</p>
         </div>
-        <div style={{ color }}>{icon}</div>
+        <div
+          className={`attendance-management__stat-card-icon attendance-management__stat-card-icon--${variant}`}
+        >
+          {icon}
+        </div>
       </div>
     </motion.div>
   );
 }
 
-function ActionButton({ onClick, title, color, children }) {
+function ActionButton({ onClick, title, variant, children }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      style={{
-        padding: "6px 12px",
-        backgroundColor: color,
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        fontSize: "12px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className={`attendance-management__action-button attendance-management__action-button--${variant}`}
     >
       {children}
     </button>
@@ -895,19 +590,9 @@ function ActionButton({ onClick, title, color, children }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "180px 1fr",
-        gap: "16px",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
-        {label}:
-      </span>
-      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    <div className="attendance-management__detail-row">
+      <span className="attendance-management__detail-label">{label}:</span>
+      <span className="attendance-management__detail-value">{value}</span>
     </div>
   );
 }
@@ -919,36 +604,14 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="attendance-management__modal-overlay"
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          maxWidth: "700px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        }}
+        className="attendance-management__modal"
       >
         {children}
       </motion.div>

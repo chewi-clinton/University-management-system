@@ -21,6 +21,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { adminService } from "../services/api/adminService";
+import "../styles/admin-pages/GradeManagement.css";
 
 export default function GradeManagement() {
   const [grades, setGrades] = useState([]);
@@ -37,7 +38,6 @@ export default function GradeManagement() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [gradeDistribution, setGradeDistribution] = useState(null);
 
-  // Form state for adding/editing grade
   const [gradeForm, setGradeForm] = useState({
     student_id: "",
     offering_id: "",
@@ -94,7 +94,6 @@ export default function GradeManagement() {
     }
   };
 
-  // Calculate statistics
   const stats = {
     totalGrades: grades.length,
     finalized: grades.filter((g) => g.is_finalized).length,
@@ -108,7 +107,6 @@ export default function GradeManagement() {
     pending: grades.filter((g) => !g.is_finalized).length,
   };
 
-  // Filter grades
   const filteredGrades = grades.filter((grade) => {
     const studentName = grade.student
       ? `${grade.student.first_name || ""} ${
@@ -147,13 +145,11 @@ export default function GradeManagement() {
     setError(null);
 
     try {
-      // Calculate percentage
       const percentage =
         (parseFloat(gradeForm.marks_obtained) /
           parseFloat(gradeForm.max_marks)) *
         100;
 
-      // Auto-calculate letter grade if not provided
       let letterGrade = gradeForm.grade;
       if (!letterGrade) {
         letterGrade = calculateLetterGrade(percentage);
@@ -277,18 +273,18 @@ export default function GradeManagement() {
 
   const getGradeColor = (letterGrade) => {
     const colors = {
-      A: "#10b981",
-      "A-": "#34d399",
-      "B+": "#3b82f6",
-      B: "#60a5fa",
-      "B-": "#93c5fd",
-      "C+": "#f59e0b",
-      C: "#fbbf24",
-      "C-": "#fcd34d",
-      D: "#ef4444",
-      F: "#dc2626",
+      A: "#1a5c3a",
+      "A-": "#2d7a52",
+      "B+": "#1e4a7a",
+      B: "#2a5f92",
+      "B-": "#3a75aa",
+      "C+": "#8a5c1f",
+      C: "#a67532",
+      "C-": "#b88d4a",
+      D: "#8c2828",
+      F: "#6e1f1f",
     };
-    return colors[letterGrade] || "#6b7280";
+    return colors[letterGrade] || "#525252";
   };
 
   const exportToCSV = () => {
@@ -334,29 +330,9 @@ export default function GradeManagement() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "400px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "50px",
-              height: "50px",
-              border: "4px solid #f3f4f6",
-              borderTop: "4px solid #1e40af",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#6b7280" }}>Loading grades...</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+      <div className="grade-management__loading">
+        <div className="grade-management__spinner" />
+        <p>Loading grades...</p>
       </div>
     );
   }
@@ -365,285 +341,129 @@ export default function GradeManagement() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      style={{ padding: "24px" }}
+      className="grade-management"
     >
-      {/* Success Message */}
       <AnimatePresence>
         {successMessage && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            style={{
-              position: "fixed",
-              top: "20px",
-              right: "20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "16px 24px",
-              borderRadius: "8px",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              zIndex: 1000,
-            }}
+            className="grade-management__success"
           >
-            ✓ {successMessage}
+            <CheckCircle size={16} />
+            {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Error Message */}
       {error && (
-        <div
-          style={{
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            color: "#c33",
-            padding: "12px 16px",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div className="grade-management__error">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#c33",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
+            className="grade-management__error-close"
           >
             ×
           </button>
         </div>
       )}
 
-      {/* Header */}
-      <div
-        style={{
-          marginBottom: "32px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "32px",
-              fontWeight: "700",
-              color: "#111827",
-              marginBottom: "8px",
-            }}
-          >
-            Grade Management
-          </h1>
-          <p style={{ color: "#6b7280", fontSize: "16px" }}>
+      <div className="grade-management__header">
+        <div className="grade-management__header-content">
+          <h1 className="grade-management__title">Grade Management</h1>
+          <p className="grade-management__subtitle">
             Manage student grades and academic performance
           </p>
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            onClick={exportToCSV}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#10b981",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <Download size={18} /> Export
+        <div className="grade-management__actions">
+          <button onClick={exportToCSV} className="btn btn--secondary">
+            <Download size={16} />
+            Export
           </button>
-          <button
-            onClick={loadData}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#6b7280",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <RefreshCw size={18} /> Refresh
+          <button onClick={loadData} className="btn btn--secondary">
+            <RefreshCw size={16} />
+            Refresh
           </button>
           <button
             onClick={() => {
               resetForm();
               setShowAddGradeModal(true);
             }}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#1e40af",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
+            className="btn btn--primary"
           >
-            <Plus size={18} /> Add Grade
+            <Plus size={16} />
+            Add Grade
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          marginBottom: "24px",
-          borderBottom: "2px solid #e5e7eb",
-        }}
-      >
+      <div className="grade-management__tabs">
         <TabButton
           active={activeTab === "grades"}
           onClick={() => setActiveTab("grades")}
-          icon={<FileText size={18} />}
+          icon={<FileText size={16} />}
           label="Grades"
         />
         <TabButton
           active={activeTab === "analytics"}
           onClick={() => setActiveTab("analytics")}
-          icon={<BarChart3 size={18} />}
+          icon={<BarChart3 size={16} />}
           label="Analytics"
         />
       </div>
 
-      {/* Grades Tab */}
       {activeTab === "grades" && (
         <>
-          {/* Statistics Cards */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-              gap: "20px",
-              marginBottom: "32px",
-            }}
-          >
+          <div className="grade-management__stats">
             <StatCard
-              icon={<FileText size={24} />}
+              icon={<FileText size={20} />}
               title="Total Grades"
               value={stats.totalGrades}
-              color="#3b82f6"
+              color="#2c4a6e"
             />
             <StatCard
-              icon={<CheckCircle size={24} />}
+              icon={<CheckCircle size={20} />}
               title="Finalized"
               value={stats.finalized}
-              color="#10b981"
+              color="#1a5c3a"
             />
             <StatCard
-              icon={<XCircle size={24} />}
+              icon={<XCircle size={20} />}
               title="Pending"
               value={stats.pending}
-              color="#f59e0b"
+              color="#8a5c1f"
             />
             <StatCard
-              icon={<TrendingUp size={24} />}
+              icon={<TrendingUp size={20} />}
               title="Average Marks"
               value={`${stats.avgMarks}%`}
-              color="#8b5cf6"
+              color="#524a75"
             />
           </div>
 
-          {/* Filters */}
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "24px",
-              borderRadius: "12px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              marginBottom: "24px",
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: "16px",
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Search
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Search
-                    size={18}
-                    style={{
-                      position: "absolute",
-                      left: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      color: "#6b7280",
-                    }}
-                  />
+          <div className="grade-management__filters">
+            <div className="filter-group">
+              <div className="filter-field">
+                <label>Search</label>
+                <div className="filter-field__input-wrapper">
+                  <Search size={16} className="filter-field__icon" />
                   <input
                     type="text"
                     placeholder="Search by student, course..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px 10px 40px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                    }}
+                    className="filter-field__input"
                   />
                 </div>
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Course
-                </label>
+              <div className="filter-field">
+                <label>Course</label>
                 <select
                   value={filterOffering}
                   onChange={(e) => setFilterOffering(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                  }}
+                  className="filter-field__select"
                 >
                   <option value="all">All Courses</option>
                   {courseOfferings.map((offering) => (
@@ -658,27 +478,12 @@ export default function GradeManagement() {
                 </select>
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Status
-                </label>
+              <div className="filter-field">
+                <label>Status</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                  }}
+                  className="filter-field__select"
                 >
                   <option value="all">All Status</option>
                   <option value="finalized">Finalized</option>
@@ -688,27 +493,11 @@ export default function GradeManagement() {
             </div>
           </div>
 
-          {/* Grades Table */}
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              overflow: "hidden",
-            }}
-          >
+          <div className="grade-management__table-wrapper">
             {filteredGrades.length === 0 ? (
-              <div
-                style={{
-                  padding: "60px 20px",
-                  textAlign: "center",
-                  color: "#6b7280",
-                }}
-              >
-                <p style={{ fontSize: "18px", marginBottom: "8px" }}>
-                  No grades found
-                </p>
-                <p style={{ fontSize: "14px" }}>
+              <div className="grade-management__empty">
+                <p className="grade-management__empty-title">No grades found</p>
+                <p className="grade-management__empty-text">
                   {searchTerm ||
                   filterOffering !== "all" ||
                   filterStatus !== "all"
@@ -717,14 +506,9 @@ export default function GradeManagement() {
                 </p>
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead
-                    style={{
-                      backgroundColor: "#f9fafb",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
+              <div className="grade-table__container">
+                <table className="grade-table">
+                  <thead>
                     <tr>
                       {[
                         "Student",
@@ -736,19 +520,7 @@ export default function GradeManagement() {
                         "Status",
                         "Actions",
                       ].map((header) => (
-                        <th
-                          key={header}
-                          style={{
-                            padding: "12px 16px",
-                            textAlign: "left",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            color: "#6b7280",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {header}
-                        </th>
+                        <th key={header}>{header}</th>
                       ))}
                     </tr>
                   </thead>
@@ -758,38 +530,20 @@ export default function GradeManagement() {
                         key={grade.grade_id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        style={{ borderBottom: "1px solid #f3f4f6" }}
                       >
-                        <td style={{ padding: "16px" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "12px",
-                            }}
-                          >
+                        <td>
+                          <div className="grade-table__student">
                             <div
+                              className="grade-table__avatar"
                               style={{
-                                width: "40px",
-                                height: "40px",
-                                borderRadius: "50%",
-                                backgroundColor: "#3b82f6",
-                                color: "white",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontWeight: "600",
+                                backgroundColor: getGradeColor(
+                                  grade.grade || "F"
+                                ),
                               }}
                             >
                               {grade.student?.first_name?.charAt(0) || "?"}
                             </div>
-                            <span
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: "500",
-                                color: "#111827",
-                              }}
-                            >
+                            <span className="grade-table__student-name">
                               {grade.student
                                 ? `${grade.student.first_name || ""} ${
                                     grade.student.last_name || ""
@@ -798,59 +552,35 @@ export default function GradeManagement() {
                             </span>
                           </div>
                         </td>
-                        <td
-                          style={{
-                            padding: "16px",
-                            fontSize: "14px",
-                            color: "#6b7280",
-                          }}
-                        >
+                        <td className="grade-table__reg">
                           {grade.student?.university_reg_number || "N/A"}
                         </td>
-                        <td style={{ padding: "16px" }}>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: "500",
-                                color: "#1e40af",
-                              }}
-                            >
+                        <td>
+                          <div className="grade-table__course">
+                            <div className="grade-table__course-code">
                               {grade.offering?.course?.course_code || "N/A"}
                             </div>
-                            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                            <div className="grade-table__course-name">
                               {grade.offering?.course?.course_name || ""}
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: "16px" }}>
-                          <div>
-                            <div style={{ fontSize: "14px", color: "#111827" }}>
+                        <td>
+                          <div className="grade-table__assessment">
+                            <div className="grade-table__assessment-name">
                               {grade.assessment_name || "N/A"}
                             </div>
-                            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                            <div className="grade-table__assessment-type">
                               {grade.assessment_type?.replace("_", " ") || ""}
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: "16px" }}>
-                          <div>
-                            <span
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: "500",
-                                color: "#111827",
-                              }}
-                            >
+                        <td>
+                          <div className="grade-table__marks">
+                            <span className="grade-table__marks-value">
                               {grade.marks_obtained}/{grade.max_marks}
                             </span>
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                color: "#6b7280",
-                                marginLeft: "4px",
-                              }}
-                            >
+                            <span className="grade-table__marks-percent">
                               (
                               {(
                                 (grade.marks_obtained / grade.max_marks) *
@@ -860,61 +590,50 @@ export default function GradeManagement() {
                             </span>
                           </div>
                         </td>
-                        <td style={{ padding: "16px" }}>
+                        <td>
                           <span
+                            className="grade-table__grade-badge"
                             style={{
-                              padding: "4px 12px",
-                              borderRadius: "12px",
-                              fontSize: "12px",
-                              fontWeight: "600",
                               backgroundColor: `${getGradeColor(
                                 grade.grade
-                              )}20`,
+                              )}15`,
                               color: getGradeColor(grade.grade),
                             }}
                           >
                             {grade.grade || "N/A"}
                           </span>
                         </td>
-                        <td style={{ padding: "16px" }}>
+                        <td>
                           <span
-                            style={{
-                              padding: "4px 12px",
-                              borderRadius: "12px",
-                              fontSize: "12px",
-                              fontWeight: "500",
-                              backgroundColor: grade.is_finalized
-                                ? "#10b98120"
-                                : "#f59e0b20",
-                              color: grade.is_finalized ? "#10b981" : "#f59e0b",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
+                            className={`grade-table__status ${
+                              grade.is_finalized
+                                ? "grade-table__status--finalized"
+                                : "grade-table__status--draft"
+                            }`}
                           >
                             {grade.is_finalized ? (
-                              <CheckCircle size={14} />
+                              <CheckCircle size={12} />
                             ) : (
-                              <XCircle size={14} />
+                              <XCircle size={12} />
                             )}
                             {grade.is_finalized ? "Finalized" : "Draft"}
                           </span>
                         </td>
-                        <td style={{ padding: "16px" }}>
-                          <div style={{ display: "flex", gap: "8px" }}>
+                        <td>
+                          <div className="grade-table__actions">
                             <ActionButton
                               onClick={() => openDetailsModal(grade)}
                               title="View"
-                              color="#3b82f6"
+                              variant="view"
                             >
-                              <Eye size={16} />
+                              <Eye size={14} />
                             </ActionButton>
                             <ActionButton
                               onClick={() => openEditModal(grade)}
                               title="Edit"
-                              color="#f59e0b"
+                              variant="edit"
                             >
-                              <Edit size={16} />
+                              <Edit size={14} />
                             </ActionButton>
                             <ActionButton
                               onClick={() =>
@@ -923,20 +642,20 @@ export default function GradeManagement() {
                               title={
                                 grade.is_finalized ? "Unfinalize" : "Finalize"
                               }
-                              color={grade.is_finalized ? "#6b7280" : "#10b981"}
+                              variant="toggle"
                             >
                               {grade.is_finalized ? (
-                                <Unlock size={16} />
+                                <Unlock size={14} />
                               ) : (
-                                <Lock size={16} />
+                                <Lock size={14} />
                               )}
                             </ActionButton>
                             <ActionButton
                               onClick={() => handleDeleteGrade(grade.grade_id)}
                               title="Delete"
-                              color="#dc2626"
+                              variant="delete"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={14} />
                             </ActionButton>
                           </div>
                         </td>
@@ -950,66 +669,31 @@ export default function GradeManagement() {
         </>
       )}
 
-      {/* Analytics Tab */}
       {activeTab === "analytics" && gradeDistribution && (
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "32px",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h3
-            style={{
-              fontSize: "20px",
-              fontWeight: "700",
-              marginBottom: "24px",
-            }}
-          >
+        <div className="grade-management__analytics">
+          <h3 className="grade-management__analytics-title">
             Grade Distribution
           </h3>
-          <div style={{ display: "grid", gap: "16px" }}>
+          <div className="grade-distribution">
             {gradeDistribution.map((item) => (
-              <div
-                key={item.grade}
-                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+              <div key={item.grade} className="grade-distribution__item">
+                <div className="grade-distribution__header">
                   <span
-                    style={{
-                      fontSize: "18px",
-                      fontWeight: "600",
-                      color: getGradeColor(item.grade),
-                    }}
+                    className="grade-distribution__grade"
+                    style={{ color: getGradeColor(item.grade) }}
                   >
                     {item.grade}
                   </span>
-                  <span style={{ fontSize: "14px", color: "#6b7280" }}>
+                  <span className="grade-distribution__count">
                     {item.count} students ({item.percentage}%)
                   </span>
                 </div>
-                <div
-                  style={{
-                    width: "100%",
-                    height: "12px",
-                    backgroundColor: "#f3f4f6",
-                    borderRadius: "6px",
-                    overflow: "hidden",
-                  }}
-                >
+                <div className="grade-distribution__bar">
                   <div
+                    className="grade-distribution__bar-fill"
                     style={{
                       width: `${item.percentage}%`,
-                      height: "100%",
                       backgroundColor: getGradeColor(item.grade),
-                      transition: "width 0.3s ease",
                     }}
                   />
                 </div>
@@ -1019,7 +703,6 @@ export default function GradeManagement() {
         </div>
       )}
 
-      {/* Add/Edit Grade Modal */}
       <AnimatePresence>
         {showAddGradeModal && (
           <Modal
@@ -1028,31 +711,14 @@ export default function GradeManagement() {
               resetForm();
             }}
           >
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "8px",
-              }}
-            >
+            <h2 className="modal__title">
               {selectedGrade ? "Edit Grade" : "Add New Grade"}
             </h2>
-            <p style={{ color: "#6b7280", marginBottom: "24px" }}>
-              Enter the grade details below
-            </p>
+            <p className="modal__subtitle">Enter the grade details below</p>
 
-            <form
-              onSubmit={handleSubmitGrade}
-              style={{ display: "grid", gap: "16px" }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "16px",
-                }}
-              >
-                <FormField label="Course Offering *" required>
+            <form onSubmit={handleSubmitGrade} className="grade-form">
+              <div className="grade-form__grid">
+                <FormField label="Course Offering" required>
                   <select
                     required
                     value={gradeForm.offering_id}
@@ -1076,7 +742,7 @@ export default function GradeManagement() {
                   </select>
                 </FormField>
 
-                <FormField label="Assessment Type *" required>
+                <FormField label="Assessment Type" required>
                   <select
                     required
                     value={gradeForm.assessment_type}
@@ -1096,7 +762,7 @@ export default function GradeManagement() {
                 </FormField>
               </div>
 
-              <FormField label="Assessment Name *" required>
+              <FormField label="Assessment Name" required>
                 <input
                   type="text"
                   required
@@ -1111,14 +777,8 @@ export default function GradeManagement() {
                 />
               </FormField>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr",
-                  gap: "16px",
-                }}
-              >
-                <FormField label="Marks Obtained *" required>
+              <div className="grade-form__grid grade-form__grid--three">
+                <FormField label="Marks Obtained" required>
                   <input
                     type="number"
                     required
@@ -1134,7 +794,7 @@ export default function GradeManagement() {
                   />
                 </FormField>
 
-                <FormField label="Maximum Marks *" required>
+                <FormField label="Maximum Marks" required>
                   <input
                     type="number"
                     required
@@ -1158,9 +818,7 @@ export default function GradeManagement() {
                 </FormField>
               </div>
 
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
+              <div className="grade-form__checkbox">
                 <input
                   type="checkbox"
                   id="finalized"
@@ -1171,62 +829,23 @@ export default function GradeManagement() {
                       is_finalized: e.target.checked,
                     })
                   }
-                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
                 />
-                <label
-                  htmlFor="finalized"
-                  style={{
-                    fontSize: "14px",
-                    color: "#374151",
-                    cursor: "pointer",
-                  }}
-                >
-                  Mark as finalized
-                </label>
+                <label htmlFor="finalized">Mark as finalized</label>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "flex-end",
-                  marginTop: "8px",
-                }}
-              >
+              <div className="modal__actions">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddGradeModal(false);
                     resetForm();
                   }}
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#e5e7eb",
-                    color: "#374151",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
+                  className="btn btn--secondary"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    backgroundColor: "#1e40af",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <Plus size={18} />
+                <button type="submit" className="btn btn--primary">
+                  <Plus size={16} />
                   {selectedGrade ? "Update Grade" : "Add Grade"}
                 </button>
               </div>
@@ -1235,71 +854,38 @@ export default function GradeManagement() {
         )}
       </AnimatePresence>
 
-      {/* Grade Details Modal */}
       <AnimatePresence>
         {showDetailsModal && selectedGrade && (
           <Modal onClose={() => setShowDetailsModal(false)}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "700",
-                marginBottom: "24px",
-              }}
-            >
-              Grade Details
-            </h2>
+            <h2 className="modal__title">Grade Details</h2>
 
-            <div style={{ display: "grid", gap: "24px" }}>
-              {/* Student & Grade Summary */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "start",
-                }}
-              >
+            <div className="grade-details">
+              <div className="grade-details__header">
                 <div>
-                  <h3
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: "600",
-                      color: "#111827",
-                      marginBottom: "4px",
-                    }}
-                  >
+                  <h3 className="grade-details__student-name">
                     {selectedGrade.student
                       ? `${selectedGrade.student.first_name || ""} ${
                           selectedGrade.student.last_name || ""
                         }`.trim()
                       : "N/A"}
                   </h3>
-                  <p style={{ fontSize: "14px", color: "#6b7280" }}>
+                  <p className="grade-details__reg-number">
                     {selectedGrade.student?.university_reg_number || "N/A"}
                   </p>
                 </div>
-                <div style={{ textAlign: "right" }}>
+                <div className="grade-details__grade-display">
                   <span
+                    className="grade-details__grade-large"
                     style={{
-                      padding: "8px 16px",
-                      borderRadius: "12px",
-                      fontSize: "24px",
-                      fontWeight: "700",
                       backgroundColor: `${getGradeColor(
                         selectedGrade.grade
-                      )}20`,
+                      )}15`,
                       color: getGradeColor(selectedGrade.grade),
-                      display: "inline-block",
                     }}
                   >
                     {selectedGrade.grade || "N/A"}
                   </span>
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "#6b7280",
-                      marginTop: "8px",
-                    }}
-                  >
+                  <p className="grade-details__percentage">
                     {selectedGrade.marks_obtained}/{selectedGrade.max_marks} (
                     {(
                       (selectedGrade.marks_obtained / selectedGrade.max_marks) *
@@ -1310,19 +896,11 @@ export default function GradeManagement() {
                 </div>
               </div>
 
-              {/* Course Information */}
-              <div>
-                <h4
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    marginBottom: "12px",
-                    color: "#111827",
-                  }}
-                >
+              <div className="grade-details__section">
+                <h4 className="grade-details__section-title">
                   Course Information
                 </h4>
-                <div style={{ display: "grid", gap: "8px" }}>
+                <div className="grade-details__rows">
                   <DetailRow
                     label="Course Code"
                     value={selectedGrade.offering?.course?.course_code || "N/A"}
@@ -1344,19 +922,11 @@ export default function GradeManagement() {
                 </div>
               </div>
 
-              {/* Assessment Information */}
-              <div>
-                <h4
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    marginBottom: "12px",
-                    color: "#111827",
-                  }}
-                >
+              <div className="grade-details__section">
+                <h4 className="grade-details__section-title">
                   Assessment Details
                 </h4>
-                <div style={{ display: "grid", gap: "8px" }}>
+                <div className="grade-details__rows">
                   <DetailRow
                     label="Assessment Name"
                     value={selectedGrade.assessment_name || "N/A"}
@@ -1404,26 +974,16 @@ export default function GradeManagement() {
                     label="Status"
                     value={
                       <span
-                        style={{
-                          padding: "4px 12px",
-                          borderRadius: "12px",
-                          fontSize: "12px",
-                          fontWeight: "500",
-                          backgroundColor: selectedGrade.is_finalized
-                            ? "#10b98120"
-                            : "#f59e0b20",
-                          color: selectedGrade.is_finalized
-                            ? "#10b981"
-                            : "#f59e0b",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
+                        className={`grade-details__status ${
+                          selectedGrade.is_finalized
+                            ? "grade-details__status--finalized"
+                            : "grade-details__status--draft"
+                        }`}
                       >
                         {selectedGrade.is_finalized ? (
-                          <CheckCircle size={14} />
+                          <CheckCircle size={12} />
                         ) : (
-                          <XCircle size={14} />
+                          <XCircle size={12} />
                         )}
                         {selectedGrade.is_finalized ? "Finalized" : "Draft"}
                       </span>
@@ -1433,24 +993,10 @@ export default function GradeManagement() {
               </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: "24px",
-              }}
-            >
+            <div className="modal__actions">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#1e40af",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
+                className="btn btn--primary"
               >
                 Close
               </button>
@@ -1462,37 +1008,15 @@ export default function GradeManagement() {
   );
 }
 
-// Helper Components
 function StatCard({ icon, title, value, color }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-        borderLeft: `4px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <p
-            style={{ color: "#6b7280", fontSize: "14px", marginBottom: "8px" }}
-          >
-            {title}
-          </p>
-          <p style={{ fontSize: "32px", fontWeight: "700", color: "#111827" }}>
-            {value}
-          </p>
-        </div>
-        <div style={{ color }}>{icon}</div>
+    <motion.div whileHover={{ scale: 1.01 }} className="stat-card">
+      <div className="stat-card__icon" style={{ color }}>
+        {icon}
+      </div>
+      <div className="stat-card__content">
+        <p className="stat-card__title">{title}</p>
+        <p className="stat-card__value">{value}</p>
       </div>
     </motion.div>
   );
@@ -1500,46 +1024,19 @@ function StatCard({ icon, title, value, color }) {
 
 function TabButton({ active, onClick, icon, label }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "12px 24px",
-        backgroundColor: "transparent",
-        color: active ? "#1e40af" : "#6b7280",
-        border: "none",
-        borderBottom: active ? "2px solid #1e40af" : "2px solid transparent",
-        cursor: "pointer",
-        fontSize: "14px",
-        fontWeight: "500",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        transition: "all 0.2s",
-      }}
-    >
+    <button onClick={onClick} className={`tab ${active ? "tab--active" : ""}`}>
       {icon}
       {label}
     </button>
   );
 }
 
-function ActionButton({ onClick, title, color, children }) {
+function ActionButton({ onClick, title, variant, children }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      style={{
-        padding: "6px 12px",
-        backgroundColor: color,
-        color: "white",
-        border: "none",
-        borderRadius: "6px",
-        fontSize: "12px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className={`action-btn action-btn--${variant}`}
     >
       {children}
     </button>
@@ -1548,28 +1045,14 @@ function ActionButton({ onClick, title, color, children }) {
 
 function FormField({ label, required, children }) {
   return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontSize: "14px",
-          fontWeight: "500",
-          marginBottom: "8px",
-          color: "#374151",
-        }}
-      >
+    <div className="form-field">
+      <label className="form-field__label">
         {label}
+        {required && <span className="form-field__required">*</span>}
       </label>
-      <div style={{ width: "100%" }}>
+      <div className="form-field__input">
         {React.cloneElement(children, {
-          style: {
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontFamily: "inherit",
-          },
+          className: "form-field__control",
         })}
       </div>
     </div>
@@ -1578,19 +1061,9 @@ function FormField({ label, required, children }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "180px 1fr",
-        gap: "16px",
-        padding: "12px 0",
-        borderBottom: "1px solid #f3f4f6",
-      }}
-    >
-      <span style={{ fontSize: "14px", fontWeight: "600", color: "#6b7280" }}>
-        {label}:
-      </span>
-      <span style={{ fontSize: "14px", color: "#111827" }}>{value}</span>
+    <div className="detail-row">
+      <span className="detail-row__label">{label}</span>
+      <span className="detail-row__value">{value}</span>
     </div>
   );
 }
@@ -1602,36 +1075,14 @@ function Modal({ onClose, children }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "20px",
-      }}
+      className="modal-overlay"
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "32px",
-          maxWidth: "700px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow:
-            "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        }}
+        className="modal"
       >
         {children}
       </motion.div>
