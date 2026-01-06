@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  Filter,
+  Clock,
+  Users,
+  Video,
+  Calendar,
+  MoreVertical,
+  ExternalLink,
+  Play,
+  Bell,
+  BarChart3,
+  X,
+} from "lucide-react";
 import { adminService } from "../services/api/adminService";
 import "../styles/admin-pages/VirtualClassManagement.css";
 
@@ -220,14 +234,14 @@ export default function VirtualClassManagement() {
   const getPlatformIcon = (platform) => {
     switch (platform) {
       case "zoom":
-        return "📹";
+        return <Video size={16} />;
       case "google_meet":
       case "google-meet":
-        return "🎥";
+        return <Video size={16} />;
       case "teams":
-        return "💼";
+        return <Video size={16} />;
       default:
-        return "🖥️";
+        return <Video size={16} />;
     }
   };
 
@@ -272,87 +286,57 @@ export default function VirtualClassManagement() {
           className="btn-primary"
           onClick={() => setShowCreateModal(true)}
         >
-          <span>➕</span> Schedule New Class
+          Schedule New Class
         </button>
       </div>
 
       {/* Error Alert */}
-      {error && (
-        <div
-          style={{
-            padding: "15px",
-            background: "#fee",
-            color: "#c00",
-            borderRadius: "8px",
-            marginBottom: "20px",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <div className="error-alert">{error}</div>}
 
       {/* Stats Grid */}
       <div className="vcm-stats">
-        <motion.div className="stat-card" whileHover={{ y: -4 }}>
-          <div className="stat-icon" style={{ background: "#dbeafe" }}>
-            📚
-          </div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}>
           <div className="stat-content">
-            <div className="stat-value">{stats.totalClasses}</div>
             <div className="stat-label">Total Classes</div>
+            <div className="stat-value">{stats.totalClasses}</div>
           </div>
         </motion.div>
 
         <motion.div
           className="stat-card stat-card--live"
-          whileHover={{ y: -4 }}
+          whileHover={{ y: -2 }}
         >
-          <div className="stat-icon" style={{ background: "#dcfce7" }}>
-            🔴
-          </div>
           <div className="stat-content">
-            <div className="stat-value">{stats.liveNow}</div>
             <div className="stat-label">Live Now</div>
+            <div className="stat-value">{stats.liveNow}</div>
           </div>
         </motion.div>
 
-        <motion.div className="stat-card" whileHover={{ y: -4 }}>
-          <div className="stat-icon" style={{ background: "#fef3c7" }}>
-            📅
-          </div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}>
           <div className="stat-content">
-            <div className="stat-value">{stats.scheduledToday}</div>
             <div className="stat-label">Scheduled Today</div>
+            <div className="stat-value">{stats.scheduledToday}</div>
           </div>
         </motion.div>
 
-        <motion.div className="stat-card" whileHover={{ y: -4 }}>
-          <div className="stat-icon" style={{ background: "#e0e7ff" }}>
-            ✅
-          </div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}>
           <div className="stat-content">
-            <div className="stat-value">{stats.completedThisWeek}</div>
             <div className="stat-label">Completed This Week</div>
+            <div className="stat-value">{stats.completedThisWeek}</div>
           </div>
         </motion.div>
 
-        <motion.div className="stat-card" whileHover={{ y: -4 }}>
-          <div className="stat-icon" style={{ background: "#fce7f3" }}>
-            👥
-          </div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}>
           <div className="stat-content">
-            <div className="stat-value">{stats.averageAttendance}%</div>
             <div className="stat-label">Avg Attendance</div>
+            <div className="stat-value">{stats.averageAttendance}%</div>
           </div>
         </motion.div>
 
-        <motion.div className="stat-card" whileHover={{ y: -4 }}>
-          <div className="stat-icon" style={{ background: "#ddd6fe" }}>
-            🎓
-          </div>
+        <motion.div className="stat-card" whileHover={{ y: -2 }}>
           <div className="stat-content">
-            <div className="stat-value">{stats.totalParticipants}</div>
             <div className="stat-label">Total Participants</div>
+            <div className="stat-value">{stats.totalParticipants}</div>
           </div>
         </motion.div>
       </div>
@@ -364,7 +348,7 @@ export default function VirtualClassManagement() {
           {/* Filters */}
           <div className="vcm-filters">
             <div className="search-bar">
-              <span className="search-icon">🔍</span>
+              <Search className="search-icon" size={18} />
               <input
                 type="text"
                 placeholder="Search classes, courses, or instructors..."
@@ -375,6 +359,7 @@ export default function VirtualClassManagement() {
             </div>
 
             <div className="filter-group">
+              <Filter size={18} />
               <select
                 className="filter-select"
                 value={filterPlatform}
@@ -400,7 +385,7 @@ export default function VirtualClassManagement() {
               className={`tab ${selectedTab === "live" ? "tab--active" : ""}`}
               onClick={() => setSelectedTab("live")}
             >
-              <span className="live-indicator">●</span> Live
+              Live
             </button>
             <button
               className={`tab ${
@@ -429,7 +414,7 @@ export default function VirtualClassManagement() {
                   selectedClass?.id === cls.id ? "class-card--selected" : ""
                 }`}
                 onClick={() => setSelectedClass(cls)}
-                whileHover={{ x: 4 }}
+                whileHover={{ x: 2 }}
                 layout
               >
                 <div className="class-card-header">
@@ -440,9 +425,6 @@ export default function VirtualClassManagement() {
                     className="class-card-status"
                     style={{ backgroundColor: getStatusColor(cls.status) }}
                   >
-                    {cls.status === "live" && (
-                      <span className="pulse-dot">●</span>
-                    )}
                     {cls.status}
                   </span>
                 </div>
@@ -452,17 +434,16 @@ export default function VirtualClassManagement() {
 
                 <div className="class-card-info">
                   <div className="info-item">
-                    <span>👨‍🏫</span>
                     <span>{cls.instructor}</span>
                   </div>
                   <div className="info-item">
-                    <span>🕐</span>
+                    <Clock size={14} />
                     <span>
                       {formatTime(cls.startTime)} • {cls.duration}min
                     </span>
                   </div>
                   <div className="info-item">
-                    <span>👥</span>
+                    <Users size={14} />
                     <span>
                       {cls.participants}/{cls.maxParticipants}
                     </span>
@@ -471,7 +452,7 @@ export default function VirtualClassManagement() {
 
                 {cls.recordingAvailable && (
                   <div className="class-card-recording">
-                    <span>📹</span> Recording Available
+                    Recording Available
                   </div>
                 )}
               </motion.div>
@@ -479,7 +460,6 @@ export default function VirtualClassManagement() {
 
             {filteredClasses.length === 0 && (
               <div className="empty-state">
-                <div className="empty-state-icon">📭</div>
                 <h3>No classes found</h3>
                 <p>Try adjusting your filters or search criteria</p>
               </div>
@@ -498,34 +478,34 @@ export default function VirtualClassManagement() {
             >
               <div className="details-header">
                 <h2>Class Details</h2>
-                <button className="btn-icon">⋮</button>
+                <button className="btn-icon">
+                  <MoreVertical size={18} />
+                </button>
               </div>
 
               <div className="details-content">
-                <div
-                  className="details-banner"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  }}
-                >
-                  <div className="banner-platform">
-                    {getPlatformIcon(selectedClass.platform)}
-                  </div>
-                  <span
-                    className="banner-status"
-                    style={{
-                      backgroundColor: getStatusColor(selectedClass.status),
-                    }}
-                  >
-                    {selectedClass.status === "live" && (
-                      <span className="pulse-dot">●</span>
-                    )}
-                    {selectedClass.status}
-                  </span>
-                </div>
-
                 <div className="details-body">
+                  <div className="details-status-bar">
+                    <span
+                      className="status-indicator"
+                      style={{
+                        backgroundColor: getStatusColor(selectedClass.status),
+                      }}
+                    >
+                      {selectedClass.status}
+                    </span>
+                    <div className="platform-badge">
+                      {getPlatformIcon(selectedClass.platform)}
+                      <span>
+                        {selectedClass.platform === "zoom"
+                          ? "Zoom"
+                          : selectedClass.platform === "google_meet"
+                          ? "Google Meet"
+                          : "Microsoft Teams"}
+                      </span>
+                    </div>
+                  </div>
+
                   <h3 className="details-title">{selectedClass.title}</h3>
                   <p className="details-course">{selectedClass.course}</p>
 
@@ -533,7 +513,6 @@ export default function VirtualClassManagement() {
                     <div className="detail-item">
                       <div className="detail-label">Instructor</div>
                       <div className="detail-value">
-                        <span className="detail-icon">👨‍🏫</span>
                         {selectedClass.instructor}
                       </div>
                     </div>
@@ -541,7 +520,6 @@ export default function VirtualClassManagement() {
                     <div className="detail-item">
                       <div className="detail-label">Date & Time</div>
                       <div className="detail-value">
-                        <span className="detail-icon">📅</span>
                         {formatDate(selectedClass.startTime)} at{" "}
                         {formatTime(selectedClass.startTime)}
                       </div>
@@ -550,7 +528,6 @@ export default function VirtualClassManagement() {
                     <div className="detail-item">
                       <div className="detail-label">Duration</div>
                       <div className="detail-value">
-                        <span className="detail-icon">⏱️</span>
                         {selectedClass.duration} minutes
                       </div>
                     </div>
@@ -558,36 +535,21 @@ export default function VirtualClassManagement() {
                     <div className="detail-item">
                       <div className="detail-label">Participants</div>
                       <div className="detail-value">
-                        <span className="detail-icon">👥</span>
                         {selectedClass.participants} /{" "}
                         {selectedClass.maxParticipants}
                       </div>
                     </div>
 
-                    <div className="detail-item">
-                      <div className="detail-label">Platform</div>
-                      <div className="detail-value">
-                        <span className="detail-icon">
-                          {getPlatformIcon(selectedClass.platform)}
-                        </span>
-                        {selectedClass.platform === "zoom"
-                          ? "Zoom"
-                          : selectedClass.platform === "google_meet"
-                          ? "Google Meet"
-                          : "Microsoft Teams"}
-                      </div>
-                    </div>
-
-                    <div className="detail-item">
+                    <div className="detail-item detail-item--full">
                       <div className="detail-label">Meeting Link</div>
                       <div className="detail-value detail-link">
-                        <span className="detail-icon">🔗</span>
                         <a
                           href={selectedClass.meetingLink}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           Join Meeting
+                          <ExternalLink size={14} />
                         </a>
                       </div>
                     </div>
@@ -595,7 +557,7 @@ export default function VirtualClassManagement() {
 
                   {selectedClass.recordingAvailable && (
                     <div className="recording-section">
-                      <h4>📹 Recording Available</h4>
+                      <div className="recording-label">Recording Available</div>
                       <a
                         href={selectedClass.recordingUrl}
                         className="btn-secondary btn-block"
@@ -608,25 +570,26 @@ export default function VirtualClassManagement() {
                   <div className="details-actions">
                     {selectedClass.status === "live" && (
                       <button
-                        className="btn-primary btn-block btn-pulse"
+                        className="btn-primary btn-block"
                         onClick={() => handleStartClass(selectedClass.id)}
                       >
-                        <span>▶️</span> Join Live Class
+                        <Play size={16} />
+                        Join Live Class
                       </button>
                     )}
                     {selectedClass.status === "scheduled" && (
-                      <>
-                        <button
-                          className="btn-secondary btn-block"
-                          onClick={() => handleSendReminder(selectedClass.id)}
-                        >
-                          <span>📧</span> Send Reminder
-                        </button>
-                      </>
+                      <button
+                        className="btn-secondary btn-block"
+                        onClick={() => handleSendReminder(selectedClass.id)}
+                      >
+                        <Bell size={16} />
+                        Send Reminder
+                      </button>
                     )}
                     {selectedClass.status === "completed" && (
                       <button className="btn-secondary btn-block">
-                        <span>📊</span> View Analytics
+                        <BarChart3 size={16} />
+                        View Analytics
                       </button>
                     )}
                   </div>
@@ -635,7 +598,6 @@ export default function VirtualClassManagement() {
             </motion.div>
           ) : (
             <div className="empty-details">
-              <div className="empty-details-icon">🎥</div>
               <h3>Select a Class</h3>
               <p>Choose a class from the list to view details</p>
             </div>
@@ -643,7 +605,7 @@ export default function VirtualClassManagement() {
 
           {/* Upcoming Classes */}
           <div className="upcoming-classes">
-            <h3 className="upcoming-title">📅 Upcoming Classes</h3>
+            <h3 className="upcoming-title">Upcoming Classes</h3>
             <div className="upcoming-list">
               {upcomingClasses.map((cls) => (
                 <div key={cls.id} className="upcoming-item">
@@ -659,15 +621,7 @@ export default function VirtualClassManagement() {
                 </div>
               ))}
               {upcomingClasses.length === 0 && (
-                <p
-                  style={{
-                    textAlign: "center",
-                    padding: "20px",
-                    color: "#666",
-                  }}
-                >
-                  No upcoming classes
-                </p>
+                <p className="upcoming-empty">No upcoming classes</p>
               )}
             </div>
           </div>
@@ -686,12 +640,12 @@ export default function VirtualClassManagement() {
           >
             <motion.div
               className="modal"
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <form onSubmit={handleCreateClass}>
+              <div onSubmit={handleCreateClass}>
                 <div className="modal-header">
                   <h2>Schedule New Virtual Class</h2>
                   <button
@@ -699,7 +653,7 @@ export default function VirtualClassManagement() {
                     className="modal-close"
                     onClick={() => setShowCreateModal(false)}
                   >
-                    ✕
+                    <X size={20} />
                   </button>
                 </div>
 
@@ -809,14 +763,15 @@ export default function VirtualClassManagement() {
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type="button"
                     className="btn-primary"
+                    onClick={handleCreateClass}
                     disabled={submitting}
                   >
                     {submitting ? "Creating..." : "Schedule Class"}
                   </button>
                 </div>
-              </form>
+              </div>
             </motion.div>
           </motion.div>
         )}
