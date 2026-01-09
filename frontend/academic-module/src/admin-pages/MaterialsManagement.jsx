@@ -112,7 +112,7 @@ export default function MaterialsManagement() {
           views: m.view_count || 0,
           accessLevel: m.access_level === "public" ? "public" : "enrolled",
           tags: m.tags ? m.tags.split(",").map((t) => t.trim()) : [],
-          isStarred: false, // You can add this field to backend if needed
+          isStarred: false,
           thumbnail: null,
           filePath: m.file_path,
           isVisible: m.is_visible,
@@ -203,7 +203,6 @@ export default function MaterialsManagement() {
     setError(null);
 
     try {
-      // Prepare data for API
       const uploadData = {
         title: formData.title,
         description: formData.description,
@@ -246,7 +245,6 @@ export default function MaterialsManagement() {
     try {
       const result = await adminService.downloadStudyMaterial(materialId);
       if (result.success) {
-        // Create download link
         const url = window.URL.createObjectURL(new Blob([result.data]));
         const link = document.createElement("a");
         link.href = url;
@@ -900,7 +898,9 @@ export default function MaterialsManagement() {
               <div className="modal-body">
                 <div className="detail-section">
                   <h3>Description</h3>
-                  <p>{selectedMaterial.description}</p>
+                  <p>
+                    {selectedMaterial.description || "No description provided."}
+                  </p>
                 </div>
 
                 <div className="detail-grid">
@@ -955,21 +955,6 @@ export default function MaterialsManagement() {
                     </div>
                   </div>
 
-                  <div className="detail-item">
-                    <label>Access Level</label>
-                    <div className="detail-value">
-                      {selectedMaterial.accessLevel === "public" ? (
-                        <>
-                          <Unlock size={16} /> <span>Public</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lock size={16} /> <span>Enrolled Students</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
                   {selectedMaterial.duration && (
                     <div className="detail-item">
                       <label>Duration</label>
@@ -984,11 +969,15 @@ export default function MaterialsManagement() {
                 <div className="detail-section">
                   <h3>Tags</h3>
                   <div className="detail-tags">
-                    {selectedMaterial.tags.map((tag, index) => (
-                      <span key={index} className="tag">
-                        <Tags size={14} /> {tag}
-                      </span>
-                    ))}
+                    {selectedMaterial.tags.length > 0 ? (
+                      selectedMaterial.tags.map((tag, index) => (
+                        <span key={index} className="tag">
+                          <Tags size={14} /> {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="detail-empty">No tags</span>
+                    )}
                   </div>
                 </div>
               </div>

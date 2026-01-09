@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, Loader } from 'lucide-react';
-
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Save, Loader } from "lucide-react";
+import "../../../styles/admin-pages/AdminModal.css";
 export default function AdminModal({
   isOpen,
   onClose,
@@ -9,8 +9,8 @@ export default function AdminModal({
   children,
   onSave,
   loading = false,
-  size = 'md', // sm, md, lg, xl
-  showFooter = true
+  size = "md", // sm, md, lg, xl
+  showFooter = true,
 }) {
   const [isClosing, setIsClosing] = useState(false);
 
@@ -33,35 +33,35 @@ export default function AdminModal({
   // Close on escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         handleClose();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const sizeClasses = {
-    sm: 'admin-modal--sm',
-    md: 'admin-modal--md',
-    lg: 'admin-modal--lg',
-    xl: 'admin-modal--xl'
+    sm: "admin-modal--sm",
+    md: "admin-modal--md",
+    lg: "admin-modal--lg",
+    xl: "admin-modal--xl",
   };
 
   return (
@@ -70,10 +70,10 @@ export default function AdminModal({
         <motion.div
           className={`admin-modal ${sizeClasses[size]}`}
           initial={{ opacity: 0, scale: 0.9, y: 50 }}
-          animate={{ 
-            opacity: isClosing ? 0 : 1, 
-            scale: isClosing ? 0.9 : 1, 
-            y: isClosing ? 50 : 0 
+          animate={{
+            opacity: isClosing ? 0 : 1,
+            scale: isClosing ? 0.9 : 1,
+            y: isClosing ? 50 : 0,
           }}
           exit={{ opacity: 0, scale: 0.9, y: 50 }}
           transition={{ duration: 0.2 }}
@@ -93,9 +93,7 @@ export default function AdminModal({
           </div>
 
           {/* Body */}
-          <div className="admin-modal__body">
-            {children}
-          </div>
+          <div className="admin-modal__body">{children}</div>
 
           {/* Footer */}
           {showFooter && (

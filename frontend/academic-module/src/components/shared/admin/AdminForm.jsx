@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import "../../../styles/admin-pages/AdminForm.css";
 
 export default function AdminForm({
   fields,
   onSubmit,
   defaultValues = {},
   validationSchema = {},
-  submitButtonText = 'Submit',
+  submitButtonText = "Submit",
   showResetButton = false,
-  resetButtonText = 'Reset',
-  loading = false
+  resetButtonText = "Reset",
+  loading = false,
 }) {
   const [showPassword, setShowPassword] = useState({});
   const {
@@ -20,10 +21,10 @@ export default function AdminForm({
     reset,
     watch,
     setValue,
-    trigger
+    trigger,
   } = useForm({
     defaultValues,
-    mode: 'onBlur'
+    mode: "onBlur",
   });
 
   const onFormSubmit = (data) => {
@@ -37,22 +38,22 @@ export default function AdminForm({
   };
 
   const togglePasswordVisibility = (fieldName) => {
-    setShowPassword(prev => ({
+    setShowPassword((prev) => ({
       ...prev,
-      [fieldName]: !prev[fieldName]
+      [fieldName]: !prev[fieldName],
     }));
   };
 
   const renderField = (field) => {
     const {
       name,
-      type = 'text',
+      type = "text",
       label,
       placeholder,
       required = false,
       options = [],
       validation = {},
-      className = '',
+      className = "",
       disabled = false,
       ...rest
     } = field;
@@ -61,7 +62,9 @@ export default function AdminForm({
     const fieldId = `field-${name}`;
 
     const fieldWrapperClass = `admin-form__field-wrapper ${className}`;
-    const inputClass = `admin-form__input ${error ? 'admin-form__input--error' : ''}`;
+    const inputClass = `admin-form__input ${
+      error ? "admin-form__input--error" : ""
+    }`;
 
     return (
       <div key={name} className={fieldWrapperClass}>
@@ -73,7 +76,7 @@ export default function AdminForm({
         )}
 
         <div className="admin-form__input-wrapper">
-          {type === 'select' ? (
+          {type === "select" ? (
             <select
               id={fieldId}
               className={inputClass}
@@ -81,14 +84,17 @@ export default function AdminForm({
               disabled={disabled || loading}
               {...rest}
             >
-              <option value="">{placeholder || 'Select an option'}</option>
+              <option value="">{placeholder || "Select an option"}</option>
               {options.map((option) => (
-                <option key={option.value || option} value={option.value || option}>
+                <option
+                  key={option.value || option}
+                  value={option.value || option}
+                >
                   {option.label || option}
                 </option>
               ))}
             </select>
-          ) : type === 'textarea' ? (
+          ) : type === "textarea" ? (
             <textarea
               id={fieldId}
               className={inputClass}
@@ -98,11 +104,11 @@ export default function AdminForm({
               rows={rest.rows || 4}
               {...rest}
             />
-          ) : type === 'password' ? (
+          ) : type === "password" ? (
             <div className="admin-form__password-wrapper">
               <input
                 id={fieldId}
-                type={showPassword[name] ? 'text' : 'password'}
+                type={showPassword[name] ? "text" : "password"}
                 className={inputClass}
                 placeholder={placeholder}
                 {...register(name, { required, ...validation })}
@@ -113,12 +119,14 @@ export default function AdminForm({
                 type="button"
                 className="admin-form__password-toggle"
                 onClick={() => togglePasswordVisibility(name)}
-                aria-label={showPassword[name] ? 'Hide password' : 'Show password'}
+                aria-label={
+                  showPassword[name] ? "Hide password" : "Show password"
+                }
               >
                 {showPassword[name] ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-          ) : type === 'checkbox' ? (
+          ) : type === "checkbox" ? (
             <label className="admin-form__checkbox-label">
               <input
                 id={fieldId}
@@ -131,10 +139,13 @@ export default function AdminForm({
               <span className="admin-form__checkbox-custom"></span>
               {label}
             </label>
-          ) : type === 'radio' ? (
+          ) : type === "radio" ? (
             <div className="admin-form__radio-group">
               {options.map((option) => (
-                <label key={option.value || option} className="admin-form__radio-label">
+                <label
+                  key={option.value || option}
+                  className="admin-form__radio-label"
+                >
                   <input
                     type="radio"
                     value={option.value || option}
@@ -168,20 +179,14 @@ export default function AdminForm({
           )}
         </div>
 
-        {field.hint && (
-          <div className="admin-form__hint">
-            {field.hint}
-          </div>
-        )}
+        {field.hint && <div className="admin-form__hint">{field.hint}</div>}
       </div>
     );
   };
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="admin-form">
-      <div className="admin-form__fields">
-        {fields.map(renderField)}
-      </div>
+      <div className="admin-form__fields">{fields.map(renderField)}</div>
 
       <div className="admin-form__actions">
         {showResetButton && (
@@ -199,7 +204,7 @@ export default function AdminForm({
           className="admin-form__btn admin-form__btn--primary"
           disabled={loading || isSubmitting}
         >
-          {loading || isSubmitting ? 'Submitting...' : submitButtonText}
+          {loading || isSubmitting ? "Submitting..." : submitButtonText}
         </button>
       </div>
     </form>
