@@ -73,6 +73,7 @@ const adminService = {
 
   createStudent: async (studentData) => {
     try {
+      console.log("Creating student with data:", studentData);
       const response = await api.post("/students/", studentData);
       return {
         success: true,
@@ -80,9 +81,14 @@ const adminService = {
       };
     } catch (error) {
       console.error("Error creating student:", error);
+      console.error("Error response:", error.response?.data);
       return {
         success: false,
-        error: error.response?.data?.detail || "Failed to create student",
+        error:
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          error.response?.data ||
+          "Failed to create student",
       };
     }
   },
@@ -1674,9 +1680,6 @@ const adminService = {
       };
     }
   },
-
-  // ==================== Admission Management ====================
-  // (Previous admission methods remain unchanged – omitted here for brevity, but they are still present in the full object)
 
   // ==================== REPORTS & ANALYTICS ====================
 

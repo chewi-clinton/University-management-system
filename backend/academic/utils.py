@@ -273,3 +273,26 @@ def send_notification(recipient, subject, message, notification_type='email'):
     except Exception as e:
         logger.error(f"Error sending {notification_type} notification: {e}")
         return False
+def generate_university_reg_number():
+    """Generate a unique university registration number"""
+    from django.utils import timezone
+    from .models import Student
+    
+    year = timezone.now().year
+    prefix = f"{year}"
+    
+    # Find the last registration number for this year
+    last_student = Student.objects.filter(
+        university_reg_number__startswith=prefix
+    ).order_by('-university_reg_number').first()
+    
+    if last_student:
+        try:
+            last_number = int(last_student.university_reg_number[4:])
+            new_number = last_number + 1
+        except (ValueError, IndexError):
+            new_number = 1
+    else:
+        new_number = 1
+    
+    return f"{prefix}{new_number:04d}"

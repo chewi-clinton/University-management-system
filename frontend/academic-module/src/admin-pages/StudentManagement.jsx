@@ -2,16 +2,12 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
-  Download,
   Trash2,
   Edit,
   Search,
   Users,
   GraduationCap,
   Mail,
-  Phone,
-  MapPin,
-  Calendar,
   TrendingUp,
 } from "lucide-react";
 
@@ -55,7 +51,7 @@ export default function StudentManagement() {
           s.university_reg_number
             ?.toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          s.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.program_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -82,13 +78,11 @@ export default function StudentManagement() {
           current_gpa: parseFloat(student.current_gpa) || 0.0,
           enrollment_date: student.enrollment_date,
           current_status: student.current_status || "active",
-          user_id: student.user?.id,
         }));
 
         setStudents(studentsData);
         calculateStats(studentsData);
       } else {
-        console.error("Failed to fetch students:", response.error);
         alert("Failed to load students. Please try again.");
       }
     } catch (error) {
@@ -221,7 +215,19 @@ export default function StudentManagement() {
       label: "Email",
       placeholder: "student@university.edu",
       required: true,
+      disabled: modalMode === "edit",
     },
+    ...(modalMode === "add"
+      ? [
+          {
+            name: "password",
+            type: "password",
+            label: "Initial Password",
+            placeholder: "Minimum 6 characters",
+            required: true,
+          },
+        ]
+      : []),
     {
       name: "phone",
       type: "tel",
@@ -232,7 +238,7 @@ export default function StudentManagement() {
       name: "university_reg_number",
       type: "text",
       label: "Registration Number",
-      placeholder: "e.g., 20230001",
+      placeholder: "e.g., 20250001",
       required: true,
     },
     {
@@ -288,24 +294,32 @@ export default function StudentManagement() {
     setLoading(true);
     try {
       if (modalMode === "add") {
+        if (!formData.password || formData.password.length < 6) {
+          alert("Password must be at least 6 characters long");
+          setLoading(false);
+          return;
+        }
+
         const response = await adminService.createStudent({
           first_name: formData.first_name,
           last_name: formData.last_name,
+          email: formData.email,
+          password: formData.password,
           phone: formData.phone,
           university_reg_number: formData.university_reg_number,
           program_id: formData.program_id,
           enrollment_date: formData.enrollment_date,
           current_status: formData.current_status,
-          user_id: null,
-          email: formData.email,
         });
 
         if (response.success) {
-          alert("Student added successfully!");
+          alert(
+            `Student added successfully!\n\nLogin Credentials:\nEmail: ${formData.email}\nPassword: ${formData.password}\n\nPlease save these credentials securely and share them with the student.`
+          );
           fetchStudents();
           setShowModal(false);
         } else {
-          alert(`Failed to add student: ${response.error}`);
+          alert(`Failed to add student: ${response.error || "Unknown error"}`);
         }
       } else {
         const response = await adminService.updateStudent(
@@ -326,7 +340,9 @@ export default function StudentManagement() {
           fetchStudents();
           setShowModal(false);
         } else {
-          alert(`Failed to update student: ${response.error}`);
+          alert(
+            `Failed to update student: ${response.error || "Unknown error"}`
+          );
         }
       }
     } catch (error) {
@@ -361,7 +377,6 @@ export default function StudentManagement() {
   const handleBulkAction = async (action, selectedIds) => {
     switch (action) {
       case "export":
-        console.log("Exporting students:", selectedIds);
         handleExport("csv");
         break;
       case "delete":
@@ -432,6 +447,7 @@ export default function StudentManagement() {
       a.href = url;
       a.download = `students_${new Date().toISOString().split("T")[0]}.csv`;
       a.click();
+      window.URL.revokeObjectURL(url);
     }
   };
 
