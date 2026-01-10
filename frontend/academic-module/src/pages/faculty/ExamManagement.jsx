@@ -21,7 +21,7 @@ import Modal from "../../components/shared/feedback/Modal";
 import Input from "../../components/shared/ui/Input";
 import Select from "../../components/shared/ui/Select";
 import Badge from "../../components/shared/ui/Badge";
-import Skeleton from "../../components/shared/feedback/skeleton";
+import Skeleton from "../../components/shared/feedback/Skeleton";
 import facultyService from "../../services/api/facultyService";
 import api from "../../services/api/api";
 import "../../styles/pages/ExamManagement.css";
@@ -82,7 +82,9 @@ const ExamManagement = () => {
       );
 
       const coursesData = coursesResponse.results || coursesResponse;
-      setCourses(coursesData);
+      // Filter out courses without valid IDs
+      const validCourses = coursesData.filter((course) => course?.id != null);
+      setCourses(validCourses);
 
       const examsData = examsResponse.data.results || examsResponse.data;
 
@@ -525,14 +527,16 @@ const ExamManagement = () => {
             onChange={(e) => setFilterCourse(e.target.value)}
           >
             <option value="all">All Courses</option>
-            {courses.map((course) => (
-              <option
-                key={course.id}
-                value={course.course?.course_id?.toString()}
-              >
-                {course.course?.course_code} - {course.course?.course_name}
-              </option>
-            ))}
+            {courses
+              .filter((course) => course?.course?.course_id != null)
+              .map((course) => (
+                <option
+                  key={course.id}
+                  value={course.course.course_id.toString()}
+                >
+                  {course.course.course_code} - {course.course.course_name}
+                </option>
+              ))}
           </Select>
 
           <Select
@@ -785,11 +789,13 @@ const ExamManagement = () => {
               required
             >
               <option value="">Select Course</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id.toString()}>
-                  {course.course?.course_code} - {course.course?.course_name}
-                </option>
-              ))}
+              {courses
+                .filter((course) => course?.id != null)
+                .map((course) => (
+                  <option key={course.id} value={course.id.toString()}>
+                    {course.course?.course_code} - {course.course?.course_name}
+                  </option>
+                ))}
             </Select>
 
             <Select
@@ -842,12 +848,14 @@ const ExamManagement = () => {
               required
             >
               <option value="">Select Room</option>
-              {examRooms.map((room) => (
-                <option key={room.room_id} value={room.room_id.toString()}>
-                  {room.room_number} - {room.building} (Capacity:{" "}
-                  {room.capacity})
-                </option>
-              ))}
+              {examRooms
+                .filter((room) => room?.room_id != null)
+                .map((room) => (
+                  <option key={room.room_id} value={room.room_id.toString()}>
+                    {room.room_number} - {room.building} (Capacity:{" "}
+                    {room.capacity})
+                  </option>
+                ))}
             </Select>
           </div>
 
