@@ -21,7 +21,7 @@ import Card from "../../components/shared/layout/Card.jsx";
 import StatCard from "../../components/shared/ui/StatCard.jsx";
 import Button from "../../components/shared/ui/Button.jsx";
 import Badge from "../../components/shared/ui/Badge.jsx";
-
+import "../../styles/pages/FacultyDashboard.css";
 const FacultyDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);

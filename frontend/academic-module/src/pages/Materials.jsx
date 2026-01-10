@@ -23,7 +23,7 @@ import SearchInput from "../components/shared/ui/SearchInput.jsx";
 import Skeleton from "../components/shared/feedback/Skeleton.jsx";
 import Modal from "../components/shared/feedback/Modal.jsx";
 import { studentService } from "../services/api/studentService.js";
-import "../styles/pages/Materials.css";
+import "../styles/pages/materials.css";
 
 const Materials = () => {
   const [loading, setLoading] = useState(true);

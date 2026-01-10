@@ -21,9 +21,20 @@ import {
 import Avatar from "../ui/Avatar.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import "../../../styles/components/sidebar.css";
+
 const Sidebar = ({ isCollapsed = false }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Helper function to get first two initials
+  const getInitials = (name) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   // Student navigation items
   const studentNavItems = [
@@ -90,11 +101,20 @@ const Sidebar = ({ isCollapsed = false }) => {
 
       {/* User Profile */}
       <div className="sidebar__user">
-        <Avatar
-          src={user?.avatar}
-          alt={user?.name}
-          size={isCollapsed ? "sm" : "md"}
-        />
+        {user?.avatar ? (
+          // If avatar exists, show the image component
+          <Avatar
+            src={user?.avatar}
+            alt={user?.name}
+            size={isCollapsed ? "sm" : "md"}
+          />
+        ) : (
+          // If no avatar, show the Initials
+          <div className="sidebar__user-initials">
+            <span>{getInitials(user?.name)}</span>
+          </div>
+        )}
+
         {!isCollapsed && (
           <div className="sidebar__user-info">
             <p className="sidebar__user-name">{user?.name}</p>
