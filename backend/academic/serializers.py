@@ -523,6 +523,15 @@ class StudyMaterialSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['uploaded_at', 'download_count', 'view_count', 'file_size']
 
+    def validate_offering_id(self, value):
+        """Convert string to int if needed"""
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                raise serializers.ValidationError("Invalid offering ID")
+        return value
+
     def create(self, validated_data):
         file = validated_data.pop('file', None)
         # Create the material
@@ -692,7 +701,7 @@ class QRAttendanceSerializer(serializers.Serializer):
 
 
 class ZoomMeetingSerializer(serializers.Serializer):
-    """Serializer for creating Zoom meetings"""
+    """Serializer for creating Zoom/Google Meet classes"""
     topic = serializers.CharField(required=True, max_length=255)
     schedule_date = serializers.DateField(required=True)
     start_time = serializers.TimeField(required=True)
@@ -703,8 +712,9 @@ class ZoomMeetingSerializer(serializers.Serializer):
         default='zoom',
         required=False
     )
-    description = serializers.CharField(required=False, allow_blank=True)
-   
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    agenda = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     def validate_offering_id(self, value):
         from .models import CourseOffering
         if not CourseOffering.objects.filter(offering_id=value).exists():
@@ -712,7 +722,6 @@ class ZoomMeetingSerializer(serializers.Serializer):
         return value
    
     def validate_schedule_date(self, value):
-        from django.utils import timezone
         if value < timezone.now().date():
             raise serializers.ValidationError("Cannot schedule class in the past")
         return value

@@ -562,6 +562,7 @@ class StudyMaterial(models.Model):
     tags = models.CharField(max_length=500, blank=True, null=True)
 
     class Meta:
+        db_table = 'study_materials'
         ordering = ['-uploaded_at']
 
     def __str__(self):

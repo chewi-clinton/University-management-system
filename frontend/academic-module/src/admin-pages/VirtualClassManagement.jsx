@@ -42,7 +42,7 @@ export default function VirtualClassManagement() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form state
+  // Form state (updated with agenda field)
   const [formData, setFormData] = useState({
     topic: "",
     offering_id: "",
@@ -51,6 +51,7 @@ export default function VirtualClassManagement() {
     start_time: "",
     duration_minutes: 60,
     description: "",
+    agenda: "",
   });
 
   // Load data on component mount
@@ -162,11 +163,33 @@ export default function VirtualClassManagement() {
     setSubmitting(true);
     setError(null);
 
+    // Validate required fields
+    if (
+      !formData.topic ||
+      !formData.offering_id ||
+      !formData.schedule_date ||
+      !formData.start_time
+    ) {
+      setError("Please fill in all required fields");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const result = await adminService.createVirtualClass(formData);
+      // Ensure offering_id and duration are sent as numbers
+      const payload = {
+        ...formData,
+        offering_id: parseInt(formData.offering_id, 10),
+        duration_minutes: parseInt(formData.duration_minutes, 10),
+      };
+
+      console.log("Creating virtual class with payload:", payload);
+
+      const result = await adminService.createVirtualClass(payload);
 
       if (result.success) {
         setShowCreateModal(false);
+        // Reset form with all empty string values
         setFormData({
           topic: "",
           offering_id: "",
@@ -175,15 +198,23 @@ export default function VirtualClassManagement() {
           start_time: "",
           duration_minutes: 60,
           description: "",
+          agenda: "",
         });
-        // Reload data
         await loadData();
         alert("Virtual class created successfully!");
       } else {
-        setError(result.error);
+        // Show detailed error from backend
+        const errorMessage =
+          typeof result.error === "string"
+            ? result.error
+            : JSON.stringify(result.error);
+        setError(errorMessage);
+        console.error("Backend error:", result.error);
       }
     } catch (err) {
-      setError("Failed to create class. Please try again.");
+      const errorMessage =
+        err.message || "Failed to create class. Please try again.";
+      setError(errorMessage);
       console.error("Error creating class:", err);
     } finally {
       setSubmitting(false);
@@ -645,19 +676,19 @@ export default function VirtualClassManagement() {
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div onSubmit={handleCreateClass}>
-                <div className="modal-header">
-                  <h2>Schedule New Virtual Class</h2>
-                  <button
-                    type="button"
-                    className="modal-close"
-                    onClick={() => setShowCreateModal(false)}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+              <div className="modal-header">
+                <h2>Schedule New Virtual Class</h2>
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-                <div className="modal-body">
+              <div className="modal-body">
+                <form onSubmit={handleCreateClass}>
                   <div className="form-group">
                     <label>Class Title *</label>
                     <input
@@ -681,7 +712,10 @@ export default function VirtualClassManagement() {
                       >
                         <option value="">Select Course Offering</option>
                         {courseOfferings.map((offering) => (
-                          <option key={offering.id} value={offering.id}>
+                          <option
+                            key={offering.id || offering.offering_id}
+                            value={offering.id || offering.offering_id}
+                          >
                             {offering.course?.course_code} -{" "}
                             {offering.course?.course_name} ({offering.section})
                           </option>
@@ -751,26 +785,36 @@ export default function VirtualClassManagement() {
                       placeholder="Add class description..."
                     ></textarea>
                   </div>
-                </div>
 
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowCreateModal(false)}
-                    disabled={submitting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={handleCreateClass}
-                    disabled={submitting}
-                  >
-                    {submitting ? "Creating..." : "Schedule Class"}
-                  </button>
-                </div>
+                  <div className="form-group">
+                    <label>Agenda / Topics</label>
+                    <textarea
+                      name="agenda"
+                      value={formData.agenda}
+                      onChange={handleFormChange}
+                      rows="4"
+                      placeholder="List topics to be covered (optional)..."
+                    ></textarea>
+                  </div>
+
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setShowCreateModal(false)}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      disabled={submitting}
+                    >
+                      {submitting ? "Creating..." : "Schedule Class"}
+                    </button>
+                  </div>
+                </form>
               </div>
             </motion.div>
           </motion.div>

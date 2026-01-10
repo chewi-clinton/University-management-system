@@ -199,6 +199,11 @@ export default function MaterialsManagement() {
       return;
     }
 
+    if (!formData.offering_id) {
+      alert("Please select a course offering");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -206,7 +211,7 @@ export default function MaterialsManagement() {
       const uploadData = {
         title: formData.title,
         description: formData.description,
-        offering_id: formData.offering_id,
+        offering_id: parseInt(formData.offering_id, 10),
         file_type: formData.file_type,
         access_level: formData.access_level,
         tags: formData.tags,
@@ -231,10 +236,19 @@ export default function MaterialsManagement() {
         await loadData();
         alert("Material uploaded successfully!");
       } else {
-        setError(result.error);
+        const errorMessage =
+          typeof result.error === "string"
+            ? result.error
+            : JSON.stringify(result.error) || "Failed to upload material";
+        setError(errorMessage);
       }
     } catch (err) {
-      setError("Failed to upload material. Please try again.");
+      const errorMessage =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to upload material. Please try again.";
+      setError(errorMessage);
       console.error("Error uploading material:", err);
     } finally {
       setSubmitting(false);
@@ -471,11 +485,21 @@ export default function MaterialsManagement() {
                       value={filterType}
                       onChange={(e) => setFilterType(e.target.value)}
                     >
-                      <option value="all">All Types</option>
-                      <option value="document">Documents</option>
-                      <option value="video">Videos</option>
-                      <option value="image">Images</option>
-                      <option value="archive">Archives</option>
+                      <option key="all" value="all">
+                        All Types
+                      </option>
+                      <option key="document" value="document">
+                        Documents
+                      </option>
+                      <option key="video" value="video">
+                        Videos
+                      </option>
+                      <option key="image" value="image">
+                        Images
+                      </option>
+                      <option key="archive" value="archive">
+                        Archives
+                      </option>
                     </select>
                   </div>
 
@@ -485,7 +509,9 @@ export default function MaterialsManagement() {
                       value={filterCourse}
                       onChange={(e) => setFilterCourse(e.target.value)}
                     >
-                      <option value="all">All Courses</option>
+                      <option key="all-courses" value="all">
+                        All Courses
+                      </option>
                       {courses.map((course) => (
                         <option
                           key={course.course_id}
@@ -503,10 +529,18 @@ export default function MaterialsManagement() {
                       value={filterAccess}
                       onChange={(e) => setFilterAccess(e.target.value)}
                     >
-                      <option value="all">All Levels</option>
-                      <option value="public">Public</option>
-                      <option value="enrolled">Enrolled Students</option>
-                      <option value="private">Private</option>
+                      <option key="all-access" value="all">
+                        All Levels
+                      </option>
+                      <option key="public" value="public">
+                        Public
+                      </option>
+                      <option key="enrolled" value="enrolled">
+                        Enrolled Students
+                      </option>
+                      <option key="private" value="private">
+                        Private
+                      </option>
                     </select>
                   </div>
                 </motion.div>
@@ -698,9 +732,14 @@ export default function MaterialsManagement() {
                       type="file"
                       name="file"
                       onChange={handleFormChange}
-                      style={{ display: "none" }}
+                      style={{
+                        position: "absolute",
+                        opacity: 0,
+                        width: "1px",
+                        height: "1px",
+                        pointerEvents: "none",
+                      }}
                       id="file-upload"
-                      required
                     />
                     <label htmlFor="file-upload" className="btn-secondary">
                       <Paperclip size={18} /> Choose File
@@ -745,9 +784,14 @@ export default function MaterialsManagement() {
                         onChange={handleFormChange}
                         required
                       >
-                        <option value="">Select Course Offering</option>
+                        <option key="empty" value="">
+                          Select Course Offering
+                        </option>
                         {courseOfferings.map((offering) => (
-                          <option key={offering.id} value={offering.id}>
+                          <option
+                            key={offering.offering_id}
+                            value={offering.offering_id}
+                          >
                             {offering.course?.course_code} -{" "}
                             {offering.course?.course_name} ({offering.section})
                           </option>
@@ -763,16 +807,36 @@ export default function MaterialsManagement() {
                         onChange={handleFormChange}
                         required
                       >
-                        <option value="lecture_notes">Lecture Notes</option>
-                        <option value="assignment">Assignment</option>
-                        <option value="syllabus">Syllabus</option>
-                        <option value="book">Book</option>
-                        <option value="video_lecture">Video Lecture</option>
-                        <option value="tutorial">Tutorial</option>
-                        <option value="presentation">Presentation</option>
-                        <option value="code">Code/Project</option>
-                        <option value="dataset">Dataset</option>
-                        <option value="other">Other</option>
+                        <option key="lecture_notes" value="lecture_notes">
+                          Lecture Notes
+                        </option>
+                        <option key="assignment" value="assignment">
+                          Assignment
+                        </option>
+                        <option key="syllabus" value="syllabus">
+                          Syllabus
+                        </option>
+                        <option key="book" value="book">
+                          Book
+                        </option>
+                        <option key="video_lecture" value="video_lecture">
+                          Video Lecture
+                        </option>
+                        <option key="tutorial" value="tutorial">
+                          Tutorial
+                        </option>
+                        <option key="presentation" value="presentation">
+                          Presentation
+                        </option>
+                        <option key="code" value="code">
+                          Code/Project
+                        </option>
+                        <option key="dataset" value="dataset">
+                          Dataset
+                        </option>
+                        <option key="other" value="other">
+                          Other
+                        </option>
                       </select>
                     </div>
                   </div>
@@ -780,7 +844,7 @@ export default function MaterialsManagement() {
                   <div className="form-group">
                     <label>Access Level *</label>
                     <div className="radio-group">
-                      <label className="radio-label">
+                      <label key="public-access" className="radio-label">
                         <input
                           type="radio"
                           name="access_level"
@@ -791,7 +855,7 @@ export default function MaterialsManagement() {
                         <Unlock size={16} />
                         <span>Public - Anyone can access</span>
                       </label>
-                      <label className="radio-label">
+                      <label key="enrolled-access" className="radio-label">
                         <input
                           type="radio"
                           name="access_level"

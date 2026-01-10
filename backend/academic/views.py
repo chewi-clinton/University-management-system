@@ -145,7 +145,7 @@ class FacultyMemberViewSet(viewsets.ModelViewSet):
                 employee_id=employee_id,
                 department_id=request.data.get('department_id'),
                 designation=request.data.get('designation', ''),
-                phone=request.data.get('phone', ''), # ← NOW INCLUDES PHONE
+                phone=request.data.get('phone', ''),  # ← NOW INCLUDES PHONE
                 office_number=request.data.get('office_location', ''),
                 office_hours=request.data.get('office_hours', ''),
                 hire_date=request.data.get('hire_date'),
@@ -804,15 +804,21 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             data = serializer.validated_data
             platform = request.data.get('platform', 'zoom')
+            
+            # Log the validated data for debugging
+            logger.info(f"Creating virtual class with data: {data}")
+            
             try:
                 if platform == 'zoom':
                     result = create_zoom_class(data)
                 else:
                     result = create_google_meet_class(data)
+                
                 if result['success']:
                     faculty = None
                     if hasattr(request.user, 'faculty_profile'):
                         faculty = request.user.faculty_profile
+                    
                     zoom_class = ZoomClass.objects.create(
                         offering_id=data['offering_id'],
                         topic=data['topic'],
@@ -826,17 +832,23 @@ class ZoomClassViewSet(viewsets.ModelViewSet):
                         created_by_faculty=faculty,
                         is_active=True
                     )
+                    
                     zoom_serializer = ZoomClassSerializer(zoom_class)
                     return Response(zoom_serializer.data, status=status.HTTP_201_CREATED)
                 else:
+                    logger.error(f"Failed to create meeting on {platform}: {result.get('error')}")
                     return Response({'error': result['error']}, status=status.HTTP_400_BAD_REQUEST)
+                    
             except Exception as e:
-                logger.error(f"Error in create virtual class: {str(e)}")
+                logger.error(f"Error in create virtual class: {str(e)}", exc_info=True)
                 return Response(
                     {'error': f'Failed to create virtual class: {str(e)}'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Log validation errors for debugging
+            logger.error(f"Validation errors in create virtual class: {serializer.errors}")
+            return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanManageZoomClasses])
     def start_meeting(self, request, pk=None):
