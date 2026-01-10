@@ -8,7 +8,7 @@ import LineChart from "../../components/shared/charts/LineChart";
 import BarChart from "../../components/shared/charts/BarChart";
 import PieChart from "../../components/shared/charts/PieChart";
 import Table from "../../components/shared/ui/Table";
-import Skeleton from "../../components/shared/feedback/skeleton";
+import Skeleton from "../../components/shared/feedback/Skeleton";
 import facultyService from "../../services/api/facultyService";
 import api from "../../services/api/api";
 import "../../styles/pages/Reports.css";
@@ -29,6 +29,13 @@ const Reports = () => {
     loadCourses();
   }, []);
 
+  // Clear report when no course is selected
+  useEffect(() => {
+    if (!selectedCourse) {
+      setReportData(null);
+    }
+  }, [selectedCourse]);
+
   useEffect(() => {
     if (selectedCourse) {
       generateReport();
@@ -38,16 +45,31 @@ const Reports = () => {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      const response = await facultyService.getCourses({ is_visible: true });
-      const coursesData = response.results || response;
-      setCourses(coursesData);
+      setError(null);
 
-      if (coursesData.length > 0) {
-        setSelectedCourse(coursesData[0].id.toString());
+      const response = await facultyService.getCourses({ is_visible: true });
+
+      // Safely extract the courses array
+      let rawCourses = response?.results ?? response ?? [];
+      if (!Array.isArray(rawCourses)) {
+        rawCourses = [];
       }
-    } catch (error) {
-      console.error("Error loading courses:", error);
+
+      // Filter only valid courses with an id
+      const validCourses = rawCourses.filter((c) => c && c.id != null);
+
+      setCourses(validCourses);
+
+      if (validCourses.length > 0) {
+        setSelectedCourse(String(validCourses[0].id));
+      } else {
+        setSelectedCourse("");
+      }
+    } catch (err) {
+      console.error("Error loading courses:", err);
       setError("Failed to load courses");
+      setCourses([]);
+      setSelectedCourse("");
     } finally {
       setLoading(false);
     }
@@ -74,8 +96,8 @@ const Reports = () => {
         default:
           break;
       }
-    } catch (error) {
-      console.error("Error generating report:", error);
+    } catch (err) {
+      console.error("Error generating report:", err);
       setError("Failed to generate report");
     } finally {
       setLoading(false);
@@ -84,24 +106,20 @@ const Reports = () => {
 
   const generateCoursePerformanceReport = async () => {
     try {
-      // Get class performance data
       const performanceResponse = await facultyService.getClassPerformance(
         selectedCourse
       );
 
-      // Get students in the course
       const studentsResponse = await facultyService.getCourseStudents(
         selectedCourse
       );
       const students = studentsResponse.results || studentsResponse;
 
-      // Get grades for the course
       const gradesResponse = await api.get("grades/", {
         params: { offering: selectedCourse, is_finalized: true },
       });
       const grades = gradesResponse.data.results || gradesResponse.data;
 
-      // Calculate grade distribution
       const gradeDistribution = {};
       students.forEach((student) => {
         const studentGrades = grades.filter(
@@ -123,7 +141,6 @@ const Reports = () => {
         })
       );
 
-      // Get top performers
       const studentsWithGrades = students
         .map((student) => {
           const studentGrades = grades.filter(
@@ -137,7 +154,6 @@ const Reports = () => {
                 ) / studentGrades.length
               : 0;
 
-          // Get attendance
           const attendance = student.student.attendance_percentage || 0;
 
           return {
@@ -160,7 +176,6 @@ const Reports = () => {
           `${s.attendance}%`,
         ]);
 
-      // Calculate statistics
       const scores = studentsWithGrades.map((s) => s.avgScore);
       const average =
         scores.length > 0
@@ -216,20 +231,17 @@ const Reports = () => {
 
   const generateAttendanceReport = async () => {
     try {
-      // Get attendance records for the course
       const attendanceResponse = await api.get("attendance/", {
         params: { offering: selectedCourse },
       });
       const attendanceRecords =
         attendanceResponse.data.results || attendanceResponse.data;
 
-      // Get students in the course
       const studentsResponse = await facultyService.getCourseStudents(
         selectedCourse
       );
       const students = studentsResponse.results || studentsResponse;
 
-      // Calculate attendance summary per student
       const attendanceSummary = students.map((student) => {
         const studentRecords = attendanceRecords.filter(
           (r) => r.student.student_id === student.student.student_id
@@ -254,7 +266,6 @@ const Reports = () => {
         ];
       });
 
-      // Calculate weekly trend (last 5 weeks)
       const weeklyTrend = [];
       for (let i = 4; i >= 0; i--) {
         const weekStart = new Date();
@@ -310,13 +321,11 @@ const Reports = () => {
 
   const generateGradeDistributionReport = async () => {
     try {
-      // Get grades for the course
       const gradesResponse = await api.get("grades/", {
         params: { offering: selectedCourse, is_finalized: true },
       });
       const grades = gradesResponse.data.results || gradesResponse.data;
 
-      // Calculate grade distribution
       const gradeDistribution = {};
       grades.forEach((grade) => {
         const percentage =
@@ -335,7 +344,6 @@ const Reports = () => {
         })
       );
 
-      // Calculate assessment-wise averages
       const assessmentAverages = {};
       grades.forEach((grade) => {
         const assessmentName = grade.assessment_name || "Unknown";
@@ -353,7 +361,6 @@ const Reports = () => {
         })
       );
 
-      // Calculate statistics
       const allScores = grades.map((g) =>
         g.max_marks > 0 ? (g.marks_obtained / g.max_marks) * 100 : 0
       );
@@ -407,7 +414,6 @@ const Reports = () => {
 
   const generateStudentProgressReport = async () => {
     try {
-      // Get students in the course
       const studentsResponse = await facultyService.getCourseStudents(
         selectedCourse
       );
@@ -422,10 +428,8 @@ const Reports = () => {
         return;
       }
 
-      // Get first student for demo
       const firstStudent = students[0].student;
 
-      // Get grades for the first student
       const gradesResponse = await api.get("grades/", {
         params: {
           student: firstStudent.student_id,
@@ -434,7 +438,6 @@ const Reports = () => {
       });
       const grades = gradesResponse.data.results || gradesResponse.data;
 
-      // Sort by graded date
       const sortedGrades = grades.sort(
         (a, b) => new Date(a.graded_at) - new Date(b.graded_at)
       );
@@ -493,7 +496,6 @@ const Reports = () => {
 
   const handleExport = async (format) => {
     try {
-      // TODO: Implement actual export functionality
       alert(`Exporting report as ${format.toUpperCase()}...`);
     } catch (error) {
       console.error("Error exporting report:", error);
@@ -571,13 +573,21 @@ const Reports = () => {
                 label="Course"
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
+                disabled={courses.length === 0}
               >
                 <option value="">Select Course</option>
                 {courses.map((c) => (
-                  <option key={c.id} value={c.id.toString()}>
-                    {c.course?.course_code} - {c.course?.course_name}
+                  <option key={c.id} value={String(c.id)}>
+                    {c.course
+                      ? `${c.course.course_code ?? "N/A"} - ${
+                          c.course.course_name ?? "Unknown"
+                        }`
+                      : "Invalid Course Data"}
                   </option>
                 ))}
+                {courses.length === 0 && (
+                  <option disabled>No courses available</option>
+                )}
               </Select>
               <DatePicker
                 label="From"
@@ -603,6 +613,15 @@ const Reports = () => {
             </div>
           </Card>
 
+          {/* No courses message */}
+          {!loading && courses.length === 0 && !error && (
+            <Card>
+              <div style={{ padding: "2rem", textAlign: "center" }}>
+                <p>No visible courses found.</p>
+              </div>
+            </Card>
+          )}
+
           {error && (
             <Card>
               <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -614,7 +633,7 @@ const Reports = () => {
             </Card>
           )}
 
-          {loading ? (
+          {loading && selectedCourse ? (
             <Skeleton variant="rectangular" height="400px" />
           ) : reportData ? (
             <div className="reports__visualization">
