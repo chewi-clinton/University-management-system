@@ -71,8 +71,11 @@ const Grading = () => {
       const response = await facultyService.getCourses({ is_visible: true });
       const coursesData = response.results || response;
 
+      // Filter out courses without valid IDs
+      const validCourses = coursesData.filter((course) => course?.id != null);
+
       setCourses(
-        coursesData.map((course) => ({
+        validCourses.map((course) => ({
           value: course.id.toString(),
           label: `${course.course?.course_code || "N/A"} - ${
             course.course?.course_name || "Untitled"
@@ -80,8 +83,8 @@ const Grading = () => {
         }))
       );
 
-      if (coursesData.length > 0) {
-        setSelectedCourse(coursesData[0].id.toString());
+      if (validCourses.length > 0) {
+        setSelectedCourse(validCourses[0].id.toString());
       }
     } catch (error) {
       console.error("Error loading courses:", error);
@@ -128,8 +131,10 @@ const Grading = () => {
       const gradesMap = {};
 
       gradesData.forEach((grade) => {
-        const studentId = grade.student.student_id;
+        const studentId = grade.student?.student_id;
         const assessmentType = grade.assessment_type;
+
+        if (!studentId) return; // Skip if student ID is missing
 
         if (!gradesMap[studentId]) {
           gradesMap[studentId] = {};
