@@ -46,9 +46,8 @@ export default function AdminExamManagement() {
     exam_name: "",
     exam_type: "final",
     total_marks: 100,
-    duration_minutes: 180,
+    weightage: 100,
     instructions: "",
-    passing_marks: 40,
   });
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -157,18 +156,53 @@ export default function AdminExamManagement() {
     e.preventDefault();
     setError(null);
     try {
-      const result = await adminService.createExamination?.(examForm);
+      const examData = {
+        offering_id: parseInt(examForm.offering_id),
+        exam_name: examForm.exam_name,
+        exam_type: examForm.exam_type,
+        total_marks: parseFloat(examForm.total_marks),
+        weightage: parseFloat(examForm.weightage),
+        instructions: examForm.instructions || "",
+      };
+
+      console.log("Creating examination with data:", examData);
+
+      const result = await adminService.createExamination?.(examData);
+      console.log("Examination creation result:", result);
+
       if (result?.success) {
         showSuccess("Examination created successfully");
         setShowCreateModal(false);
         resetExamForm();
         await loadData();
       } else {
-        setError(result?.error || "Failed to create examination");
+        // Handle detailed error messages
+        let errorMsg = "Failed to create examination";
+        if (result?.error) {
+          if (typeof result.error === "object") {
+            const errors = Object.entries(result.error)
+              .map(([field, messages]) => {
+                const msgArray = Array.isArray(messages)
+                  ? messages
+                  : [messages];
+                return `${field}: ${msgArray.join(", ")}`;
+              })
+              .join("; ");
+            errorMsg = errors || errorMsg;
+          } else {
+            errorMsg = result.error;
+          }
+        }
+        setError(errorMsg);
+        console.error("Examination creation error details:", result?.error);
       }
     } catch (err) {
-      setError("Failed to create examination");
-      console.error(err);
+      const errorMsg = err?.response?.data
+        ? JSON.stringify(err.response.data)
+        : "Failed to create examination";
+      setError(errorMsg);
+      console.error("Exception during exam creation:", err);
+      console.error("Error response:", err?.response?.data);
     }
   };
 
@@ -176,7 +210,18 @@ export default function AdminExamManagement() {
     e.preventDefault();
     setError(null);
     try {
-      const result = await adminService.createExamSchedule?.(scheduleForm);
+      const scheduleData = {
+        exam_id: parseInt(scheduleForm.exam_id),
+        exam_date: scheduleForm.exam_date,
+        start_time: scheduleForm.start_time,
+        end_time: scheduleForm.end_time,
+        room_id: parseInt(scheduleForm.room_id),
+        invigilator_id: scheduleForm.invigilator_id
+          ? parseInt(scheduleForm.invigilator_id)
+          : null,
+      };
+
+      const result = await adminService.createExamSchedule?.(scheduleData);
       if (result?.success) {
         showSuccess("Exam scheduled successfully");
         setShowScheduleModal(false);
@@ -254,9 +299,8 @@ export default function AdminExamManagement() {
       exam_name: "",
       exam_type: "final",
       total_marks: 100,
-      duration_minutes: 180,
+      weightage: 100,
       instructions: "",
-      passing_marks: 40,
     });
   };
 
@@ -640,12 +684,12 @@ function ExamCard({ exam, onView, onDelete, getExamTypeColor }) {
 
       <div className="exam-card__details">
         <div className="exam-card__detail">
-          <Clock size={14} />
-          <span>{exam.duration_minutes} minutes</span>
+          <FileText size={14} />
+          <span>{exam.total_marks} marks</span>
         </div>
         <div className="exam-card__detail">
           <FileText size={14} />
-          <span>{exam.total_marks} marks</span>
+          <span>{exam.weightage}% weightage</span>
         </div>
         {exam.offering?.faculty && (
           <div className="exam-card__detail">
@@ -673,6 +717,8 @@ function ExamCard({ exam, onView, onDelete, getExamTypeColor }) {
     </motion.div>
   );
 }
+
+// ... (rest of the file remains exactly the same as your previous version)
 
 function ScheduleTable({ schedules, onGenerateAdmitCards, onDelete }) {
   return (
@@ -983,14 +1029,16 @@ function CreateExamForm({
             />
           </FormField>
 
-          <FormField label="Passing Marks" required>
+          <FormField label="Weightage (%)" required>
             <input
               type="number"
               required
-              min="1"
-              value={examForm.passing_marks}
+              min="0"
+              max="100"
+              step="0.1"
+              value={examForm.weightage}
               onChange={(e) =>
-                setExamForm({ ...examForm, passing_marks: e.target.value })
+                setExamForm({ ...examForm, weightage: e.target.value })
               }
             />
           </FormField>
@@ -1155,7 +1203,7 @@ function ExamDetails({ exam, getExamTypeColor, onClose }) {
           <h4 className="exam-details__section-title">Exam Details</h4>
           <div className="exam-details__rows">
             <DetailRow label="Total Marks" value={exam.total_marks} />
-            <DetailRow label="Passing Marks" value={exam.passing_marks} />
+            <DetailRow label="Weightage" value={`${exam.weightage}%`} />
             <DetailRow
               label="Duration"
               value={`${exam.duration_minutes} minutes`}

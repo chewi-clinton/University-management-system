@@ -221,7 +221,7 @@ const adminService = {
 
   createProgram: async (programData) => {
     try {
-      console.log("Creating program with data:", programData); // ← What data is being sent?
+      console.log("Creating program with data:", programData);
       const response = await api.post("/programs/", programData);
       return {
         success: true,
@@ -229,7 +229,7 @@ const adminService = {
       };
     } catch (error) {
       console.error("Error creating program:", error);
-      console.error("Error response:", error.response?.data); // ← What's the actual error?
+      console.error("Error response:", error.response?.data);
       console.error("Error status:", error.response?.status);
       return {
         success: false,
@@ -347,7 +347,7 @@ const adminService = {
 
   createDepartment: async (departmentData) => {
     try {
-      console.log("Creating department with data:", departmentData); // Add this
+      console.log("Creating department with data:", departmentData);
       const response = await api.post("/departments/", departmentData);
       return {
         success: true,
@@ -355,7 +355,7 @@ const adminService = {
       };
     } catch (error) {
       console.error("Error creating department:", error);
-      console.error("Error response data:", error.response?.data); // Add this
+      console.error("Error response data:", error.response?.data);
       return {
         success: false,
         error:
@@ -1624,7 +1624,7 @@ const adminService = {
   // ==================== Faculties (Organizations) ====================
   getFaculties: async () => {
     try {
-      const response = await api.get("/faculties/"); // This should now work
+      const response = await api.get("/faculties/");
       const data = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];
@@ -1687,7 +1687,190 @@ const adminService = {
       };
     }
   },
+
+  // ==================== REPORTS & ANALYTICS ====================
+
+  /**
+   * Get comprehensive overview statistics
+   */
+  getOverviewStatistics: async () => {
+    try {
+      const [students, faculty, attendance, grades] = await Promise.all([
+        api.get("/students/"),
+        api.get("/faculty-members/"),
+        api.get("/attendance-summaries/"),
+        api.get("/grades/"),
+      ]);
+
+      const studentsData = Array.isArray(students.data)
+        ? students.data
+        : students.data.results || [];
+      const facultyData = Array.isArray(faculty.data)
+        ? faculty.data
+        : faculty.data.results || [];
+      const attendanceData = Array.isArray(attendance.data)
+        ? attendance.data
+        : attendance.data.results || [];
+      const gradesData = Array.isArray(grades.data)
+        ? grades.data
+        : grades.data.results || [];
+
+      // Calculate average GPA
+      const totalGPA = studentsData.reduce(
+        (sum, s) => sum + (parseFloat(s.current_gpa) || 0),
+        0
+      );
+      const avgGPA =
+        studentsData.length > 0 ? totalGPA / studentsData.length : 0;
+
+      // Calculate average attendance
+      const totalAttendance = attendanceData.reduce(
+        (sum, record) => sum + (record.attendance_percentage || 0),
+        0
+      );
+      const avgAttendance =
+        attendanceData.length > 0 ? totalAttendance / attendanceData.length : 0;
+
+      return {
+        success: true,
+        data: {
+          totalStudents: studentsData.length,
+          totalFaculty: facultyData.length,
+          averageGPA: avgGPA.toFixed(2),
+          attendanceRate: avgAttendance.toFixed(1),
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching overview statistics:", error);
+      return {
+        success: false,
+        error: error.response?.data?.detail || "Failed to load statistics",
+      };
+    }
+  },
+
+  /**
+   * Get enrollment trends over time
+   */
+  getEnrollmentTrends: async () => {
+    try {
+      const response = await api.get("/students/");
+      const students = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      // Group by enrollment month
+      const monthCounts = {};
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      months.forEach((month) => (monthCounts[month] = 0));
+
+      const currentYear = new Date().getFullYear();
+      students.forEach((student) => {
+        if (student.enrollment_date) {
+          const date = new Date(student.enrollment_date);
+          if (date.getFullYear() === currentYear) {
+            const month = months[date.getMonth()];
+            monthCounts[month]++;
+          }
+        }
+      });
+
+      // Calculate cumulative enrollment
+      let cumulative = 0;
+      const data = months.map((month) => {
+        cumulative += monthCounts[month];
+        return cumulative;
+      });
+
+      return {
+        success: true,
+        data: {
+          labels: months,
+          data: data,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching enrollment trends:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load enrollment trends",
+      };
+    }
+  },
+
+  /**
+   * Get program distribution statistics
+   */
+  getProgramDistribution: async () => {
+    try {
+      const [students, programs] = await Promise.all([
+        api.get("/students/"),
+        api.get("/programs/"),
+      ]);
+
+      const studentsData = Array.isArray(students.data)
+        ? students.data
+        : students.data.results || [];
+      const programsData = Array.isArray(programs.data)
+        ? programs.data
+        : programs.data.results || [];
+
+      // Count students per program
+      const programCounts = {};
+      studentsData.forEach((student) => {
+        const programName = student.program?.program_name || "Unknown";
+        programCounts[programName] = (programCounts[programName] || 0) + 1;
+      });
+
+      const labels = Object.keys(programCounts);
+      const data = Object.values(programCounts);
+      const colors = [
+        "#3b82f6",
+        "#10b981",
+        "#f59e0b",
+        "#8b5cf6",
+        "#ec4899",
+        "#06b6d4",
+      ];
+
+      return {
+        success: true,
+        data: {
+          labels,
+          data,
+          colors,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching program distribution:", error);
+      return {
+        success: false,
+        error:
+          error.response?.data?.detail || "Failed to load program distribution",
+      };
+    }
+  },
+
+  // You can add more analytics methods here in the future...
+  // e.g. getStudentDemographics, getProgramPerformance, etc.
 };
+
+export { adminService };
 
 // Helper function to generate random colors for departments
 function getRandomColor() {
@@ -1712,5 +1895,3 @@ adminService.formatFileSize = (bytes) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 };
-
-export { adminService };

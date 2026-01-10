@@ -36,7 +36,7 @@ export default function AttendanceManagement() {
     setError(null);
     try {
       const [recordsRes, offeringsRes] = await Promise.all([
-        adminService.getAttendanceRecords(),
+        adminService.getAttendance(), // ← Fixed: use correct existing method
         adminService.getCourseOfferings(),
       ]);
 
