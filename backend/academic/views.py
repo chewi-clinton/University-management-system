@@ -1,4 +1,3 @@
-
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -100,6 +99,72 @@ class FacultyMemberViewSet(viewsets.ModelViewSet):
         if user.role == 'faculty':
             return queryset.filter(user=user)
         return queryset.none()
+
+    def create(self, request, *args, **kwargs):
+        """Custom create method to handle user creation"""
+        try:
+            # Extract user data
+            email = request.data.get('email')
+            password = request.data.get('password')
+            first_name = request.data.get('first_name')
+            last_name = request.data.get('last_name')
+          
+            # Validate required fields
+            if not email or not password:
+                return Response(
+                    {'error': 'Email and password are required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+          
+            # Check if user already exists
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {'error': 'A user with this email already exists'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+          
+            # Create user account
+            user = User.objects.create_user(
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role='faculty',
+                is_active=request.data.get('is_active', True)
+            )
+          
+            # Get employee_id
+            employee_id = request.data.get('employee_id')
+            if not employee_id:
+                from .utils import generate_employee_id
+                employee_id = generate_employee_id()
+          
+            # Create faculty member profile
+            faculty_member = FacultyMember.objects.create(
+                user=user,
+                employee_id=employee_id,
+                department_id=request.data.get('department_id'),
+                designation=request.data.get('designation', ''),
+                phone=request.data.get('phone', ''), # ← NOW INCLUDES PHONE
+                office_number=request.data.get('office_location', ''),
+                office_hours=request.data.get('office_hours', ''),
+                hire_date=request.data.get('hire_date'),
+                qualification=request.data.get('qualification', '')
+            )
+          
+            # Serialize and return
+            serializer = FacultyMemberSerializer(faculty_member)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+          
+        except Exception as e:
+            logger.error(f"Error creating faculty member: {str(e)}")
+            # If user was created but faculty creation failed, clean up
+            if 'user' in locals():
+                user.delete()
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):

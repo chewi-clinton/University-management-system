@@ -50,12 +50,32 @@ class DepartmentSerializer(serializers.ModelSerializer):
     """Department serializer with nested faculty"""
     faculty_name = serializers.CharField(source='faculty.faculty_name', read_only=True)
     head_name = serializers.SerializerMethodField()
-    
+  
+    # Write fields for foreign keys
+    faculty_id = serializers.PrimaryKeyRelatedField(
+        queryset=Faculty.objects.all(),
+        source='faculty',
+        write_only=True,
+        required=True
+    )
+    head_id = serializers.PrimaryKeyRelatedField(
+        queryset=FacultyMember.objects.all(),
+        source='head',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+  
     class Meta:
         model = Department
-        fields = ['department_id', 'department_name', 'faculty', 'faculty_name', 
-                 'head', 'head_name', 'department_code', 'office_location']
-    
+        fields = [
+            'department_id', 'department_name', 'department_code',
+            'faculty_id', 'faculty_name',
+            'head_id', 'head_name',
+            'office_location'
+        ]
+        read_only_fields = ['department_id']
+  
     def get_head_name(self, obj):
         if obj.head:
             return f"{obj.head.user.first_name} {obj.head.user.last_name}"

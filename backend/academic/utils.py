@@ -296,3 +296,25 @@ def generate_university_reg_number():
         new_number = 1
     
     return f"{prefix}{new_number:04d}"
+def generate_employee_id():
+    """Generate a unique employee ID"""
+    from django.utils import timezone
+    from .models import FacultyMember
+    
+    year = timezone.now().year
+    prefix = f"FAC-{year}-"
+    
+    last_faculty = FacultyMember.objects.filter(
+        employee_id__startswith=prefix
+    ).order_by('-employee_id').first()
+    
+    if last_faculty:
+        try:
+            last_number = int(last_faculty.employee_id.split('-')[-1])
+            new_number = last_number + 1
+        except (ValueError, IndexError):
+            new_number = 1
+    else:
+        new_number = 1
+    
+    return f"{prefix}{new_number:03d}"

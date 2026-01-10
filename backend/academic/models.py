@@ -233,19 +233,20 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.university_reg_number} - {self.first_name} {self.last_name}"
 
+
 class FacultyMember(models.Model):
-    """Faculty-specific data (renamed from Faculty to avoid conflict with Faculty organization model)"""
+    """Faculty-specific data"""
     faculty_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='faculty_profile')
     employee_id = models.CharField(max_length=50, unique=True)
     designation = models.CharField(max_length=100, blank=True)
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='faculty_members')
+    phone = models.CharField(max_length=20, blank=True)  # ← ADD THIS LINE
     office_number = models.CharField(max_length=20, blank=True)
     office_hours = models.TextField(blank=True)
     hire_date = models.DateField()
     qualification = models.TextField(blank=True)
     telegram_chat_id = models.CharField(max_length=255, blank=True, null=True)
-    
     class Meta:
         db_table = 'faculty'
     
