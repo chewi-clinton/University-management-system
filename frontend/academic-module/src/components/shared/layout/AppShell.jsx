@@ -5,7 +5,7 @@ import StudentSidebar from "./StudentSidebar.jsx";
 import FacultySidebar from "./FacultySidebar.jsx";
 import Header from "./Header.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
-
+import "../../../styles/components/AppShell.css";
 const AppShell = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user } = useAuth();

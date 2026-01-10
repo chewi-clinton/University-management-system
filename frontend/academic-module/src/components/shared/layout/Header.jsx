@@ -17,7 +17,7 @@ import Badge from "../ui/Badge.jsx";
 import Button from "../ui/Button.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { studentService } from "../../../services/api/studentService.js";
-
+import "../../../styles/components/header.css";
 const Header = ({ onToggleSidebar, isSidebarCollapsed, user }) => {
   const location = useLocation();
   const navigate = useNavigate();
