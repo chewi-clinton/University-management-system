@@ -124,35 +124,25 @@ class FacultyMemberSerializer(serializers.ModelSerializer):
 
 class ProgramSerializer(serializers.ModelSerializer):
     """Program serializer with nested department"""
-    department = DepartmentSerializer(read_only=True)
+    department_name = serializers.CharField(source='department.department_name', read_only=True)
+   
+    # Write field for foreign key
     department_id = serializers.PrimaryKeyRelatedField(
         queryset=Department.objects.all(),
         source='department',
         write_only=True,
         required=True
     )
-    program_name = serializers.CharField(required=True)
-    program_code = serializers.CharField(required=True)
-    duration_years = serializers.IntegerField(required=True, min_value=1)
-    total_credits_required = serializers.IntegerField(required=True, min_value=1)
-    program_type = serializers.ChoiceField(
-        choices=Program.PROGRAM_TYPES,
-        required=True
-    )
-    
+   
     class Meta:
         model = Program
-        fields = '__all__'
-
-    def validate_program_code(self, value):
-        """Ensure program_code is unique"""
-        if self.instance:
-            if Program.objects.exclude(pk=self.instance.pk).filter(program_code=value).exists():
-                raise serializers.ValidationError("Program code already exists")
-        else:
-            if Program.objects.filter(program_code=value).exists():
-                raise serializers.ValidationError("Program code already exists")
-        return value
+        fields = [
+            'program_id', 'program_name', 'program_code',
+            'department_id', 'department_name',
+            'duration_years', 'total_credits_required',
+            'program_type', 'description', 'admission_requirements'
+        ]
+        read_only_fields = ['program_id']
 
 
 class CourseSerializer(serializers.ModelSerializer):

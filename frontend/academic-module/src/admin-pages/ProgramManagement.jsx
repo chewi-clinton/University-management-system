@@ -123,7 +123,13 @@ export default function ProgramManagement() {
     setError(null);
 
     try {
-      const result = await adminService.createProgram(formData);
+      const programData = {
+        ...formData,
+        duration_years: parseInt(formData.duration_years),
+        total_credits_required: parseInt(formData.total_credits), // ← Convert to int
+      };
+
+      const result = await adminService.createProgram(programData);
 
       if (result.success) {
         showSuccess("Program created successfully");

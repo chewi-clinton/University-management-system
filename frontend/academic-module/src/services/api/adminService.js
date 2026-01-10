@@ -221,6 +221,7 @@ const adminService = {
 
   createProgram: async (programData) => {
     try {
+      console.log("Creating program with data:", programData); // ← What data is being sent?
       const response = await api.post("/programs/", programData);
       return {
         success: true,
@@ -228,9 +229,14 @@ const adminService = {
       };
     } catch (error) {
       console.error("Error creating program:", error);
+      console.error("Error response:", error.response?.data); // ← What's the actual error?
+      console.error("Error status:", error.response?.status);
       return {
         success: false,
-        error: error.response?.data?.detail || "Failed to create program",
+        error:
+          JSON.stringify(error.response?.data) ||
+          error.response?.data?.detail ||
+          "Failed to create program",
       };
     }
   },
