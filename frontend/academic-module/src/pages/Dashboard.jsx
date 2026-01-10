@@ -19,7 +19,7 @@ import StatCard from "../components/shared/ui/StatCard.jsx";
 import Button from "../components/shared/ui/Button.jsx";
 import Badge from "../components/shared/ui/Badge.jsx";
 import { studentService } from "../services/api/studentService.js";
-
+import "../styles/pages/FacultyDashboard.css";
 const Dashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);

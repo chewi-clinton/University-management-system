@@ -17,7 +17,7 @@ import Button from "../../components/shared/ui/Button";
 import Select from "../../components/shared/ui/Select";
 import Badge from "../../components/shared/ui/Badge";
 import Modal from "../../components/shared/feedback/Modal";
-import Skeleton from "../../components/shared/feedback/skeleton";
+import Skeleton from "../../components/shared/feedback/Skeleton";
 import {
   BarChart,
   Bar,

@@ -187,6 +187,7 @@ class Semester(models.Model):
     
     class Meta:
         db_table = 'semesters'
+        ordering = ['-start_date']
         constraints = [
             models.CheckConstraint(
                 check=models.Q(semester_number__gte=1) & models.Q(semester_number__lte=3),
@@ -286,6 +287,7 @@ class Enrollment(models.Model):
     class Meta:
         db_table = 'enrollments'
         unique_together = ['student', 'semester']
+        ordering = ['-enrollment_date']
         indexes = [
             models.Index(fields=['student_id', 'semester_id']),
         ]
@@ -429,6 +431,7 @@ class Examination(models.Model):
     
     class Meta:
         db_table = 'examinations'
+        ordering = ['-exam_id']
     
     def __str__(self):
         return f"{self.exam_name} - {self.offering}"
@@ -443,6 +446,7 @@ class ExamRoom(models.Model):
     
     class Meta:
         db_table = 'exam_rooms'
+        ordering = ['building', 'room_number']
     
     def __str__(self):
         return f"{self.building} - {self.room_number}"
@@ -480,6 +484,7 @@ class AdmitCard(models.Model):
     class Meta:
         db_table = 'admit_cards'
         unique_together = ['student', 'exam']
+        ordering = ['-issued_date']
     
     def __str__(self):
         return f"{self.student} - {self.exam}"
@@ -646,6 +651,7 @@ class Notice(models.Model):
     
     class Meta:
         db_table = 'notices'
+        ordering = ['-post_date']
         indexes = [
             models.Index(fields=['target_audience', 'post_date']),
         ]

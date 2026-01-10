@@ -68,15 +68,19 @@ class FacultyMemberSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role='faculty'),
         source='user',
-        write_only=True
+        write_only=True,
+        required=True
     )
     department = DepartmentSerializer(read_only=True)
     department_id = serializers.PrimaryKeyRelatedField(
         queryset=Department.objects.all(),
         source='department',
-        write_only=True
+        write_only=True,
+        required=True
     )
     full_name = serializers.SerializerMethodField()
+    employee_id = serializers.CharField(required=True)
+    hire_date = serializers.DateField(required=True)
     
     class Meta:
         model = FacultyMember
@@ -85,6 +89,18 @@ class FacultyMemberSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}"
 
+    def validate_employee_id(self, value):
+        """Ensure employee_id is unique"""
+        if self.instance:
+            # Update case - exclude current instance
+            if FacultyMember.objects.exclude(pk=self.instance.pk).filter(employee_id=value).exists():
+                raise serializers.ValidationError("Employee ID already exists")
+        else:
+            # Create case
+            if FacultyMember.objects.filter(employee_id=value).exists():
+                raise serializers.ValidationError("Employee ID already exists")
+        return value
+
 
 class ProgramSerializer(serializers.ModelSerializer):
     """Program serializer with nested department"""
@@ -92,12 +108,31 @@ class ProgramSerializer(serializers.ModelSerializer):
     department_id = serializers.PrimaryKeyRelatedField(
         queryset=Department.objects.all(),
         source='department',
-        write_only=True
+        write_only=True,
+        required=True
+    )
+    program_name = serializers.CharField(required=True)
+    program_code = serializers.CharField(required=True)
+    duration_years = serializers.IntegerField(required=True, min_value=1)
+    total_credits_required = serializers.IntegerField(required=True, min_value=1)
+    program_type = serializers.ChoiceField(
+        choices=Program.PROGRAM_TYPES,
+        required=True
     )
     
     class Meta:
         model = Program
         fields = '__all__'
+
+    def validate_program_code(self, value):
+        """Ensure program_code is unique"""
+        if self.instance:
+            if Program.objects.exclude(pk=self.instance.pk).filter(program_code=value).exists():
+                raise serializers.ValidationError("Program code already exists")
+        else:
+            if Program.objects.filter(program_code=value).exists():
+                raise serializers.ValidationError("Program code already exists")
+        return value
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -556,19 +591,24 @@ class NoticeSerializer(serializers.ModelSerializer):
     posted_by_user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         source='posted_by_user',
-        write_only=True
+        write_only=True,
+        required=False
     )
     department = DepartmentSerializer(read_only=True)
     department_id = serializers.PrimaryKeyRelatedField(
         queryset=Department.objects.all(),
         source='department',
         write_only=True,
-        allow_null=True
+        allow_null=True,
+        required=False
     )
+    title = serializers.CharField(required=True, max_length=200)
+    content = serializers.CharField(required=True)
     
     class Meta:
         model = Notice
         fields = '__all__'
+        read_only_fields = ['view_count', 'post_date']
 
 
 class AdmissionInquirySerializer(serializers.ModelSerializer):
@@ -648,18 +688,23 @@ class ZoomMeetingSerializer(serializers.Serializer):
     start_time = serializers.TimeField(required=True)
     duration_minutes = serializers.IntegerField(default=60, min_value=15, max_value=300)
     offering_id = serializers.IntegerField(required=True)
-    platform = serializers.ChoiceField(choices=['zoom', 'google_meet'], default='zoom')
+    platform = serializers.ChoiceField(
+        choices=['zoom', 'google_meet'],
+        default='zoom',
+        required=False
+    )
     description = serializers.CharField(required=False, allow_blank=True)
    
     def validate_offering_id(self, value):
         from .models import CourseOffering
-        if not CourseOffering.objects.filter(id=value).exists():
-            raise ValidationError("Course offering not found")
+        if not CourseOffering.objects.filter(offering_id=value).exists():
+            raise serializers.ValidationError("Course offering not found")
         return value
    
     def validate_schedule_date(self, value):
+        from django.utils import timezone
         if value < timezone.now().date():
-            raise ValidationError("Cannot schedule class in the past")
+            raise serializers.ValidationError("Cannot schedule class in the past")
         return value
 
 

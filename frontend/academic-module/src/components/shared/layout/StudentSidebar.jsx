@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Avatar from "../ui/Avatar.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
-
+import "../../../styles/components/sidebar.css";
 const Sidebar = ({ isCollapsed = false }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();

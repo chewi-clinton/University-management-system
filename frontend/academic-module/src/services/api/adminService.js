@@ -1557,7 +1557,7 @@ const adminService = {
   // ==================== Faculties (Organizations) ====================
   getFaculties: async () => {
     try {
-      const response = await api.get("/faculties/");
+      const response = await api.get("/faculties/"); // This should now work
       const data = Array.isArray(response.data)
         ? response.data
         : response.data.results || [];

@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from .auth_views import login_view, current_user_view, logout_view
 from .views import (
-    UserViewSet, FacultyMemberViewSet, DepartmentViewSet, ProgramViewSet,
+    UserViewSet, FacultyViewSet, FacultyMemberViewSet, DepartmentViewSet, ProgramViewSet,
     CourseViewSet, CoursePrerequisiteViewSet, AcademicSessionViewSet,
     SemesterViewSet, StudentViewSet, AcademicAdminViewSet,
     EnrollmentViewSet, CourseOfferingViewSet, StudentCourseRegistrationViewSet,
@@ -18,6 +18,7 @@ from .views import (
 router = DefaultRouter()
 
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'faculties', FacultyViewSet, basename='faculty')
 router.register(r'faculty-members', FacultyMemberViewSet, basename='facultymember')
 router.register(r'departments', DepartmentViewSet, basename='department')
 router.register(r'programs', ProgramViewSet, basename='program')

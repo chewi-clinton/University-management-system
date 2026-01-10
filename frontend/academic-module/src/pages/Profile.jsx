@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { studentService } from "../services/api/studentService.js";
 import authService from "../services/api/authService.js";
-
+import "../styles/pages/profile.css";
 const Profile = () => {
   const { user: authUser } = useAuth();
   const [loading, setLoading] = useState(true);

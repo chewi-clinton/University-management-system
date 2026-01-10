@@ -24,7 +24,7 @@ from .models import (
     AdmissionInquiry, Applicant
 )
 from .serializers import (
-    UserSerializer, FacultyMemberSerializer, DepartmentSerializer, ProgramSerializer,
+    UserSerializer, FacultySerializer, FacultyMemberSerializer, DepartmentSerializer, ProgramSerializer,
     CourseSerializer, CoursePrerequisiteSerializer, AcademicSessionSerializer,
     SemesterSerializer, StudentSerializer, StudentSummarySerializer,
     AcademicAdminSerializer, EnrollmentSerializer,
@@ -107,6 +107,16 @@ class FacultyMemberViewSet(viewsets.ModelViewSet):
                 {'detail': 'Faculty profile not found for the authenticated user.'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+class FacultyViewSet(viewsets.ModelViewSet):
+    """Academic Faculty (organization) ViewSet"""
+    queryset = Faculty.objects.select_related('dean').all()
+    serializer_class = FacultySerializer
+    permission_classes = [IsAuthenticated, IsAcademicAdmin]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['faculty_name', 'faculty_code']
+    ordering_fields = ['faculty_name', 'faculty_code']
+    ordering = ['faculty_name']
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.select_related('faculty', 'head').all()
@@ -882,11 +892,16 @@ class NoticeViewSet(viewsets.ModelViewSet):
     filterset_fields = ['priority', 'target_audience', 'department', 'is_pinned']
     search_fields = ['title', 'content']
     ordering_fields = ['post_date', 'priority']
+    ordering = ['-post_date']
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), CanManageNotices()]
         return [IsAuthenticated(), CanViewNotices()]
+
+    def perform_create(self, serializer):
+        """Automatically set posted_by_user to current user"""
+        serializer.save(posted_by_user=self.request.user)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_notices(self, request):

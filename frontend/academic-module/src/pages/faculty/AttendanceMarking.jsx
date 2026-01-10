@@ -68,10 +68,13 @@ const AttendanceMarking = () => {
       });
 
       const coursesData = response.results || response;
-      setCourses(coursesData);
 
-      if (coursesData.length > 0) {
-        setSelectedCourse(coursesData[0].id.toString());
+      // Filter out courses without valid IDs
+      const validCourses = coursesData.filter((course) => course?.id != null);
+      setCourses(validCourses);
+
+      if (validCourses.length > 0) {
+        setSelectedCourse(validCourses[0].id.toString());
       }
     } catch (error) {
       console.error("Error fetching courses:", error);
@@ -250,7 +253,8 @@ const AttendanceMarking = () => {
     return Math.round((marked / students.length) * 100);
   };
 
-  const course = courses.find((c) => c.id.toString() === selectedCourse);
+  // Fixed: Added optional chaining to prevent undefined errors
+  const course = courses.find((c) => c?.id?.toString() === selectedCourse);
 
   if (loading.courses) {
     return (
@@ -317,12 +321,14 @@ const AttendanceMarking = () => {
         <Select
           value={selectedCourse}
           onChange={(e) => setSelectedCourse(e.target.value)}
-          options={courses.map((course) => ({
-            value: course.id.toString(),
-            label: `${course.course?.course_code || "N/A"} - ${
-              course.course?.course_name || "Untitled"
-            } (${course.section || "A"})`,
-          }))}
+          options={courses
+            .filter((course) => course?.id != null)
+            .map((course) => ({
+              value: course.id.toString(),
+              label: `${course.course?.course_code || "N/A"} - ${
+                course.course?.course_name || "Untitled"
+              } (${course.section || "A"})`,
+            }))}
           className="attendance-marking__course-select"
           disabled={loading.students}
         />
