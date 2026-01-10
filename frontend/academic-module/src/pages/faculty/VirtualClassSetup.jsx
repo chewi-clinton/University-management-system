@@ -25,7 +25,7 @@ import Input from "../../components/shared/ui/Input";
 import Select from "../../components/shared/ui/Select";
 import Modal from "../../components/shared/feedback/Modal";
 import Badge from "../../components/shared/ui/Badge";
-import Skeleton from "../../components/shared/feedback/skeleton";
+import Skeleton from "../../components/shared/feedback/Skeleton";
 import facultyService from "../../services/api/facultyService";
 import api from "../../services/api/api";
 import "../../styles/pages/VirtualClassSetup.css";
@@ -66,7 +66,9 @@ const VirtualClassSetup = () => {
       ]);
 
       const coursesData = coursesResponse.results || coursesResponse;
-      setCourses(coursesData);
+      // Filter out courses without valid IDs
+      const validCourses = coursesData.filter((course) => course?.id != null);
+      setCourses(validCourses);
 
       const classesData = classesResponse.data.results || classesResponse.data;
 
@@ -413,11 +415,14 @@ const VirtualClassSetup = () => {
                 required
               >
                 <option value="">Select Course</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id.toString()}>
-                    {course.course?.course_code} - {course.course?.course_name}
-                  </option>
-                ))}
+                {courses
+                  .filter((course) => course?.id != null)
+                  .map((course) => (
+                    <option key={course.id} value={course.id.toString()}>
+                      {course.course?.course_code} -{" "}
+                      {course.course?.course_name}
+                    </option>
+                  ))}
               </Select>
 
               <Input
@@ -836,11 +841,13 @@ const VirtualClassSetup = () => {
             required
           >
             <option value="">Select Course</option>
-            {courses.map((course) => (
-              <option key={course.id} value={course.id.toString()}>
-                {course.course?.course_code} - {course.course?.course_name}
-              </option>
-            ))}
+            {courses
+              .filter((course) => course?.id != null)
+              .map((course) => (
+                <option key={course.id} value={course.id.toString()}>
+                  {course.course?.course_code} - {course.course?.course_name}
+                </option>
+              ))}
           </Select>
 
           <Input
