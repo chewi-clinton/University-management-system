@@ -11,6 +11,9 @@ import BusRegistration from './pages/BusRegistration'
 import LeaveManagement from './pages/LeaveManagement'
 import LoginPage from './pages/LoginPage'
 import StudentDashboard from './pages/StudentDashboard'
+import SignupPage from './pages/SignupPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 export default function App() {
   return (
@@ -30,6 +33,9 @@ export default function App() {
           <Route path="finance/notifications" element={<Notifications />} />
           <Route path="leave-management" element={<LeaveManagement />} />
         </Route>
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
       </Routes>
     </BrowserRouter>
   );

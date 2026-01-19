@@ -3,6 +3,7 @@ const router = express.Router();
 const payrollController = require('../controllers/payrollController');
 const auth = require('../middleware/auth');
 
+// Protected routes
 router.get('/', auth, payrollController.getAllPayroll);
 router.get('/stats', auth, payrollController.getPayrollStats);
 router.post('/', auth, payrollController.createPayroll);

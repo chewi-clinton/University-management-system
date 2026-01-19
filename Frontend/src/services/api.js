@@ -8,17 +8,26 @@ const apiCall = async (endpoint, method = 'GET', data = null) => {
   const options = {
     method,
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
+      'Content-Type': 'application/json'
     }
   };
+
+  const token = getToken();
+  if (token) {
+    options.headers['Authorization'] = `Bearer ${token}`;
+  }
 
   if (data) options.body = JSON.stringify(data);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-    if (!response.ok) throw new Error('API request failed');
-    return await response.json();
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(responseData.message || 'API request failed');
+    }
+    
+    return responseData;
   } catch (error) {
     console.error('API Error:', error);
     throw error;

@@ -3,6 +3,7 @@ const router = express.Router();
 const tuitionController = require('../controllers/tuitionController');
 const auth = require('../middleware/auth');
 
+// Protected routes
 router.get('/', auth, tuitionController.getAllTuition);
 router.get('/stats', auth, tuitionController.getTuitionStats);
 router.post('/', auth, tuitionController.createTuition);
