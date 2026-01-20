@@ -6,36 +6,48 @@ const emailService = require('../utils/emailService');
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-
-    // Validate input
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Check if user exists
+    const User = require('../models/User');
     let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
+    if (user) return res.status(400).json({ message: 'Email already registered' });
 
-    // Create new user
     user = new User({ name, email, password, role });
     await user.save();
 
-    // Send welcome email
-    try {
-      await emailService.sendWelcomeEmail(email, name);
-    } catch (emailError) {
-      console.log('Email send failed:', emailError);
+    // Auto-create student profile + default tuition for student role
+    if (role === 'student') {
+      const Student = require('../models/Student');
+      const Tuition = require('../models/Tuition');
+      const DEFAULT_TUITION = Number(process.env.DEFAULT_TUITION || 367000);
+
+      const student = new Student({
+        userId: user._id,
+        studentId: `STU${Date.now().toString().slice(-6)}`,
+        name: user.name,
+        email: user.email,
+        department: ''
+      });
+      await student.save();
+
+      const tuition = new Tuition({
+        studentId: student._id,
+        amount: DEFAULT_TUITION,
+        currency: 'XAF',
+        status: 'pending',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      });
+      await tuition.save();
     }
 
-    // Create JWT token
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '7d'
-    });
+    // create token and respond
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
-      message: 'User registered successfully',
+      message: 'User registered',
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });

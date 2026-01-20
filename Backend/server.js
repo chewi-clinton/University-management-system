@@ -28,6 +28,12 @@ app.use('/api/tuition', require('./routes/tuition'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/student', require('./routes/student'));
+const financeRoutes = require('./routes/finance');
+app.use('/api/finance', financeRoutes);
+const supportRoutes = require('./routes/support');
+app.use('/api/support', supportRoutes);
+const notificationRoutes = require('./routes/notifications');
+app.use('/api/notifications', notificationRoutes);
 
 // Error handler (dev)
 app.use((err, req, res, next) => {

@@ -1,48 +1,49 @@
-import { authAPI } from './api';
+const API_BASE = 'http://localhost:5000/api/auth';
 
 export const loginUser = async (email, password) => {
-  try {
-    const response = await authAPI.login(email, password);
-    
-    // Save token to localStorage
-    if (response.token) {
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-    }
-    
-    return response;
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
+  const res = await fetch(`${API_BASE}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Login failed');
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.dispatchEvent(new Event('userChanged'));
   }
+  return data;
 };
 
 export const registerUser = async (name, email, password, role) => {
-  try {
-    const response = await authAPI.register(name, email, password, role);
-    
-    if (response.token) {
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-    }
-    
-    return response;
-  } catch (error) {
-    console.error('Registration error:', error);
-    throw error;
+  const res = await fetch(`${API_BASE}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, role })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Registration failed');
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.dispatchEvent(new Event('userChanged'));
   }
+  return data;
 };
 
 export const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  window.dispatchEvent(new Event('userChanged'));
 };
 
 export const getCurrentUser = () => {
-  const user = localStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    return null;
+  }
 };
 
-export const getToken = () => {
-  return localStorage.getItem('token');
-};
+export const getToken = () => localStorage.getItem('token');

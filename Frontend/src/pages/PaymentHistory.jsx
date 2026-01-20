@@ -1,7 +1,103 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar'
+import { financeAPI } from '../services/financeService'
+import { getCurrentUser } from '../services/authService'
 
 export default function PaymentHistory() {
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filterCategory, setFilterCategory] = useState('all')
+  const [search, setSearch] = useState('')
+
+  const [totalOutstanding, setTotalOutstanding] = useState(0)
+  const [balanceDebug, setBalanceDebug] = useState(null)
+
+  const formatCurrency = (v) => `XAF ${Number(v || 0).toLocaleString()}`
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      try {
+        const user = getCurrentUser() || {}
+        console.log('PaymentHistory: user ->', user)
+        const studentId = user.studentId || user.student?.id || user.id || undefined
+        console.log('PaymentHistory: studentId ->', studentId)
+
+        const data = await financeAPI.getTransactions(studentId)
+        const txs = Array.isArray(data) ? data : (data.transactions || [])
+        setTransactions(txs)
+
+        // --- apply same balance logic as StudentDashboard ---
+        try {
+          // try student-specific balance first, then fallback to no-student default
+          const b = await financeAPI.getBalance(studentId)
+          console.log('finance.getBalance (dashboard) ->', b)
+          setBalanceDebug(b)
+
+          const pickNumber = (obj) => {
+            if (obj == null) return 0
+            if (typeof obj === 'number') return obj
+            if (typeof obj === 'string' && !Number.isNaN(Number(obj))) return Number(obj)
+            if (typeof obj === 'object') {
+              const keys = ['totalDue','total_due','totalOutstanding','total_outstanding','balance','total','amount','due']
+              for (const k of keys) if (obj[k] != null && !Number.isNaN(Number(obj[k]))) return Number(obj[k])
+              // nested fallbacks
+              if (obj.data) {
+                const v = pickNumber(obj.data); if (v) return v
+              }
+              if (obj.result) {
+                const v = pickNumber(obj.result); if (v) return v
+              }
+            }
+            return 0
+          }
+
+          let amt = pickNumber(b)
+
+          // final fallback: compute from transactions if API provided nothing
+          if (!amt && txs.length) {
+            amt = txs.reduce((s, t) => s + Number(t.amount || 0), 0)
+          }
+
+          setTotalOutstanding(amt)
+        } catch (e) {
+          console.error('Failed to load balance', e)
+          setTotalOutstanding(0)
+        }
+      } catch (e) {
+        console.error('PaymentHistory load error', e)
+        setTransactions([])
+        setTotalOutstanding(0)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const matches = (t) => {
+    if (!t) return false
+    const q = search.trim().toLowerCase()
+    if (filterCategory !== 'all' && (t.category || '').toLowerCase() !== filterCategory) return false
+    if (!q) return true
+    return (
+      (t.description || '').toLowerCase().includes(q) ||
+      (t._id || t.id || '').toString().toLowerCase().includes(q) ||
+      (t.category || '').toLowerCase().includes(q)
+    )
+  }
+
+  const iconFor = (cat) => {
+    const c = (cat || '').toLowerCase()
+    if (c.includes('tuition')) return { icon: 'school', bg: 'bg-orange-100 text-orange-600' }
+    if (c.includes('housing') || c.includes('dorm')) return { icon: 'apartment', bg: 'bg-blue-100 text-blue-600' }
+    if (c.includes('library')) return { icon: 'menu_book', bg: 'bg-purple-100 text-purple-600' }
+    if (c.includes('bus') || c.includes('transport')) return { icon: 'directions_bus', bg: 'bg-green-100 text-green-600' }
+    return { icon: 'receipt_long', bg: 'bg-gray-100 text-gray-600' }
+  }
+
+  const filtered = transactions.filter(matches)
+
   return (
     <div className="relative flex flex-col min-h-screen w-full mx-auto bg-background-light dark:bg-background-dark overflow-hidden md:max-w-none md:shadow-none md:ring-0">
       <TopBar title="Payment History" right={<button className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined">filter_list</span></button>} />
@@ -15,12 +111,17 @@ export default function PaymentHistory() {
               <div className="flex w-full justify-between items-start">
                 <div className="flex flex-col gap-1">
                   <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wide">Total Outstanding</p>
-                  <p className="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">XAF 1,250.00</p>
+                  <p className="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">{formatCurrency(totalOutstanding)}</p>
                 </div>
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined">account_balance</span>
                 </div>
               </div>
+              {balanceDebug !== null && (
+                <div className="mt-2 text-xs text-gray-500">
+                  Debug: <pre className="whitespace-pre-wrap">{JSON.stringify(balanceDebug, null, 2)}</pre>
+                </div>
+              )}
               <div className="w-full pt-2">
                 <button className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold leading-normal shadow-md shadow-blue-500/20">
                   <span className="truncate">Pay Now</span>
@@ -35,16 +136,22 @@ export default function PaymentHistory() {
               <div className="text-slate-400 dark:text-slate-500 flex items-center justify-center pl-4">
                 <span className="material-symbols-outlined">search</span>
               </div>
-              <input className="w-full h-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 text-base font-normal" placeholder="Search invoice # or description" defaultValue="" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 text-base font-normal" placeholder="Search invoice # or description" />
             </div>
           </div>
 
           {/* Chips (Filters) */}
           <div className="flex gap-3 px-4 py-2 overflow-x-auto no-scrollbar">
-            <button className="flex h-9 shrink-0 items-center justify-center px-4 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-medium transition-transform active:scale-95">All</button>
-            <button className="flex h-9 shrink-0 items-center justify-center px-4 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition-transform active:scale-95">Tuition</button>
-            <button className="flex h-9 shrink-0 items-center justify-center px-4 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition-transform active:scale-95">Housing</button>
-            <button className="flex h-9 shrink-0 items-center justify-center px-4 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium transition-transform active:scale-95">Library</button>
+            {['all','tuition','housing','library','bus'].map(c => (
+              <button
+                key={c}
+                onClick={() => setFilterCategory(c)}
+                className={`flex h-9 shrink-0 items-center justify-center px-4 rounded-full text-sm font-medium transition-transform active:scale-95 ${filterCategory===c ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'}`}
+              >
+                {c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)}
+              </button>
+            ))}
+
           </div>
 
           {/* Recent Activity Title */}
@@ -52,100 +159,32 @@ export default function PaymentHistory() {
 
           {/* Transactions List */}
           <div className="px-4 flex flex-col gap-3">
-            {/* Item 1: Overdue */}
-            <div className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
-                    <span className="material-symbols-outlined text-[20px]">school</span>
-                  </div>
-                  <div>
-                    <p className="text-slate-900 dark:text-white text-sm font-bold">Fall Semester Tuition</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs">#INV-2023-001 • Oct 24, 2023</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-900 dark:text-white text-sm font-bold">XAF 1,250.00</p>
-                  <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/30 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/10">Overdue</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Item 2: Paid */}
-            <div className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                    <span className="material-symbols-outlined text-[20px]">apartment</span>
-                  </div>
-                  <div>
-                    <p className="text-slate-900 dark:text-white text-sm font-bold">Dormitory Housing Fee</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs">#INV-2023-002 • Sep 01, 2023</p>
+            {loading ? (
+              <div className="p-4 text-center text-sm text-gray-500">Loading...</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-4 text-center text-sm text-gray-500">No transactions found</div>
+            ) : filtered.map((t) => {
+              const meta = iconFor(t.category)
+              return (
+                <div key={t._id || t.id} className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${meta.bg} dark:bg-opacity-30`}>
+                        <span className="material-symbols-outlined text-[20px]">{meta.icon}</span>
+                      </div>
+                      <div>
+                        <p className="text-slate-900 dark:text-white text-sm font-bold">{t.description || (t.category || 'Transaction')}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs">{new Date(t.date || t.createdAt || Date.now()).toLocaleDateString()} • #{t._id?.toString?.().slice(0,8) || ''}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-slate-900 dark:text-white text-sm font-bold">XAF {Number(t.amount || 0).toLocaleString()}</p>
+                      <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${t.status === 'paid' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-600/20' : t.status === 'overdue' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-red-600/10' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-500 ring-yellow-600/20'}`}>{t.status ? t.status.charAt(0).toUpperCase()+t.status.slice(1) : 'Pending'}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-slate-900 dark:text-white text-sm font-bold">XAF 3,200.00</p>
-                  <span className="inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20">Paid</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Item 3: Paid */}
-            <div className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                    <span className="material-symbols-outlined text-[20px]">menu_book</span>
-                  </div>
-                  <div>
-                    <p className="text-slate-900 dark:text-white text-sm font-bold">Library Fine</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs">#INV-2023-005 • Aug 15, 2023</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-900 dark:text-white text-sm font-bold">XAF 15.00</p>
-                  <span className="inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20">Paid</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Item 4: Pending */}
-            <div className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-[20px]">print</span>
-                  </div>
-                  <div>
-                    <p className="text-slate-900 dark:text-white text-sm font-bold">Lab Material Fee</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs">#INV-2023-008 • Nov 01, 2023</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-900 dark:text-white text-sm font-bold">XAF 45.00</p>
-                  <span className="inline-flex items-center rounded-md bg-yellow-50 dark:bg-yellow-900/30 px-2 py-1 text-xs font-medium text-yellow-800 dark:text-yellow-500 ring-1 ring-inset ring-yellow-600/20">Pending</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Item 5: Paid */}
-            <div className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                    <span className="material-symbols-outlined text-[20px]">fitness_center</span>
-                  </div>
-                  <div>
-                    <p className="text-slate-900 dark:text-white text-sm font-bold">Gym Membership</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs">#INV-2023-010 • Jul 20, 2023</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-slate-900 dark:text-white text-sm font-bold">XAF 120.00</p>
-                  <span className="inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20">Paid</span>
-                </div>
-              </div>
-            </div>
+              )
+            })}
           </div>
 
           {/* Bottom spacing */}

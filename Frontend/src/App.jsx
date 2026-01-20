@@ -14,6 +14,7 @@ import StudentDashboard from './pages/StudentDashboard'
 import SignupPage from './pages/SignupPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import MockPay from './pages/MockPay';
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/mock-pay/:txId" element={<MockPay />} />
       </Routes>
     </BrowserRouter>
   );
