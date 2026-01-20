@@ -1,4 +1,5 @@
 import React from 'react'
+import { getCurrentUser } from '../services/authService'
 
 
 export default function LeaveManagement() {
@@ -22,8 +23,8 @@ export default function LeaveManagement() {
 
       {/* Dashboard Header */}
       <div className="px-4 pt-6 pb-2">
-        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wide">Wednesday, 24 Oct</p>
-        <h2 className="text-primary dark:text-white text-[28px] font-bold leading-tight mt-1">Good Morning, Sarah</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wide">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+        <h2 className="text-primary dark:text-white text-[28px] font-bold leading-tight mt-1">{(function(){try{const u = getCurrentUser(); const h = new Date().getHours(); const part = h<12 ? 'Good morning' : (h<18 ? 'Good afternoon' : 'Good evening'); return u?.name ? `${part}, ${u.name}` : part }catch(e){return 'Hello'}})()}</h2>
       </div>
 
       {/* Personal Balance Cards (Horizontal Scroll) */}

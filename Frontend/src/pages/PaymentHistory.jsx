@@ -1,54 +1,76 @@
 import React, { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar'
 import { financeAPI } from '../services/financeService'
-import { getCurrentUser } from '../services/authService'
+import { getCurrentUser, setCurrentUser, getToken } from '../services/authService'
 
 export default function PaymentHistory() {
   const [transactions, setTransactions] = useState([])
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [expandedId, setExpandedId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [filterCategory, setFilterCategory] = useState('all')
   const [search, setSearch] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [sortMode, setSortMode] = useState('newest')
 
   const [totalOutstanding, setTotalOutstanding] = useState(0)
   const [balanceDebug, setBalanceDebug] = useState(null)
 
   const formatCurrency = (v) => `XAF ${Number(v || 0).toLocaleString()}`
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        const user = getCurrentUser() || {}
-        console.log('PaymentHistory: user ->', user)
-        const studentId = user.studentId || user.student?.id || user.id || undefined
-        console.log('PaymentHistory: studentId ->', studentId)
+  // load transactions with optional date range
+  const loadTransactions = async () => {
+    setLoading(true)
+    try {
+      const user = getCurrentUser() || {}
+      let studentId = user?.studentId || user?.student?.id || user?.student?._id || undefined
 
-        const data = await financeAPI.getTransactions(studentId)
-        const txs = Array.isArray(data) ? data : (data.transactions || [])
-        setTransactions(txs)
-
-        // ensure we call balance for the same student and log result
+      if (!studentId) {
         try {
-          console.log('[PaymentHistory] calling getBalance for', studentId)
-          const bal = await financeAPI.getBalance(studentId)
-          console.log('[PaymentHistory] finance.getBalance ->', bal)
-          setBalanceDebug(bal)
-          const amt = Number(bal?.totalDue ?? bal?.total ?? bal?.totalOutstanding ?? bal?.balance ?? 0) || (txs.length ? txs.reduce((s,t)=>s+Number(t.amount||0),0) : 0)
-          setTotalOutstanding(amt)
-        } catch (e) {
-          console.error('[PaymentHistory] getBalance failed', e)
-          setTotalOutstanding(0)
-        }
-      } catch (e) {
-        console.error('PaymentHistory load error', e)
-        setTransactions([])
-        setTotalOutstanding(0)
-      } finally {
-        setLoading(false)
+          const token = getToken()
+          const res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/student/profile`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (res.ok) {
+            const stu = await res.json()
+            const updatedUser = { ...(user || {}), student: stu, studentId: stu._id }
+            setCurrentUser(updatedUser)
+            studentId = stu._id
+          }
+        } catch (e) { /* ignore */ }
       }
+
+      const data = await financeAPI.getTransactions(studentId, startDate || undefined, endDate || undefined)
+      const txs = Array.isArray(data) ? data : (data.transactions || [])
+      setTransactions(txs)
+
+      // ask server for authoritative balance (totalDue)
+      try {
+        const bal = await financeAPI.getBalance(studentId)
+        setBalanceDebug(bal)
+        setTotalOutstanding(Number(bal?.totalDue ?? bal?.total ?? 0))
+      } catch (e) {
+        // fallback to computed ledger totals
+        const totalCharged = txs.filter(i=>i.type==='invoice').reduce((s,i)=>s+Number(i.amount||0),0)
+        const totalPaid = txs.filter(i=>i.type==='payment' && (String(i.status).toLowerCase()==='success' || String(i.status).toLowerCase()==='paid' || String(i.status).toLowerCase()==='completed')).reduce((s,i)=>s+Number(i.amount||0),0)
+        const balance = totalCharged - totalPaid
+        setTotalOutstanding(balance)
+      }
+
+      return txs
+
+    } catch (e) {
+      console.error('PaymentHistory load error', e)
+      setTransactions([])
+      setTotalOutstanding(0)
+    } finally {
+      setLoading(false)
     }
-    load()
-  }, [])
+  }
+
+  useEffect(() => { loadTransactions() }, [])
 
   const matches = (t) => {
     if (!t) return false
@@ -71,11 +93,111 @@ export default function PaymentHistory() {
     return { icon: 'receipt_long', bg: 'bg-gray-100 text-gray-600' }
   }
 
-  const filtered = transactions.filter(matches)
+  // base filter by search/category
+  const baseFiltered = transactions.filter(matches)
+
+  // filter by status
+  const statusFiltered = baseFiltered.filter(t => {
+    if (!filterStatus || filterStatus === 'all') return true
+    const s = String(t.status || '').toLowerCase()
+    if (filterStatus === 'completed') return (s === 'success' || s === 'paid' || s === 'completed')
+    if (filterStatus === 'pending') return s === 'pending'
+    if (filterStatus === 'failed') return !(s === 'success' || s === 'paid' || s === 'completed' || s === 'pending')
+    return true
+  })
+
+  // apply sorting
+  const filtered = [...statusFiltered].sort((a,b) => {
+    if (sortMode === 'amount-desc') return (Number(b.amount||0) - Number(a.amount||0))
+    if (sortMode === 'amount-asc') return (Number(a.amount||0) - Number(b.amount||0))
+    // date sort (newest default)
+    const da = new Date(a.date || a.createdAt || 0)
+    const db = new Date(b.date || b.createdAt || 0)
+    if (sortMode === 'oldest') return da - db
+    return db - da
+  })
+  const handleToggle = (id) => setExpandedId(expandedId === id ? null : id)
+
+  const handleDownloadReceipt = async (transactionId) => {
+    try {
+      const blob = await financeAPI.getReceipt(transactionId)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `receipt-${transactionId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) { console.error('download receipt failed', e) }
+  }
+
+  const downloadSchoolDetails = async () => {
+    try {
+      const url = `${window.location.origin}/university-details.pdf`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('School details PDF not found')
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      const blobUrl = URL.createObjectURL(blob)
+      a.href = blobUrl
+      a.download = `university-details.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      console.error('download school details failed', err)
+      alert(err.message || 'Failed to download school details')
+    }
+  }
+
+  const handleExport = async () => {
+    try {
+      const user = getCurrentUser() || {}
+      const studentId = user?.studentId || user?.student?._id || undefined
+      const info = await financeAPI.exportHistory(studentId, { start: startDate || undefined, end: endDate || undefined })
+      const res = await fetch(info.url, { headers: info.headers })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `statement-${studentId || 'user'}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) { console.error('export failed', e) }
+  }
+
+  const handlePayInvoice = async (tuitionId) => {
+    try {
+      const res = await financeAPI.createTransaction(tuitionId)
+      if (res && res.providerUrl) window.open(res.providerUrl, '_blank')
+      // refresh ledger immediately and poll until invoice is marked paid
+      let attempts = 0
+      const poll = setInterval(async () => {
+        attempts++
+        try {
+          const latest = await loadTransactions()
+          const found = (latest || []).find(i => i.type === 'invoice' && String(i.tuitionId) === String(tuitionId))
+          if (found && String(found.status).toLowerCase() === 'paid') {
+            clearInterval(poll)
+          }
+        } catch (e) {
+          // ignore
+        }
+        if (attempts >= 10) clearInterval(poll)
+      }, 3000)
+    } catch (e) { console.error('pay invoice failed', e) }
+  }
+
+  const toggleFilters = () => setShowFilters(v => !v)
 
   return (
     <div className="relative flex flex-col min-h-screen w-full mx-auto bg-background-light dark:bg-background-dark overflow-hidden md:max-w-none md:shadow-none md:ring-0">
-      <TopBar title="Payment History" right={<button className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined">filter_list</span></button>} />
+      <TopBar title="Payment History" right={<button onClick={toggleFilters} className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><span className="material-symbols-outlined">filter_list</span></button>} />
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-6 md:p-6">
@@ -88,31 +210,68 @@ export default function PaymentHistory() {
                   <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wide">Total Outstanding</p>
                   <p className="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">{formatCurrency(totalOutstanding)}</p>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <button onClick={downloadSchoolDetails} title="Download school details" className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20">
                   <span className="material-symbols-outlined">account_balance</span>
-                </div>
-              </div>
-              {balanceDebug !== null && (
-                <div className="mt-2 text-xs text-gray-500">
-                  Debug: <pre className="whitespace-pre-wrap">{JSON.stringify(balanceDebug, null, 2)}</pre>
-                </div>
-              )}
-              <div className="w-full pt-2">
-                <button className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold leading-normal shadow-md shadow-blue-500/20">
-                  <span className="truncate">Pay Now</span>
                 </button>
+              </div>
+              {/* debug output removed to avoid showing raw payload in UI */}
+              <div className="w-full pt-2">
+                {Number(totalOutstanding || 0) > 0 ? (
+                  <button className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold leading-normal shadow-md shadow-blue-500/20">
+                    <span className="truncate">Pay Now</span>
+                  </button>
+                ) : (
+                  <div className="text-sm text-slate-500">No outstanding balance</div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar + Date Filters */}
           <div className="px-4 pb-2">
-            <div className="flex w-full items-center rounded-lg h-12 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-700 overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-all">
-              <div className="text-slate-400 dark:text-slate-500 flex items-center justify-center pl-4">
-                <span className="material-symbols-outlined">search</span>
+            <div className="flex gap-3 items-center">
+              <div className="flex-1 flex w-full items-center rounded-lg h-12 bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-700 overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+                <div className="text-slate-400 dark:text-slate-500 flex items-center justify-center pl-4">
+                  <span className="material-symbols-outlined">search</span>
+                </div>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 text-base font-normal" placeholder="Search invoice # or description" />
               </div>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 px-3 text-base font-normal" placeholder="Search invoice # or description" />
+
+              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="h-10 rounded-lg border px-2" />
+              <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="h-10 rounded-lg border px-2" />
+              <button onClick={loadTransactions} className="h-10 px-3 rounded-lg bg-primary text-white text-sm">Filter</button>
             </div>
+
+            {/* Filter panel (toggleable) */}
+            {showFilters && (
+              <div className="mt-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface-dark shadow-sm">
+                <div className="flex gap-3 items-center">
+                  <div className="flex flex-col">
+                    <label className="text-xs text-slate-500">Status</label>
+                    <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="h-9 rounded-lg border px-2">
+                      <option value="all">All</option>
+                      <option value="completed">Completed</option>
+                      <option value="pending">Pending</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs text-slate-500">Sort</label>
+                    <select value={sortMode} onChange={e=>setSortMode(e.target.value)} className="h-9 rounded-lg border px-2">
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="amount-desc">Amount (High→Low)</option>
+                      <option value="amount-asc">Amount (Low→High)</option>
+                    </select>
+                  </div>
+                  <div className="flex-1" />
+                  <div className="flex items-end gap-2">
+                    <button onClick={() => { setShowFilters(false); loadTransactions(); }} className="h-9 px-3 rounded-lg bg-primary text-white text-sm">Apply</button>
+                    <button onClick={() => { setFilterStatus('all'); setSortMode('newest'); setShowFilters(false); }} className="h-9 px-3 rounded-lg border text-sm">Reset</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Chips (Filters) */}
@@ -140,10 +299,22 @@ export default function PaymentHistory() {
               <div className="p-4 text-center text-sm text-gray-500">No transactions found</div>
             ) : filtered.map((t) => {
               const meta = iconFor(t.category)
+              const isPayment = t.type === 'payment'
+              const amountClass = isPayment ? 'text-green-600' : 'text-red-700'
+              const statusLabel = (() => {
+                if (isPayment) {
+                  const s = String(t.status || '').toLowerCase()
+                  if (s === 'success' || s === 'paid' || s === 'completed') return 'Completed'
+                  if (s === 'pending') return 'Pending'
+                  return 'Failed'
+                }
+                return t.status ? (t.status.charAt(0).toUpperCase() + t.status.slice(1)) : 'Pending'
+              })()
+
               return (
-                <div key={t._id || t.id} className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer">
+                <div key={t._id || t.id} className="group flex flex-col gap-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-surface-light dark:bg-surface-dark p-4 shadow-sm hover:border-primary/30 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3" onClick={() => handleToggle(t._id)}>
                       <div className={`flex h-10 w-10 items-center justify-center rounded-full ${meta.bg} dark:bg-opacity-30`}>
                         <span className="material-symbols-outlined text-[20px]">{meta.icon}</span>
                       </div>
@@ -152,11 +323,35 @@ export default function PaymentHistory() {
                         <p className="text-slate-500 dark:text-slate-400 text-xs">{new Date(t.date || t.createdAt || Date.now()).toLocaleDateString()} • #{t._id?.toString?.().slice(0,8) || ''}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-slate-900 dark:text-white text-sm font-bold">XAF {Number(t.amount || 0).toLocaleString()}</p>
-                      <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${t.status === 'paid' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-600/20' : t.status === 'overdue' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-red-600/10' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-500 ring-yellow-600/20'}`}>{t.status ? t.status.charAt(0).toUpperCase()+t.status.slice(1) : 'Pending'}</span>
+                    <div className="text-right flex flex-col items-end gap-2">
+                      <p className={`text-sm font-bold ${amountClass}`}>{isPayment ? '-' : ''} XAF {Number(t.amount || 0).toLocaleString()}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${statusLabel === 'Completed' ? 'bg-green-50 text-green-700 ring-green-600/20' : statusLabel === 'Pending' ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/20' : 'bg-red-50 text-red-700 ring-red-600/10'}`}>{statusLabel}</span>
+                        {isPayment && (String(t.status).toLowerCase() === 'success' || String(t.status).toLowerCase() === 'paid' || String(t.status).toLowerCase() === 'completed') && (
+                          <button onClick={() => handleDownloadReceipt(t.transactionId)} className="text-sm text-primary">Download</button>
+                        )}
+                        {!isPayment && (String(t.status || '').toLowerCase() !== 'paid') && (
+                          <button onClick={() => handlePayInvoice(t.tuitionId)} className="text-sm text-white bg-primary px-2 py-1 rounded">Pay</button>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {expandedId === t._id && (
+                    <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                      {isPayment ? (
+                        <div>
+                          <div>Payment Method: {t.metadata?.paymentMethod || t.metadata?.method || '—'}</div>
+                          <div>Reference: {t.metadata?.reference || t.transactionId || '—'}</div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div>Due Date: {t.raw?.dueDate ? new Date(t.raw.dueDate).toLocaleDateString() : '—'}</div>
+                          <div>Breakdown: Tuition: XAF {Number(t.raw?.amount||0).toLocaleString()}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}

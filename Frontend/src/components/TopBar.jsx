@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getCurrentUser } from '../services/authService';
+import { timeGreeting } from '../utils/greeting';
 
 export default function TopBar({ title, right }) {
   const [user, setUser] = useState(null);
@@ -22,7 +23,7 @@ export default function TopBar({ title, right }) {
   return (
     <div className="relative flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900">
       <div>
-        <p className="text-sm text-gray-500">Good morning{user?.name ? `, ${user.name}` : ''}</p>
+        <p className="text-sm text-gray-500">{timeGreeting(user?.name)}</p>
         <h1 className="text-lg font-bold">{title}</h1>
       </div>
       <div>{right}</div>

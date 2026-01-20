@@ -44,12 +44,12 @@ export function getCurrentUser() {
   try {
     const u = JSON.parse(raw)
     // normalize studentId from possible shapes so components always get it
+    // Only map explicit student identifiers — do NOT treat the top-level user id
+    // as a student id. The user id is different from the student._id in the DB.
     u.studentId = u.studentId
       || u.student?.studentId
       || u.student?.id
       || u.student?._id
-      || u.id
-      || u._id
       || null
     return u
   } catch (e) {
@@ -64,8 +64,6 @@ export function setCurrentUser(user) {
     || user.student?.studentId
     || user.student?.id
     || user.student?._id
-    || user.id
-    || user._id
     || null
   localStorage.setItem('user', JSON.stringify(user))
 }

@@ -26,12 +26,42 @@ export const financeAPI = {
   // optional studentId -> GET /api/finance/balance?studentId=...
   getBalance: (studentId) => authFetch(`/finance/balance${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ''}`),
   createTransaction: (tuitionId) => authFetch('/finance/transactions', 'POST', { tuitionId }),
-  generateInvoice: (tuitionId) => fetch(`${API}/finance/generate-pdf?tuitionId=${tuitionId}`, {
-    headers: { Authorization: `Bearer ${getToken()}` }
-  }),
+  generateInvoice: (tuitionId) => {
+    const token = localStorage.getItem('token') || ''
+    return fetch(`${API}/finance/generate-pdf?tuitionId=${encodeURIComponent(tuitionId)}`, {
+      headers: { Authorization: token ? `Bearer ${token}` : '' }
+    })
+  },
   simulatePayment: (transactionId) => authFetch('/finance/simulate-pay', 'POST', { transactionId }),
 
   // new: fetch recent transactions (server should support this route)
   getTransactionHistory: (limit = 5) => authFetch(`/finance/transactions/history?limit=${limit}`),
-  getTransactions: (studentId) => authFetch(`/finance/transactions${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ''}`),
+  // studentId optional, start/end optional ISO dates
+  getTransactions: (studentId, start, end) => {
+    const params = new URLSearchParams()
+    if (studentId) params.set('studentId', studentId)
+    if (start) params.set('start', start)
+    if (end) params.set('end', end)
+    const q = params.toString()
+    return authFetch(`/finance/transactions${q ? `?${q}` : ''}`)
+  },
+  getReceipt: async (transactionId) => {
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch(`${API}/finance/receipt?transactionId=${encodeURIComponent(transactionId)}`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
+    if (!res.ok) {
+      const txt = await res.text()
+      throw new Error(txt || 'Failed to fetch receipt')
+    }
+    const blob = await res.blob()
+    return blob
+  },
+  exportHistory: async (studentId, opts = {}) => {
+    const params = new URLSearchParams()
+    if (studentId) params.set('studentId', studentId)
+    if (opts.year) params.set('year', opts.year)
+    if (opts.start) params.set('start', opts.start)
+    if (opts.end) params.set('end', opts.end)
+    const token = localStorage.getItem('token') || ''
+    return { url: `${API}/finance/export?${params.toString()}`, headers: { Authorization: token ? `Bearer ${token}` : '' } }
+  }
 };

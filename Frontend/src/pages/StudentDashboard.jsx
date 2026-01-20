@@ -72,9 +72,27 @@ const StudentDashboard = () => {
       // open payment provider page (simulated)
       window.open(tx.providerUrl, '_blank');
       // after payment provider notifies you would update transaction status via webhook; here we refresh
-      setTimeout(async () => {
-        const b = await financeAPI.getBalance();
+      // refresh immediately and poll for status updates
+      const refreshOnce = async () => {
+        const studentId = user?.studentId || user?.student?._id || undefined;
+        const b = await financeAPI.getBalance(studentId);
         setBalanceInfo(b);
+        try {
+          const txs = await financeAPI.getTransactions(studentId);
+          setTransactions(Array.isArray(txs) ? txs.slice(0,5) : (txs.transactions || []).slice(0,5));
+        } catch (e) { /* ignore */ }
+      }
+      await refreshOnce();
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          await refreshOnce();
+          // stop after a few attempts
+          if (attempts >= 10) clearInterval(poll);
+        } catch (e) {
+          if (attempts >= 10) clearInterval(poll);
+        }
       }, 3000);
     } catch (err) {
       alert(err.message || 'Payment failed');
@@ -97,6 +115,26 @@ const StudentDashboard = () => {
       alert(err.message || 'Failed to download');
     }
   };
+
+  const downloadSchoolDetails = async () => {
+    try {
+      // expects a file at /university-details.pdf in the deployed frontend/public folder
+      const url = `${window.location.origin}/university-details.pdf`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('School details PDF not found')
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      const blobUrl = URL.createObjectURL(blob)
+      a.href = blobUrl
+      a.download = `university-details.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch (e) {
+      alert(e.message || 'Failed to download school details')
+    }
+  }
 
   // helper functions (add inside component, above return)
   const formatCurrency = (v) => `XAF ${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
@@ -127,11 +165,13 @@ const StudentDashboard = () => {
         const n = await notificationsAPI.getNotifications();
         // setNotifications(n);
 
-        // fetch recent transactions
+        // fetch recent ledger entries (invoices + payments) so dashboard stays in sync
         try {
-          const tx = await financeAPI.getTransactionHistory(5);
-          // expect { transactions: [...] } or an array — normalize
-          setTransactions(Array.isArray(tx) ? tx : (tx.transactions || []));
+          const studentId = user?.studentId || user?.student?._id || undefined;
+          const tx = await financeAPI.getTransactions(studentId);
+          const list = Array.isArray(tx) ? tx : (tx.transactions || [])
+          // keep only latest 5
+          setTransactions(list.slice(0,5));
         } catch (e) {
           setTransactions([]);
         }
@@ -197,7 +237,7 @@ const StudentDashboard = () => {
                 }}
               ></div>
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Good Morning,</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{(function(){try{const u = getCurrentUser(); return (new Date().getHours()<12? 'Good morning' : (new Date().getHours()<18? 'Good afternoon' : 'Good evening')) + (u?.name ? `, ${u.name}` : '')}catch(e){return 'Hello'}})()}</span>
                 <h2 className="text-lg font-bold leading-tight">{user?.name || 'Student'}</h2>
               </div>
             </div>
@@ -248,6 +288,9 @@ const StudentDashboard = () => {
           {/* Balance Card (Hero) - dynamic, visibility toggle, due-date color, pay button logic */}
           <div className="relative overflow-hidden rounded-xl" style={{ backgroundColor: Number(balanceInfo.totalDue || 0) > 0 ? '#0ea5a0' : '#10b981' }}>
             <div className="relative p-5 flex flex-col gap-4">
+              <button onClick={downloadSchoolDetails} title="Download school details" className="absolute right-4 top-4 size-10 rounded-full bg-white/10 text-white/90 hover:bg-white/20 p-2">
+                <span className="material-symbols-outlined">apartment</span>
+              </button>
               <div className="flex justify-between items-start">
                 <div className="flex flex-col gap-1">
                   <p className="text-white/80 text-sm font-medium">Outstanding Balance</p>
