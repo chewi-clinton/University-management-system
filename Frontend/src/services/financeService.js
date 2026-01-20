@@ -2,16 +2,23 @@ const API = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api'
 
 const authFetch = async (path, method = 'GET', body) => {
   const token = localStorage.getItem('token') || ''
+  console.log('[financeService] request ->', { url: `${API}${path}`, method, hasToken: !!token, body })
   const res = await fetch(`${API}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   })
-  // try to parse JSON safely
   const text = await res.text()
   let data = null
   try { data = text ? JSON.parse(text) : null } catch (e) { data = text }
-  if (!res.ok) throw new Error((data && data.message) || res.statusText || 'Request failed')
+  console.log('[financeService] response ->', { url: `${API}${path}`, status: res.status, ok: res.ok, data })
+  if (!res.ok) {
+    // include status for callers to react (401 -> redirect)
+    const errMsg = (data && data.message) || res.statusText || `Request failed (${res.status})`
+    const err = new Error(errMsg)
+    err.status = res.status
+    throw err
+  }
   return data
 }
 

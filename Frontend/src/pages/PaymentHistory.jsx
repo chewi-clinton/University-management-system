@@ -27,41 +27,16 @@ export default function PaymentHistory() {
         const txs = Array.isArray(data) ? data : (data.transactions || [])
         setTransactions(txs)
 
-        // --- apply same balance logic as StudentDashboard ---
+        // ensure we call balance for the same student and log result
         try {
-          // try student-specific balance first, then fallback to no-student default
-          const b = await financeAPI.getBalance(studentId)
-          console.log('finance.getBalance (dashboard) ->', b)
-          setBalanceDebug(b)
-
-          const pickNumber = (obj) => {
-            if (obj == null) return 0
-            if (typeof obj === 'number') return obj
-            if (typeof obj === 'string' && !Number.isNaN(Number(obj))) return Number(obj)
-            if (typeof obj === 'object') {
-              const keys = ['totalDue','total_due','totalOutstanding','total_outstanding','balance','total','amount','due']
-              for (const k of keys) if (obj[k] != null && !Number.isNaN(Number(obj[k]))) return Number(obj[k])
-              // nested fallbacks
-              if (obj.data) {
-                const v = pickNumber(obj.data); if (v) return v
-              }
-              if (obj.result) {
-                const v = pickNumber(obj.result); if (v) return v
-              }
-            }
-            return 0
-          }
-
-          let amt = pickNumber(b)
-
-          // final fallback: compute from transactions if API provided nothing
-          if (!amt && txs.length) {
-            amt = txs.reduce((s, t) => s + Number(t.amount || 0), 0)
-          }
-
+          console.log('[PaymentHistory] calling getBalance for', studentId)
+          const bal = await financeAPI.getBalance(studentId)
+          console.log('[PaymentHistory] finance.getBalance ->', bal)
+          setBalanceDebug(bal)
+          const amt = Number(bal?.totalDue ?? bal?.total ?? bal?.totalOutstanding ?? bal?.balance ?? 0) || (txs.length ? txs.reduce((s,t)=>s+Number(t.amount||0),0) : 0)
           setTotalOutstanding(amt)
         } catch (e) {
-          console.error('Failed to load balance', e)
+          console.error('[PaymentHistory] getBalance failed', e)
           setTotalOutstanding(0)
         }
       } catch (e) {

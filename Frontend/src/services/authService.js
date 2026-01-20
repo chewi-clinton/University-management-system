@@ -38,12 +38,36 @@ export const logout = () => {
   window.dispatchEvent(new Event('userChanged'));
 };
 
-export const getCurrentUser = () => {
+export function getCurrentUser() {
+  const raw = localStorage.getItem('user')
+  if (!raw) return null
   try {
-    return JSON.parse(localStorage.getItem('user') || 'null');
-  } catch {
-    return null;
+    const u = JSON.parse(raw)
+    // normalize studentId from possible shapes so components always get it
+    u.studentId = u.studentId
+      || u.student?.studentId
+      || u.student?.id
+      || u.student?._id
+      || u.id
+      || u._id
+      || null
+    return u
+  } catch (e) {
+    return null
   }
-};
+}
+
+export function setCurrentUser(user) {
+  if (!user) { localStorage.removeItem('user'); return }
+  // ensure studentId persisted in localStorage
+  user.studentId = user.studentId
+    || user.student?.studentId
+    || user.student?.id
+    || user.student?._id
+    || user.id
+    || user._id
+    || null
+  localStorage.setItem('user', JSON.stringify(user))
+}
 
 export const getToken = () => localStorage.getItem('token');

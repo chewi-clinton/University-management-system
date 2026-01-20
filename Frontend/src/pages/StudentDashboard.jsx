@@ -221,7 +221,7 @@ const StudentDashboard = () => {
                   {notifications.length === 0 ? (
                     <div className="p-3 text-sm text-gray-500">No notifications</div>
                   ) : (
-                    notifications.map(n => (
+                    notifications.map((n) => (
                       <div key={n._id} className="p-3 border-b last:border-b-0">
                         <div className="text-sm font-medium text-[#111418] dark:text-white">{n.title || n.body}</div>
                         {n.body && <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{n.body}</div>}
