@@ -24,7 +24,7 @@ export default function LoginPage() {
       } else if (response.user.role === 'finance') {
         navigate('/tuition');
       } else if (response.user.role === 'admin') {
-        navigate('/dashboard');
+        navigate('/admin');
       }
     } catch (err) {
       setError('Invalid email or password');

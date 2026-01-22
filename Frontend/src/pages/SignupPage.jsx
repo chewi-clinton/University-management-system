@@ -34,7 +34,13 @@ export default function SignupPage() {
       await registerUser(name, email, password, role);
       setSuccess('Account created successfully! Redirecting...');
       setTimeout(() => {
-        navigate(role === 'student' ? '/student-dashboard' : '/tuition');
+        if (role === 'student') {
+          navigate('/student-dashboard');
+        } else if (role === 'finance') {
+          navigate('/tuition');
+        } else if (role === 'admin') {
+          navigate('/admin');
+        }
       }, 2000);
     } catch (err) {
       setError(err.message || 'Signup failed');

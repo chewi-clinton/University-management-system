@@ -9,6 +9,7 @@ import PaymentHistory from './pages/PaymentHistory'
 import FinancialReports from './pages/FinancialReports'
 const Notifications = React.lazy(() => import('./pages/Notifications'))
 import CreateNotification from './pages/CreateNotification'
+import AdminDashboard from './pages/AdminDashboard'
 import ErrorBoundary from './components/ErrorBoundary'
 
 import BusRegistration from './pages/BusRegistration'
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="create-notification" element={<CreateNotification />} />
           <Route path="leave-management" element={<LeaveManagement />} />
         </Route>
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />

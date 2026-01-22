@@ -34,6 +34,8 @@ const supportRoutes = require('./routes/support');
 app.use('/api/support', supportRoutes);
 const notificationRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationRoutes);
+// Admin routes
+app.use('/api/admin', require('./routes/admin'));
 // Bus registration routes
 app.use('/api/bus', require('./routes/bus'));
 // Leave management routes
