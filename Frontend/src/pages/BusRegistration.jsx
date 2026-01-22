@@ -23,6 +23,20 @@ export default function BusRegistration() {
     }
     loadProfile()
 
+    const loadStatus = async () => {
+      try {
+        const token = getToken()
+        const res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/bus/status`, {
+          headers: { Authorization: token ? `Bearer ${token}` : '' }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setStatus(data.status || 'Not Registered')
+        }
+      } catch (e) { console.error('loadStatus', e) }
+    }
+    loadStatus()
+
     const load = async () => {
       try {
         const token = getToken()
@@ -68,15 +82,13 @@ export default function BusRegistration() {
       } else {
         alert('Registration successful')
         setStatus('Active')
-        // refresh wallet balance from server if returned
+        // refresh profile globally to update all components
         try {
+          await fetchProfile()
           if (body.walletBalance !== undefined) setWalletBalance(Number(body.walletBalance))
-          else if (token) {
-            const r = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/student/profile`, { headers: { Authorization: `Bearer ${token}` } })
-            if (r.ok) {
-              const p = await r.json()
-              if (p && typeof p.walletBalance !== 'undefined') setWalletBalance(Number(p.walletBalance))
-            }
+          else {
+            const current = getCurrentUser()
+            if (current && typeof current.walletBalance !== 'undefined') setWalletBalance(Number(current.walletBalance))
           }
         } catch (e) { console.error('refresh profile after register', e) }
       }
@@ -112,8 +124,8 @@ export default function BusRegistration() {
                 <div className="flex flex-col gap-1">
                   <p className="text-muted dark:text-gray-400 text-sm font-medium leading-normal uppercase tracking-wide">Current Status</p>
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-orange-500" style={{ fontSize: 20 }}>warning</span>
-                    <p className="text-[#111418] dark:text-white text-lg font-bold leading-tight">Not Registered</p>
+                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: status === 'Active' ? '#16a34a' : '#f97316' }}>{status === 'Active' ? 'check_circle' : 'warning'}</span>
+                    <p className="text-[#111418] dark:text-white text-lg font-bold leading-tight">{status}</p>
                   </div>
                 </div>
                 <div className="h-12 w-12 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-500">
@@ -121,7 +133,7 @@ export default function BusRegistration() {
                 </div>
               </div>
               <div className="h-px bg-gray-200 dark:bg-gray-700 w-full" />
-              <p className="text-muted dark:text-gray-400 text-sm font-normal leading-normal">You have no active bus pass for the current term. Register below to secure your seat.</p>
+              <p className="text-muted dark:text-gray-400 text-sm font-normal leading-normal">{status === 'Active' ? 'You are registered for the bus service. Your wallet has been charged.' : 'You have no active bus pass for the current term. Register below to secure your seat.'}</p>
             </div>
           </div>
 
@@ -198,7 +210,8 @@ export default function BusRegistration() {
             </div>
           </div>
 
-          {/* Financial Summary */}
+          {/* Financial Summary - only show when NOT registered */}
+          {status !== 'Active' && (
           <div className="px-4 pt-2 pb-6 md:px-0 md:grid md:grid-cols-2 md:gap-6">
             <div>
               <h3 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] mb-3">Payment Summary</h3>
@@ -260,11 +273,14 @@ export default function BusRegistration() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
 
-      {/* Sticky Action Button */}
+      {/* Sticky Action Button - only show when NOT registered */}
+      {status !== 'Active' && (
       <BottomAction onClick={handleRegister} text={loading ? 'Processing...' : `Register & Pay - XAF ${computeTotals(selectedRoute).total.toLocaleString()}`} icon="account_balance_wallet" />
+      )}
     </div>
   );
 }

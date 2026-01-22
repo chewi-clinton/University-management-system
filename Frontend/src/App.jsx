@@ -1,4 +1,5 @@
 import React from 'react'
+import { Suspense, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/FinanceDashboard'
@@ -6,7 +7,22 @@ import TuitionManagement from './pages/TuitionManagement'
 import PayrollProcessing from './pages/PayrollProcessing'
 import PaymentHistory from './pages/PaymentHistory'
 import FinancialReports from './pages/FinancialReports'
-import Notifications from './pages/Notifications'
+const Notifications = React.lazy(() => import('./pages/Notifications'))
+import ErrorBoundary from './components/ErrorBoundary'
+
+function SafeNotificationsWrapper() {
+  const [load, setLoad] = useState(false)
+  const [err, setErr] = useState(null)
+  if (err) return <div className="p-6 max-w-3xl mx-auto">Failed to load notifications: {String(err)}</div>
+  if (!load) return <div className="p-6 max-w-3xl mx-auto"><button onClick={() => setLoad(true)} className="px-4 py-2 bg-primary text-white rounded">Open Notifications</button></div>
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <ErrorBoundary>
+        <Notifications />
+      </ErrorBoundary>
+    </Suspense>
+  )
+}
 import BusRegistration from './pages/BusRegistration'
 import LeaveManagement from './pages/LeaveManagement'
 import LoginPage from './pages/LoginPage'
@@ -30,8 +46,8 @@ export default function App() {
           <Route path="payroll" element={<PayrollProcessing />} />
           <Route path="payment-history" element={<PaymentHistory />} />
           <Route path="financial-reports" element={<FinancialReports />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="finance/notifications" element={<Notifications />} />
+          <Route path="notifications" element={<SafeNotificationsWrapper />} />
+          <Route path="finance/notifications" element={<SafeNotificationsWrapper />} />
           <Route path="leave-management" element={<LeaveManagement />} />
         </Route>
         <Route path="/signup" element={<SignupPage />} />

@@ -54,18 +54,95 @@ exports.createTransaction = async (req, res) => {
 
     // If paymentMethod is 'wallet', process immediately and atomically
     if (paymentMethod === 'wallet') {
-      const session = await mongoose.startSession();
+      // try to use transactions when supported; otherwise fall back to a non-transactional flow
+      let session = null
       try {
-        let resultTx = null;
-        await session.withTransaction(async () => {
-          const s = await Student.findById(student._id).session(session);
+        session = await mongoose.startSession();
+      } catch (err) {
+        console.warn('Transactions not available; falling back to non-transactional wallet processing', err && err.message)
+        session = null
+      }
+
+      if (session) {
+        try {
+          let resultTx = null;
+          await session.withTransaction(async () => {
+            const s = await Student.findById(student._id).session(session);
+            if (!s) throw new Error('Student not found during transaction');
+            const amount = Number(tuition.amount || 0);
+            if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
+            s.walletBalance = (s.walletBalance || 0) - amount;
+            await s.save({ session });
+
+            // create a successful transaction
+            const tx = new Transaction({
+              studentId: s._id,
+              tuitionId: tuition._id,
+              amount: amount,
+              status: 'SUCCESS',
+              paidAt: new Date(),
+              metadata: { method: 'wallet', initiatedBy: req.user.id }
+            });
+            await tx.save({ session });
+            resultTx = tx;
+
+            // mark tuition paid
+            tuition.status = 'paid';
+            tuition.paidDate = new Date();
+            await tuition.save({ session });
+          });
+          // return result and updated balance
+          const freshStudent = await Student.findById(student._id);
+          return res.status(200).json({ message: 'Paid from wallet', transaction: resultTx, walletBalance: freshStudent.walletBalance });
+        } catch (err) {
+          console.error('wallet payment error', err);
+          if (err && (err.code === 20 || String(err.message || '').includes('Transaction numbers are only allowed'))) {
+            console.warn('withTransaction failed due to unsupported transactions, falling back to non-transactional flow')
+            try {
+              const s = await Student.findById(student._id);
+              if (!s) throw new Error('Student not found during transaction (fallback)');
+              const amount = Number(tuition.amount || 0);
+              if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
+              s.walletBalance = (s.walletBalance || 0) - amount;
+              await s.save();
+
+              const tx = new Transaction({
+                studentId: s._id,
+                tuitionId: tuition._id,
+                amount: amount,
+                status: 'SUCCESS',
+                paidAt: new Date(),
+                metadata: { method: 'wallet', initiatedBy: req.user.id }
+              });
+              await tx.save();
+
+              tuition.status = 'paid';
+              tuition.paidDate = new Date();
+              await tuition.save();
+
+              const freshStudent = await Student.findById(student._id);
+              return res.status(200).json({ message: 'Paid from wallet (no-transactions-fallback)', transaction: tx, walletBalance: freshStudent.walletBalance });
+            } catch (fallbackErr) {
+              console.error('wallet payment fallback error', fallbackErr);
+              return res.status(400).json({ message: fallbackErr.message || 'Wallet payment failed' });
+            } finally {
+              try { session.endSession(); } catch (e) {}
+            }
+          }
+          return res.status(400).json({ message: err.message || 'Wallet payment failed' });
+        } finally {
+          try { session.endSession(); } catch (e) {}
+        }
+      } else {
+        // non-transactional fallback: operate sequentially (best-effort)
+        try {
+          const s = await Student.findById(student._id);
           if (!s) throw new Error('Student not found during transaction');
           const amount = Number(tuition.amount || 0);
           if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
           s.walletBalance = (s.walletBalance || 0) - amount;
-          await s.save({ session });
+          await s.save();
 
-          // create a successful transaction
           const tx = new Transaction({
             studentId: s._id,
             tuitionId: tuition._id,
@@ -74,22 +151,18 @@ exports.createTransaction = async (req, res) => {
             paidAt: new Date(),
             metadata: { method: 'wallet', initiatedBy: req.user.id }
           });
-          await tx.save({ session });
-          resultTx = tx;
+          await tx.save();
 
-          // mark tuition paid
           tuition.status = 'paid';
           tuition.paidDate = new Date();
-          await tuition.save({ session });
-        });
-        // return result and updated balance
-        const freshStudent = await Student.findById(student._id);
-        return res.status(200).json({ message: 'Paid from wallet', transaction: resultTx, walletBalance: freshStudent.walletBalance });
-      } catch (err) {
-        console.error('wallet payment error', err);
-        return res.status(400).json({ message: err.message || 'Wallet payment failed' });
-      } finally {
-        session.endSession();
+          await tuition.save();
+
+          const freshStudent = await Student.findById(student._id);
+          return res.status(200).json({ message: 'Paid from wallet (no-transactions)', transaction: tx, walletBalance: freshStudent.walletBalance });
+        } catch (err) {
+          console.error('wallet payment fallback error', err);
+          return res.status(400).json({ message: err.message || 'Wallet payment failed' });
+        }
       }
     }
 
@@ -243,18 +316,25 @@ exports.getTransactions = async (req, res) => {
       raw: t
     }));
 
-    const payments = txs.map(p => ({
-      _id: p._id,
-      type: 'payment',
-      date: p.paidAt || p.createdAt,
-      description: p.description || (p.metadata && p.metadata.note) || 'Payment',
-      category: p.category || 'Payment',
-      amount: Number(p.amount || 0),
-      status: p.status,
-      transactionId: p._id,
-      metadata: p.metadata || {},
-      raw: p
-    }));
+    const payments = txs.map(p => {
+      // extract category from metadata type
+      let cat = p.category || 'Payment'
+      if (p.metadata && p.metadata.type) {
+        cat = p.metadata.type.charAt(0).toUpperCase() + p.metadata.type.slice(1)
+      }
+      return {
+        _id: p._id,
+        type: 'payment',
+        date: p.paidAt || p.createdAt,
+        description: p.description || (p.metadata && p.metadata.note) || cat || 'Payment',
+        category: cat,
+        amount: Number(p.amount || 0),
+        status: p.status,
+        transactionId: p._id,
+        metadata: p.metadata || {},
+        raw: p
+      }
+    });
 
     const combined = [...invoices, ...payments].sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
     res.json(combined);
@@ -390,6 +470,54 @@ exports.exportTransactions = async (req, res) => {
     res.send(csv);
   } catch (err) {
     console.error('exportTransactions error', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/finance/stats -> Finance officer statistics
+exports.getStats = async (req, res) => {
+  try {
+    // Only finance officers can access
+    if (req.user.role !== 'finance') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const Student = require('../models/Student');
+    const Tuition = require('../models/Tuition');
+    const Transaction = require('../models/Transaction');
+
+    // Count total students
+    const totalStudents = await Student.countDocuments();
+
+    // Sum total collected (successful transactions)
+    const collectedTx = await Transaction.aggregate([
+      { $match: { status: { $in: ['SUCCESS', 'success', 'PAID', 'paid'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalCollected = collectedTx.length > 0 ? collectedTx[0].total : 0;
+
+    // Sum total pending (unpaid tuitions)
+    const pendingTuition = await Tuition.aggregate([
+      { $match: { status: { $nin: ['paid', 'PAID'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalPending = pendingTuition.length > 0 ? pendingTuition[0].total : 0;
+
+    // Sum bus revenue (transactions with metadata.type = 'bus')
+    const busTx = await Transaction.aggregate([
+      { $match: { 'metadata.type': 'bus', status: { $in: ['SUCCESS', 'success'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalBusRevenue = busTx.length > 0 ? busTx[0].total : 0;
+
+    res.json({
+      totalStudents,
+      totalCollected,
+      totalPending,
+      totalBusRevenue
+    });
+  } catch (err) {
+    console.error('getStats error', err);
     res.status(500).json({ message: err.message });
   }
 };

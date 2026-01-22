@@ -6,6 +6,7 @@ const auth = require('../middleware/auth');
 router.get('/routes', auth, busController.listRoutes);
 router.get('/route/:id', auth, busController.getRoute);
 router.get('/vehicles', auth, busController.getVehicles);
+router.get('/status', auth, busController.getRegistrationStatus);
 router.post('/register', auth, busController.register);
 
 // Public endpoints (no auth) for map preview and demo clients

@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const financeController = require('../controllers/financeController');
 
 router.get('/balance', auth, financeController.getBalance);
+router.get('/stats', auth, financeController.getStats);
 router.get('/transactions', auth, financeController.getTransactions);
 router.post('/transactions', auth, financeController.createTransaction);
 router.get('/generate-pdf', auth, financeController.generateInvoicePDF);

@@ -105,34 +105,96 @@ exports.register = async (req, res) => {
 
     // handle wallet payment atomically
     if (paymentMethod === 'wallet') {
-      const session = await mongoose.startSession();
+      // attempt to use a transaction if the MongoDB deployment supports it
+      let session = null
       try {
-        let resultTx = null;
-        await session.withTransaction(async () => {
-          const s = await Student.findById(student._id).session(session);
+        session = await mongoose.startSession()
+      } catch (err) {
+        console.warn('Transactions not available; falling back to non-transactional wallet processing', err && err.message)
+        session = null
+      }
+
+      if (session) {
+        try {
+          let resultTx = null;
+          await session.withTransaction(async () => {
+            const s = await Student.findById(student._id).session(session);
+            if (!s) throw new Error('Student not found during wallet payment');
+            const amount = Number(total || 0);
+            if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
+            s.walletBalance = (s.walletBalance || 0) - amount;
+            await s.save({ session });
+
+            const tx = new Transaction({ studentId: s._id, amount: amount, status: 'SUCCESS', paidAt: new Date(), metadata: { type: 'bus', route: route.name, registrationId: reg._id, method: 'wallet' } });
+            await tx.save({ session });
+            resultTx = tx;
+
+            // finalize registration and decrement seat
+            reg.status = 'ACTIVE';
+            await reg.save({ session });
+            route.seatsAvailable = Math.max(0, route.seatsAvailable - 1);
+            await route.save({ session });
+          });
+          const freshStudent = await Student.findById(student._id);
+          return res.json({ message: 'Registered', registration: reg, transaction: resultTx, walletBalance: freshStudent.walletBalance });
+        } catch (err) {
+          console.error('bus.wallet.register error', err);
+          // If the failure is due to transactions not being supported, fall back
+          if (err && (err.code === 20 || String(err.message || '').includes('Transaction numbers are only allowed'))) {
+            console.warn('withTransaction failed due to unsupported transactions, falling back to non-transactional flow')
+            try {
+              const s = await Student.findById(student._id);
+              if (!s) throw new Error('Student not found during wallet payment (fallback)');
+              const amount = Number(total || 0);
+              if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
+              s.walletBalance = (s.walletBalance || 0) - amount;
+              await s.save();
+
+              const tx = new Transaction({ studentId: s._id, amount: amount, status: 'SUCCESS', paidAt: new Date(), metadata: { type: 'bus', route: route.name, registrationId: reg._id, method: 'wallet' } });
+              await tx.save();
+
+              // finalize registration and decrement seat
+              reg.status = 'ACTIVE';
+              await reg.save();
+              route.seatsAvailable = Math.max(0, route.seatsAvailable - 1);
+              await route.save();
+
+              const freshStudent = await Student.findById(student._id);
+              return res.json({ message: 'Registered (no-transactions-fallback)', registration: reg, transaction: tx, walletBalance: freshStudent.walletBalance });
+            } catch (fallbackErr) {
+              console.error('bus.wallet.fallback error', fallbackErr);
+              return res.status(400).json({ message: fallbackErr.message || 'Wallet payment failed' });
+            }
+          }
+          return res.status(400).json({ message: err.message || 'Wallet payment failed' });
+        } finally {
+          try { session.endSession(); } catch (e) {}
+        }
+      } else {
+        // fallback: non-transactional sequential processing
+        try {
+          const s = await Student.findById(student._id);
           if (!s) throw new Error('Student not found during wallet payment');
           const amount = Number(total || 0);
           if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
           s.walletBalance = (s.walletBalance || 0) - amount;
-          await s.save({ session });
+          await s.save();
 
           const tx = new Transaction({ studentId: s._id, amount: amount, status: 'SUCCESS', paidAt: new Date(), metadata: { type: 'bus', route: route.name, registrationId: reg._id, method: 'wallet' } });
-          await tx.save({ session });
-          resultTx = tx;
+          await tx.save();
 
           // finalize registration and decrement seat
           reg.status = 'ACTIVE';
-          await reg.save({ session });
+          await reg.save();
           route.seatsAvailable = Math.max(0, route.seatsAvailable - 1);
-          await route.save({ session });
-        });
-        const freshStudent = await Student.findById(student._id);
-        return res.json({ message: 'Registered', registration: reg, transaction: resultTx, walletBalance: freshStudent.walletBalance });
-      } catch (err) {
-        console.error('bus.wallet.register error', err);
-        return res.status(400).json({ message: err.message || 'Wallet payment failed' });
-      } finally {
-        session.endSession();
+          await route.save();
+
+          const freshStudent = await Student.findById(student._id);
+          return res.json({ message: 'Registered (no-transactions)', registration: reg, transaction: tx, walletBalance: freshStudent.walletBalance });
+        } catch (err) {
+          console.error('bus.wallet.fallback error', err);
+          return res.status(400).json({ message: err.message || 'Wallet payment failed' });
+        }
       }
     }
 
@@ -194,6 +256,37 @@ exports.getVehicles = async (req, res) => {
     res.json(vehicles);
   } catch (err) {
     console.error('getVehicles', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/bus/status -> returns current student's active bus registration status
+exports.getRegistrationStatus = async (req, res) => {
+  try {
+    const student = await Student.findOne({ userId: req.user.id });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    // find the most recent ACTIVE registration
+    const registration = await BusRegistration.findOne({ studentId: student._id, status: 'ACTIVE' })
+      .populate('routeId')
+      .sort({ createdAt: -1 });
+
+    if (registration) {
+      return res.json({ status: 'Active', registration, message: 'You are registered for the bus service.' });
+    }
+
+    // check for PENDING registrations (awaiting payment)
+    const pendingReg = await BusRegistration.findOne({ studentId: student._id, status: 'PENDING' })
+      .populate('routeId')
+      .sort({ createdAt: -1 });
+
+    if (pendingReg) {
+      return res.json({ status: 'Pending', registration: pendingReg, message: 'Your registration is awaiting payment.' });
+    }
+
+    res.json({ status: 'Not Registered', registration: null, message: 'You have no active bus pass.' });
+  } catch (err) {
+    console.error('getRegistrationStatus', err);
     res.status(500).json({ message: err.message });
   }
 };
