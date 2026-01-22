@@ -67,3 +67,14 @@ export const studentsAPI = {
   getAll: () => apiCall('/students'),
   create: (data) => apiCall('/students', 'POST', data)
 };
+
+// Leave API
+export const leaveAPI = {
+  getBalance: () => apiCall('/leave/balance'),
+  getTeamRequests: (status = 'pending') => apiCall(`/leave/team-requests?status=${status}`),
+  getMyRequests: () => apiCall('/leave/my-requests'),
+  getPendingCount: () => apiCall('/leave/pending-count'),
+  createRequest: (data) => apiCall('/leave/request', 'POST', data),
+  approveRequest: (id, reason) => apiCall(`/leave/request/${id}/approve`, 'PUT', { approvalReason: reason }),
+  denyRequest: (id, reason) => apiCall(`/leave/request/${id}/deny`, 'PUT', { reason })
+};

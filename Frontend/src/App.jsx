@@ -1,5 +1,5 @@
 import React from 'react'
-import { Suspense, useState } from 'react'
+import { Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/FinanceDashboard'
@@ -8,21 +8,9 @@ import PayrollProcessing from './pages/PayrollProcessing'
 import PaymentHistory from './pages/PaymentHistory'
 import FinancialReports from './pages/FinancialReports'
 const Notifications = React.lazy(() => import('./pages/Notifications'))
+import CreateNotification from './pages/CreateNotification'
 import ErrorBoundary from './components/ErrorBoundary'
 
-function SafeNotificationsWrapper() {
-  const [load, setLoad] = useState(false)
-  const [err, setErr] = useState(null)
-  if (err) return <div className="p-6 max-w-3xl mx-auto">Failed to load notifications: {String(err)}</div>
-  if (!load) return <div className="p-6 max-w-3xl mx-auto"><button onClick={() => setLoad(true)} className="px-4 py-2 bg-primary text-white rounded">Open Notifications</button></div>
-  return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
-      <ErrorBoundary>
-        <Notifications />
-      </ErrorBoundary>
-    </Suspense>
-  )
-}
 import BusRegistration from './pages/BusRegistration'
 import LeaveManagement from './pages/LeaveManagement'
 import LoginPage from './pages/LoginPage'
@@ -46,8 +34,21 @@ export default function App() {
           <Route path="payroll" element={<PayrollProcessing />} />
           <Route path="payment-history" element={<PaymentHistory />} />
           <Route path="financial-reports" element={<FinancialReports />} />
-          <Route path="notifications" element={<SafeNotificationsWrapper />} />
-          <Route path="finance/notifications" element={<SafeNotificationsWrapper />} />
+          <Route path="notifications" element={
+            <Suspense fallback={<div className="p-6">Loading notifications...</div>}>
+              <ErrorBoundary>
+                <Notifications />
+              </ErrorBoundary>
+            </Suspense>
+          } />
+          <Route path="finance/notifications" element={
+            <Suspense fallback={<div className="p-6">Loading notifications...</div>}>
+              <ErrorBoundary>
+                <Notifications />
+              </ErrorBoundary>
+            </Suspense>
+          } />
+          <Route path="create-notification" element={<CreateNotification />} />
           <Route path="leave-management" element={<LeaveManagement />} />
         </Route>
         <Route path="/signup" element={<SignupPage />} />

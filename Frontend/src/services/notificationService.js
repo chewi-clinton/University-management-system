@@ -22,3 +22,23 @@ export const notificationAPI = {
   },
   markRead: (ids = []) => authFetch('/notifications/mark-read', 'POST', { ids }),
 };
+
+export const notificationService = {
+  getNotifications: (limit = 50, category = null) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    if (category) params.set('category', category);
+    return authFetch(`/notifications?${params.toString()}`);
+  },
+
+  getNotificationSummary: () => authFetch('/notifications/summary'),
+
+  markAsRead: (notificationId) => 
+    authFetch(`/notifications/${notificationId}/read`, 'PUT'),
+
+  markAllAsRead: () => 
+    authFetch('/notifications/read/all', 'PUT'),
+
+  createNotification: (payload) => 
+    authFetch('/notifications', 'POST', payload),
+};

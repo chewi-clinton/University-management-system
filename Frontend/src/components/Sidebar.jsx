@@ -59,6 +59,16 @@ export default function Sidebar({ isFinance }) {
               >
                 Notifications
               </NavLink>
+              <NavLink
+                to="/create-notification"
+                className={({ isActive }) =>
+                  `block p-2 rounded ${
+                    isActive ? 'bg-primary text-white' : 'hover:bg-primary hover:text-white'
+                  }`
+                }
+              >
+                📢 Create Notification
+              </NavLink>
             </>
           ) : (
             <>

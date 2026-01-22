@@ -4,7 +4,7 @@ import Sidebar from './Sidebar'
 
 export default function Layout() {
   const location = useLocation()
-  const financePaths = ['/tuition', '/payroll', '/financial-reports', '/leave-management', '/finance/notifications', '/finance-dashboard']
+  const financePaths = ['/tuition', '/payroll', '/financial-reports', '/leave-management', '/finance/notifications', '/create-notification', '/finance-dashboard']
   const isFinance = financePaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/')) || financePaths.includes(location.pathname)
 
   return (

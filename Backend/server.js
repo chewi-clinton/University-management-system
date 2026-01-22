@@ -36,6 +36,8 @@ const notificationRoutes = require('./routes/notifications');
 app.use('/api/notifications', notificationRoutes);
 // Bus registration routes
 app.use('/api/bus', require('./routes/bus'));
+// Leave management routes
+app.use('/api/leave', require('./routes/leave'));
 
 // Error handler (dev)
 app.use((err, req, res, next) => {
