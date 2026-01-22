@@ -1,8 +1,89 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import TopBar from '../components/TopBar'
 import BottomAction from '../components/BottomAction'
+import RoutePreview from '../components/RoutePreview'
+import { getCurrentUser, getToken, fetchProfile } from '../services/authService'
 
 export default function BusRegistration() {
+  const [routes, setRoutes] = useState([])
+  const [selectedTerm, setSelectedTerm] = useState('')
+  const [selectedRoute, setSelectedRoute] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('wallet')
+  const [status, setStatus] = useState('Not Registered')
+  const [loading, setLoading] = useState(false)
+  const user = getCurrentUser() || {}
+  const [walletBalance, setWalletBalance] = useState(user.walletBalance ?? 0)
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const p = await fetchProfile()
+        if (p && typeof p.walletBalance !== 'undefined') setWalletBalance(Number(p.walletBalance))
+      } catch (e) { console.error('loadProfile', e) }
+    }
+    loadProfile()
+
+    const load = async () => {
+      try {
+        const token = getToken()
+        let res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/bus/routes`, { headers: { Authorization: token ? `Bearer ${token}` : '' } })
+        if (!res.ok) {
+          // fallback to public routes for demo (no auth)
+          res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/bus/public/routes`)
+        }
+        if (!res.ok) throw new Error('Failed to load routes')
+        const data = await res.json()
+        setRoutes(data || [])
+        if ((data || []).length > 0) {
+          setSelectedRoute(data[0])
+          setSelectedTerm(data[0].term || '')
+        }
+      } catch (e) { console.error(e) }
+    }
+    load()
+  }, [])
+
+  const computeTotals = (route) => {
+    if (!route) return { base: 0, tax: 0, total: 0 }
+    const base = Number(route.basePrice || 0)
+    const tax = Math.round(base * 0.033)
+    return { base, tax, total: base + tax }
+  }
+
+  const handleRegister = async () => {
+    if (!selectedRoute) return alert('Please pick a route')
+    setLoading(true)
+    try {
+      const token = getToken()
+      const res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/bus/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: token ? `Bearer ${token}` : '' },
+        body: JSON.stringify({ routeId: selectedRoute._id, term: selectedTerm, paymentMethod })
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.message || 'Registration failed')
+      if (body.providerUrl) {
+        window.open(body.providerUrl, '_blank')
+        alert('External payment started, complete payment in new tab')
+      } else {
+        alert('Registration successful')
+        setStatus('Active')
+        // refresh wallet balance from server if returned
+        try {
+          if (body.walletBalance !== undefined) setWalletBalance(Number(body.walletBalance))
+          else if (token) {
+            const r = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/student/profile`, { headers: { Authorization: `Bearer ${token}` } })
+            if (r.ok) {
+              const p = await r.json()
+              if (p && typeof p.walletBalance !== 'undefined') setWalletBalance(Number(p.walletBalance))
+            }
+          }
+        } catch (e) { console.error('refresh profile after register', e) }
+      }
+    } catch (e) {
+      alert(e.message || 'Registration failed')
+    } finally { setLoading(false) }
+  }
   return (
     <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden bg-surface-light dark:bg-surface-dark md:max-w-none md:shadow-none">
       <TopBar
@@ -22,7 +103,7 @@ export default function BusRegistration() {
       />
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto pb-24 md:pb-6 md:p-6">
+      <div className="flex-1 overflow-y-auto pb-24 md:pb-28 md:p-6">
         <div className="max-w-4xl mx-auto">
           {/* Status Card */}
           <div className="p-4 md:p-0 md:mb-6">
@@ -54,10 +135,10 @@ export default function BusRegistration() {
             <label className="flex flex-col w-full">
               <p className="text-[#111418] dark:text-white text-sm font-medium leading-normal pb-2">Academic Term</p>
               <div className="relative">
-                <select defaultValue="fall2023" className="appearance-none flex w-full min-w-0 resize-none overflow-hidden rounded-xl text-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary border border-muted dark:border-gray-600 bg-surface dark:bg-[#1a2632] h-12 px-4 pr-10 text-base font-normal leading-normal">
+                <select value={selectedTerm} onChange={e=>setSelectedTerm(e.target.value)} className="appearance-none flex w-full min-w-0 resize-none overflow-hidden rounded-xl text-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary border border-muted dark:border-gray-600 bg-surface dark:bg-[#1a2632] h-12 px-4 pr-10 text-base font-normal leading-normal">
                   <option disabled value="">Select Term</option>
-                  <option value="fall2023">Fall Semester 2023</option>
-                  <option value="spring2024">Spring Semester 2024</option>
+                  <option value="2026-01">Spring 2026</option>
+                  <option value="2026-02">Fall 2026</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted"><span className="material-symbols-outlined">expand_more</span></div>
               </div>
@@ -66,14 +147,12 @@ export default function BusRegistration() {
 
           {/* Route Selection */}
           <div className="px-4 py-2 md:px-0">
-            <label className="flex flex-col w-full">
+              <label className="flex flex-col w-full">
               <p className="text-[#111418] dark:text-white text-sm font-medium leading-normal pb-2">Preferred Route</p>
               <div className="relative">
-                <select defaultValue="routeA" className="appearance-none flex w-full min-w-0 resize-none overflow-hidden rounded-xl text-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary border border-muted dark:border-gray-600 bg-surface dark:bg-[#1a2632] h-12 px-4 pr-10 text-base font-normal leading-normal">
+                <select value={selectedRoute?._id || ''} onChange={e => setSelectedRoute(routes.find(r=>r._id===e.target.value))} className="appearance-none flex w-full min-w-0 resize-none overflow-hidden rounded-xl text-primary dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary border border-muted dark:border-gray-600 bg-surface dark:bg-[#1a2632] h-12 px-4 pr-10 text-base font-normal leading-normal">
                   <option disabled value="">Select Route</option>
-                  <option value="routeA">Route 42: North Campus - Downtown</option>
-                  <option value="routeB">Route 15: West Dorms - Science Block</option>
-                  <option value="routeC">Route 09: Central Station - Library</option>
+                  {routes.map(r=> <option key={r._id} value={r._id}>{r.name}</option>)}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-muted"><span className="material-symbols-outlined">expand_more</span></div>
               </div>
@@ -83,8 +162,11 @@ export default function BusRegistration() {
           {/* Selected Route Details */}
           <div className="px-4 py-4 md:px-0">
             <div className="flex flex-col overflow-hidden rounded-xl border border-muted dark:border-gray-700 bg-surface dark:bg-[#1a2632]">
-              <div className="h-32 w-full bg-cover bg-center relative md:h-48" data-alt="Map showing bus route path through city streets" data-location="New York" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBQhCt9jm8KW2D_fn-tISOIj7mb4pQfx91vTXqzbf2KnNlIYRd1WqUa-8iF0_tXf-jQsfeX_kGTDzxaRHf93EHLzN-ToOFP6Pj0uEMSZzWfCezQcta8wSOC5aOcmGrcc9NR1SgbX0PRMlWJJe0zM582gI4D13FWPCUmA6aEekuZQcwP5y47YyxD21TVTrAnxVJURZutz5hUBVvccS9b_pon06SpIxd4QQV6PvWkuO_d_gIkn1VPLEzlMqR1mZncQPmmMBPsMco4DcA')" }}>
-                <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-black/80 px-2 py-1 rounded text-xs font-medium backdrop-blur-sm">Live Preview</div>
+              <div className="h-32 w-full bg-cover bg-center relative md:h-48">
+                {/* Live SVG preview component */}
+                <div className="absolute inset-0 p-2">
+                  <RoutePreview route={selectedRoute} routeId={selectedRoute?._id} />
+                </div>
               </div>
               <div className="p-4 flex flex-col gap-3">
                 <div className="flex justify-between items-start">
@@ -110,7 +192,7 @@ export default function BusRegistration() {
                     <div className="h-6 w-6 rounded-full ring-2 ring-white dark:ring-[#1a2632] bg-gray-200" data-alt="Student avatar 2" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBUUGTQniFozRSSZFQYGUjruMrUSuU3BPRlayA3tCl882l6EwLOMPx2qBZl2BsqV3Y-0o51CGqV34YUUtokhYA5_z9q0i14mYm6WlFPBjTj21hYHw-OHOLRSLW3zlBocWOgvr3DyYhz0wWN9BcM1_tBbktPv9oBuFVL_l93Xr7hcGTF8u4_kehDrYwqxloZrZwLkcCe4Qw2xhPOAlkOykLLOM1gCp_0pIKtwFxIZ3g5U3lBj4Djbf3My4jKIAjg3H8uOf4j8FuQ9dM')" }} />
                     <div className="h-6 w-6 rounded-full ring-2 ring-white dark:ring-[#1a2632] bg-gray-200" data-alt="Student avatar 3" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAuBpLzJDzIiWM1O3UOMv0tEs85GwTx27H2xqkVclz_d0m7sVOe8RZLonGs_Hmh7gQlckCEFJoiGi_cSkc--PK11YWjGubVL01VeYa5qPy__rsKk4Xas4dsHE6ngfYnkyng6k2ydDbRZkwx9ILVS0gD8lczT_egKOYLuo-Byr9t-CVpdQqKSPYJ_jHAojcJiXQUGvYIlwuwyT0AFV9ZwoGx7H7ipPfBUQ2hx2RryqXwlfGRkx4ALZ5sR253bgKtLL0qP3cQ6fHBGmw')" }} />
                   </div>
-                  <p className="text-xs text-[#617589] dark:text-gray-400">+124 students on this route</p>
+                  <p className="text-xs text-[#617589] dark:text-gray-400">{selectedRoute?.popularity ? `+${selectedRoute.popularity} students on this route` : '+124 students on this route'}</p>
                 </div>
               </div>
             </div>
@@ -120,48 +202,55 @@ export default function BusRegistration() {
           <div className="px-4 pt-2 pb-6 md:px-0 md:grid md:grid-cols-2 md:gap-6">
             <div>
               <h3 className="text-[#111418] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] mb-3">Payment Summary</h3>
-              <div className="rounded-xl bg-background-light dark:bg-[#1a2632] p-4 border border-transparent dark:border-gray-700">
-                <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-[#617589] dark:text-gray-400">Semester Base Fare</span>
-                  <span className="text-primary dark:text-white font-medium">XAF 150.00</span>
+                <div className="rounded-xl bg-background-light dark:bg-[#1a2632] p-4 border border-transparent dark:border-gray-700">
+                {(() => {
+                  const t = computeTotals(selectedRoute)
+                  return (
+                    <>
+                      <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-[#617589] dark:text-gray-400">Semester Base Fare</span>
+                        <span className="text-primary dark:text-white font-medium">XAF {t.base.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-[#617589] dark:text-gray-400">Service Tax (3.3%)</span>
+                        <span className="text-primary dark:text-white font-medium">XAF {t.tax.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-3 mt-1">
+                        <span className="text-[#111418] dark:text-white font-bold text-lg">Total Due</span>
+                        <span className="text-primary font-bold text-lg">XAF {t.total.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )
+                })()}
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-[#617589] dark:text-gray-400">Service Tax (3.3%)</span>
-                  <span className="text-primary dark:text-white font-medium">XAF 5.00</span>
-                </div>
-                <div className="flex justify-between py-3 mt-1">
-                  <span className="text-[#111418] dark:text-white font-bold text-lg">Total Due</span>
-                  <span className="text-primary font-bold text-lg">XAF 155.00</span>
-                </div>
-              </div>
             </div>
 
             {/* Payment Method Selection */}
-            <div className="px-4 pb-20 md:px-0 md:pb-0">
+            <div className="px-4 pb-20 md:px-0 md:pb-28">
               <h3 className="text-[#111418] dark:text-white text-sm font-medium leading-normal mb-3">Payment Method</h3>
               <div className="flex flex-col gap-3">
-                <label className="flex items-center justify-between p-3 border border-primary bg-primary/5 rounded-lg cursor-pointer transition-all">
+                <label className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${paymentMethod==='wallet' ? 'border border-primary bg-primary/5' : 'border border-gray-200 dark:border-gray-700'}`}>
                   <div className="flex items-center gap-3">
-                    <input defaultChecked className="h-5 w-5 border-gray-300 text-primary focus:ring-primary" name="payment" type="radio" />
+                    <input checked={paymentMethod==='wallet'} onChange={()=>setPaymentMethod('wallet')} className="h-5 w-5 border-gray-300 text-primary focus:ring-primary" name="payment" type="radio" />
                     <div className="flex flex-col">
                       <span className="text-[#111418] dark:text-white font-medium text-sm">Student Account</span>
-                      <span className="text-muted dark:text-gray-400 text-xs">Balance: XAF 450.00</span>
+                      <span className="text-muted dark:text-gray-400 text-xs">Balance: XAF {Number(walletBalance).toLocaleString()}</span>
                     </div>
                   </div>
                   <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
                 </label>
-                <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <label className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${paymentMethod==='apple' ? 'border border-primary bg-primary/5' : 'border border-gray-200 dark:border-gray-700'}`}>
                   <div className="flex items-center gap-3">
-                    <input className="h-5 w-5 border-gray-300 text-primary focus:ring-primary" name="payment" type="radio" />
+                    <input checked={paymentMethod==='apple'} onChange={()=>setPaymentMethod('apple')} className="h-5 w-5 border-gray-300 text-primary focus:ring-primary" name="payment" type="radio" />
                     <div className="flex flex-col">
                       <span className="text-[#111418] dark:text-white font-medium text-sm">Apple Pay</span>
                     </div>
                   </div>
                   <span className="material-symbols-outlined text-[#111418] dark:text-white">contactless</span>
                 </label>
-                <label className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <label className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${paymentMethod==='card' ? 'border border-primary bg-primary/5' : 'border border-gray-200 dark:border-gray-700'}`}>
                   <div className="flex items-center gap-3">
-                    <input className="h-5 w-5 border-gray-300 text-primary focus:ring-primary" name="payment" type="radio" />
+                    <input checked={paymentMethod==='card'} onChange={()=>setPaymentMethod('card')} className="h-5 w-5 border-gray-300 text-primary focus:ring-primary" name="payment" type="radio" />
                     <div className="flex flex-col">
                       <span className="text-[#111418] dark:text-white font-medium text-sm">Credit / Debit Card</span>
                     </div>
@@ -175,7 +264,7 @@ export default function BusRegistration() {
       </div>
 
       {/* Sticky Action Button */}
-      <BottomAction text={"Register & Pay - XAF 155.00"} icon="account_balance_wallet" />
+      <BottomAction onClick={handleRegister} text={loading ? 'Processing...' : `Register & Pay - XAF ${computeTotals(selectedRoute).total.toLocaleString()}`} icon="account_balance_wallet" />
     </div>
   );
 }

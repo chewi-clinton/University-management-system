@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar'
 import { financeAPI } from '../services/financeService'
-import { getCurrentUser, setCurrentUser, getToken } from '../services/authService'
+import { getCurrentUser, setCurrentUser, getToken, fetchProfile } from '../services/authService'
 
 export default function PaymentHistory() {
   const [transactions, setTransactions] = useState([])
@@ -17,6 +17,10 @@ export default function PaymentHistory() {
 
   const [totalOutstanding, setTotalOutstanding] = useState(0)
   const [balanceDebug, setBalanceDebug] = useState(null)
+  const [walletBalance, setWalletBalance] = useState(0)
+
+  const REQUIRED_FEE = 367000
+  const showPayNow = Number(totalOutstanding || 0) > 0 && Number(walletBalance || 0) < REQUIRED_FEE
 
   const formatCurrency = (v) => `XAF ${Number(v || 0).toLocaleString()}`
 
@@ -27,20 +31,13 @@ export default function PaymentHistory() {
       const user = getCurrentUser() || {}
       let studentId = user?.studentId || user?.student?.id || user?.student?._id || undefined
 
-      if (!studentId) {
-        try {
-          const token = getToken()
-          const res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/student/profile`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-          if (res.ok) {
-            const stu = await res.json()
-            const updatedUser = { ...(user || {}), student: stu, studentId: stu._id }
-            setCurrentUser(updatedUser)
-            studentId = stu._id
-          }
-        } catch (e) { /* ignore */ }
-      }
+      // Ensure we have the latest student profile (walletBalance) regardless
+      try {
+        // centralized profile fetch (keeps localStorage user in sync)
+        const stu = await fetchProfile()
+        if (stu && typeof stu.walletBalance !== 'undefined') setWalletBalance(Number(stu.walletBalance || 0))
+        if (!studentId && stu) studentId = stu._id
+      } catch (e) { /* ignore */ }
 
       const data = await financeAPI.getTransactions(studentId, startDate || undefined, endDate || undefined)
       const txs = Array.isArray(data) ? data : (data.transactions || [])
@@ -51,6 +48,8 @@ export default function PaymentHistory() {
         const bal = await financeAPI.getBalance(studentId)
         setBalanceDebug(bal)
         setTotalOutstanding(Number(bal?.totalDue ?? bal?.total ?? 0))
+        // if backend returns authoritative walletBalance, prefer it
+        if (bal && typeof bal.walletBalance !== 'undefined') setWalletBalance(Number(bal.walletBalance || 0))
       } catch (e) {
         // fallback to computed ledger totals
         const totalCharged = txs.filter(i=>i.type==='invoice').reduce((s,i)=>s+Number(i.amount||0),0)
@@ -202,26 +201,26 @@ export default function PaymentHistory() {
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-6 md:p-6">
         <div className="max-w-4xl mx-auto">
-          {/* Balance Card (ActionPanel) */}
+          {/* Balance Card (ActionPanel) - show wallet balance as primary */}
           <div className="p-4 md:p-0 md:mb-6">
             <div className="flex flex-col items-start justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-surface-light dark:bg-surface-dark p-5 shadow-sm">
               <div className="flex w-full justify-between items-start">
                 <div className="flex flex-col gap-1">
-                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wide">Total Outstanding</p>
-                  <p className="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">{formatCurrency(totalOutstanding)}</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium uppercase tracking-wide">Account Balance</p>
+                    <p className="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">{formatCurrency(walletBalance)}</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Outstanding: <span className="text-slate-900 dark:text-white font-semibold">{formatCurrency(totalOutstanding)}</span></p>
                 </div>
                 <button onClick={downloadSchoolDetails} title="Download school details" className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20">
                   <span className="material-symbols-outlined">account_balance</span>
                 </button>
               </div>
-              {/* debug output removed to avoid showing raw payload in UI */}
               <div className="w-full pt-2">
-                {Number(totalOutstanding || 0) > 0 ? (
+                {showPayNow ? (
                   <button className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-primary hover:bg-blue-600 transition-colors text-white text-base font-bold leading-normal shadow-md shadow-blue-500/20">
                     <span className="truncate">Pay Now</span>
                   </button>
                 ) : (
-                  <div className="text-sm text-slate-500">No outstanding balance</div>
+                  <div className="text-sm text-slate-500">{Number(totalOutstanding || 0) > 0 ? 'Sufficient wallet balance — no action needed' : 'No outstanding balance'}</div>
                 )}
               </div>
             </div>

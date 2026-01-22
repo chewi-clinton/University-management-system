@@ -69,3 +69,39 @@ export function setCurrentUser(user) {
 }
 
 export const getToken = () => localStorage.getItem('token');
+
+export const fetchProfile = async () => {
+  const token = getToken()
+  if (!token) return null
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/student/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (res.ok) {
+      const profile = await res.json()
+      const current = getCurrentUser() || {}
+      const merged = { ...current, student: profile, studentId: profile?._id || current.studentId, walletBalance: profile?.walletBalance ?? current.walletBalance }
+      setCurrentUser(merged)
+      window.dispatchEvent(new Event('userChanged'))
+      return profile
+    }
+    // fallback: if profile endpoint fails, try finance balance endpoint for walletBalance
+    try {
+      const { financeAPI } = await import('./financeService')
+      const bal = await financeAPI.getBalance()
+      if (bal) {
+        const current = getCurrentUser() || {}
+        const merged = { ...current, walletBalance: bal.walletBalance ?? current.walletBalance }
+        setCurrentUser(merged)
+        window.dispatchEvent(new Event('userChanged'))
+        return { walletBalance: bal.walletBalance }
+      }
+    } catch (e) {
+      // ignore fallback errors
+    }
+    return null
+  } catch (e) {
+    console.error('fetchProfile failed', e)
+    return null
+  }
+}

@@ -2,6 +2,7 @@ const Tuition = require('../models/Tuition');
 const Student = require('../models/Student');
 const Transaction = require('../models/Transaction');
 const PDFDocument = require('pdfkit');
+const mongoose = require('mongoose');
 
 exports.getBalance = async (req, res) => {
   try {
@@ -44,13 +45,55 @@ exports.getBalance = async (req, res) => {
 
 exports.createTransaction = async (req, res) => {
   try {
-    const { tuitionId } = req.body;
+    const { tuitionId, paymentMethod } = req.body;
     const student = await Student.findOne({ userId: req.user.id });
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
     const tuition = await Tuition.findById(tuitionId);
     if (!tuition) return res.status(404).json({ message: 'Tuition not found' });
 
+    // If paymentMethod is 'wallet', process immediately and atomically
+    if (paymentMethod === 'wallet') {
+      const session = await mongoose.startSession();
+      try {
+        let resultTx = null;
+        await session.withTransaction(async () => {
+          const s = await Student.findById(student._id).session(session);
+          if (!s) throw new Error('Student not found during transaction');
+          const amount = Number(tuition.amount || 0);
+          if ((s.walletBalance || 0) < amount) throw new Error('Insufficient wallet balance');
+          s.walletBalance = (s.walletBalance || 0) - amount;
+          await s.save({ session });
+
+          // create a successful transaction
+          const tx = new Transaction({
+            studentId: s._id,
+            tuitionId: tuition._id,
+            amount: amount,
+            status: 'SUCCESS',
+            paidAt: new Date(),
+            metadata: { method: 'wallet', initiatedBy: req.user.id }
+          });
+          await tx.save({ session });
+          resultTx = tx;
+
+          // mark tuition paid
+          tuition.status = 'paid';
+          tuition.paidDate = new Date();
+          await tuition.save({ session });
+        });
+        // return result and updated balance
+        const freshStudent = await Student.findById(student._id);
+        return res.status(200).json({ message: 'Paid from wallet', transaction: resultTx, walletBalance: freshStudent.walletBalance });
+      } catch (err) {
+        console.error('wallet payment error', err);
+        return res.status(400).json({ message: err.message || 'Wallet payment failed' });
+      } finally {
+        session.endSession();
+      }
+    }
+
+    // default: create transaction and return providerUrl for external payment
     const tx = new Transaction({
       studentId: student._id,
       tuitionId: tuition._id,
@@ -60,7 +103,6 @@ exports.createTransaction = async (req, res) => {
     await tx.save();
 
     // In real implementation create payment intent with provider and set providerUrl
-    // For now return a fake providerUrl that the frontend can open
     tx.providerUrl = `${process.env.FRONTEND_URL}/mock-pay/${tx._id}`;
     await tx.save();
 

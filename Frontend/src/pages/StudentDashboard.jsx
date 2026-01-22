@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
-import { getCurrentUser } from '../services/authService';
+import { getCurrentUser, getToken, fetchProfile } from '../services/authService';
 import { financeAPI } from '../services/financeService';
 import { notificationsAPI } from '../services/notificationsService';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ const StudentDashboard = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [promo, setPromo] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,11 @@ const StudentDashboard = () => {
     const load = async () => {
       setLoading(true);
       try {
+        // fetch student profile to get walletBalance
+        try {
+          const prof = await fetchProfile()
+          if (prof && typeof prof.walletBalance !== 'undefined') setWalletBalance(Number(prof.walletBalance || 0))
+        } catch (e) { console.error('load profile', e) }
         const b = await financeAPI.getBalance();
         setBalanceInfo(b);
         const n = await notificationsAPI.getNotifications();
@@ -61,7 +67,10 @@ const StudentDashboard = () => {
       window.removeEventListener('storage', onUserChange);
       clearInterval(poll);
     };
-  }, [user, navigate]);
+  }, [navigate]);
+
+  const REQUIRED_FEE = 367000; // XAF required fee threshold
+  const showPayNow = Number(balanceInfo.totalDue || 0) > 0 && Number(walletBalance || 0) < REQUIRED_FEE;
 
   const toggleVisible = () => setVisible(v => !v);
 
@@ -285,58 +294,37 @@ const StudentDashboard = () => {
 
         {/* Main Content */}
         <div className="px-4 space-y-5">
-          {/* Balance Card (Hero) - dynamic, visibility toggle, due-date color, pay button logic */}
-          <div className="relative overflow-hidden rounded-xl" style={{ backgroundColor: Number(balanceInfo.totalDue || 0) > 0 ? '#0ea5a0' : '#10b981' }}>
-            <div className="relative p-5 flex flex-col gap-4">
-              <button onClick={downloadSchoolDetails} title="Download school details" className="absolute right-4 top-4 size-10 rounded-full bg-white/10 text-white/90 hover:bg-white/20 p-2">
-                <span className="material-symbols-outlined">apartment</span>
-              </button>
+          {/* Balance Card (Hero) - show account wallet balance as primary */}
+          <div className="relative overflow-hidden rounded-xl bg-white dark:bg-surface-dark border border-gray-100 dark:border-gray-800">
+            <div className="p-5 flex flex-col gap-3">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col gap-1">
-                  <p className="text-white/80 text-sm font-medium">Outstanding Balance</p>
+                  <p className="text-sm font-medium text-gray-500">Account Balance</p>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-white text-3xl font-bold tracking-tight" style={{ color: Number(balanceInfo.totalDue || 0) > 0 ? '#fff' : '#e6fffa' }}>
-                      {visible ? formatCurrency(balanceInfo.totalDue) : 'XAF ****'}
-                    </h1>
-                    <button
-                      className="text-white/70 hover:text-white transition-colors"
-                      onClick={toggleVisible}
-                      aria-label={visible ? 'Hide balance' : 'Show balance'}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">
-                        {visible ? 'visibility' : 'visibility_off'}
-                      </span>
+                    <h1 className="text-3xl font-bold tracking-tight text-[#111418] dark:text-white">{visible ? formatCurrency(walletBalance) : 'XAF ****'}</h1>
+                    <button className="text-gray-500 hover:text-gray-700" onClick={toggleVisible} aria-label={visible ? 'Hide balance' : 'Show balance'}>
+                      <span className="material-symbols-outlined">{visible ? 'visibility' : 'visibility_off'}</span>
                     </button>
                   </div>
-                  <p className="text-white/90 text-sm font-medium mt-1 bg-white/10 w-fit px-2 py-0.5 rounded text-xs">
-                    Due by{' '}
-                    <span style={{ color: daysUntil(nextPendingTuition()?.dueDate || balanceInfo.tuitions?.[0]?.dueDate) <= 3 ? '#ffbaba' : 'inherit' }}>
-                      {nextDueDate()}
-                    </span>
-                    { (balanceInfo.tuitions || []).some(t => t.status === 'overdue') && (
-                      <span className="ml-2 text-yellow-200"> • You have overdue items</span>
-                    )}
-                  </p>
+                  <p className="text-xs text-gray-500">Outstanding: <span className="font-semibold">{formatCurrency(balanceInfo.totalDue)}</span></p>
                 </div>
+                <button onClick={downloadSchoolDetails} title="Download school details" className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20">
+                  <span className="material-symbols-outlined">account_balance</span>
+                </button>
               </div>
 
-              <div className="w-full h-px" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}></div>
+              <div className="w-full h-px bg-gray-100" />
 
               <div className="flex justify-between items-center">
-                <div className="flex items-center gap-1.5 text-white/80">
+                <div className="flex items-center gap-1.5 text-gray-500 text-sm">
                   <span className="material-symbols-outlined text-[16px]">info</span>
-                  <span className="text-xs">Late fees apply after due date</span>
+                  <span>Late fees apply after due date</span>
                 </div>
                 <div>
-                  {Number(balanceInfo.totalDue || 0) > 0 ? (
-                    <button
-                      onClick={() => handlePayNow(nextPendingTuition())}
-                      className="flex items-center justify-center rounded-lg h-9 px-4 bg-white text-primary text-sm font-bold shadow-sm active:scale-95 transition-transform"
-                    >
-                      Pay Now
-                    </button>
+                  {showPayNow ? (
+                    <button onClick={() => handlePayNow(nextPendingTuition())} className="flex items-center justify-center rounded-lg h-9 px-4 bg-primary text-white text-sm font-bold shadow-sm active:scale-95 transition-transform">Pay Now</button>
                   ) : (
-                    <div className="text-sm text-white/90">No outstanding fees — your account is clear!</div>
+                    <div className="text-sm text-gray-500">{Number(balanceInfo.totalDue || 0) > 0 ? 'Sufficient wallet balance — no action needed' : 'No outstanding fees — your account is clear!'}</div>
                   )}
                 </div>
               </div>

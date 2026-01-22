@@ -25,4 +25,20 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+// Public debug endpoint: set wallet balance for a student by email
+router.post('/public/seed-wallet', async (req, res) => {
+  try {
+    const { email, walletBalance } = req.body;
+    if (!email) return res.status(400).json({ message: 'email required' });
+    const Student = require('../models/Student');
+    const student = await Student.findOne({ email });
+    if (!student) return res.status(404).json({ message: 'student not found' });
+    student.walletBalance = Number(walletBalance || 0);
+    await student.save();
+    res.json({ message: 'seeded', student });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
