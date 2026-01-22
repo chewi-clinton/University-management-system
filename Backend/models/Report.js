@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  type: { type: String, enum: ['pdf', 'excel', 'csv'], default: 'pdf' },
+  type: { type: String, enum: ['pdf', 'excel', 'csv', 'summary'], default: 'pdf' },
   category: { type: String, enum: ['payroll', 'tuition', 'income', 'expenses', 'all'], default: 'all' },
   department: { type: String, default: 'University Wide' },
   startDate: Date,
