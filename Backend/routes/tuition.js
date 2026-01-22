@@ -8,5 +8,7 @@ router.get('/', auth, tuitionController.getAllTuition);
 router.get('/stats', auth, tuitionController.getTuitionStats);
 router.post('/', auth, tuitionController.createTuition);
 router.put('/:id', auth, tuitionController.updateTuitionStatus);
+router.post('/:id/invoice', auth, tuitionController.generateInvoice);
+router.post('/:id/reminder', auth, tuitionController.sendReminder);
 
 module.exports = router;

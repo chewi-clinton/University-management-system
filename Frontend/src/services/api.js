@@ -48,7 +48,9 @@ export const tuitionAPI = {
   getStats: () => apiCall('/tuition/stats'),
   create: (data) => apiCall('/tuition', 'POST', data),
   updateStatus: (id, status, paidDate) =>
-    apiCall(`/tuition/${id}`, 'PUT', { status, paidDate })
+    apiCall(`/tuition/${id}`, 'PUT', { status, paidDate }),
+  generateInvoice: (id) => apiCall(`/tuition/${id}/invoice`, 'POST'),
+  sendReminder: (id) => apiCall(`/tuition/${id}/reminder`, 'POST')
 };
 
 // Payroll API
