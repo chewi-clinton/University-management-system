@@ -7,7 +7,7 @@ exports.getAllPayroll = async (req, res) => {
     const { status, period } = req.query;
     let filter = {};
 
-    if (status) filter.status = status;
+    if (status && status !== 'all') filter.status = status;
     if (period) filter.period = period;
 
     const payrolls = await Payroll.find(filter)
@@ -38,7 +38,7 @@ exports.getPayrollStats = async (req, res) => {
       employees,
       totalPayout: totalPayout[0]?.total || 0,
       deductions: totalDeductions[0]?.total || 0,
-      flaggedCount: await Payroll.countDocuments({ status: 'draft' })
+      flaggedCount: await Payroll.countDocuments({ status: 'flagged' })
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

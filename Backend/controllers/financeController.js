@@ -521,3 +521,275 @@ exports.getStats = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// GET /api/finance/reports -> Financial reports analytics with filters
+exports.getFinancialReports = async (req, res) => {
+  try {
+    // Only finance officers can access
+    if (req.user.role !== 'finance') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const Student = require('../models/Student');
+    const Tuition = require('../models/Tuition');
+    const Transaction = require('../models/Transaction');
+    const Payroll = require('../models/Payroll');
+
+    // Parse query parameters
+    const {
+      category = 'all', // all, income, expenses, payroll
+      startDate,
+      endDate,
+      department = 'all'
+    } = req.query;
+
+    // Build date filter
+    const dateFilter = {};
+    if (startDate) {
+      dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$lte = end;
+    }
+
+    const createdAtFilter = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
+    const updatedAtFilter = Object.keys(dateFilter).length > 0 ? { updatedAt: dateFilter } : {};
+
+    // Department filter (if applicable)
+    const deptFilter = department && department !== 'all' ? { 'department.code': department } : {};
+
+    let incomeData = { total: 0, bySource: {} };
+    let expensesData = { total: 0, bySource: {} };
+    let payrollData = { total: 0, count: 0 };
+    let netBalance = 0;
+
+    // === INCOME DATA ===
+    if (category === 'all' || category === 'income') {
+      // Tuition income
+      const tuitionTx = await Transaction.aggregate([
+        {
+          $match: {
+            ...createdAtFilter,
+            'metadata.type': { $in: ['tuition', 'fee'] },
+            status: { $in: ['SUCCESS', 'success', 'PAID', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: 'tuition',
+            total: { $sum: '$amount' }
+          }
+        }
+      ]);
+
+      const tuitionIncome = tuitionTx.length > 0 ? tuitionTx[0].total : 0;
+      incomeData.bySource.tuition = tuitionIncome;
+      incomeData.total += tuitionIncome;
+
+      // Bus revenue
+      const busTx = await Transaction.aggregate([
+        {
+          $match: {
+            ...createdAtFilter,
+            'metadata.type': 'bus',
+            status: { $in: ['SUCCESS', 'success', 'PAID', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: 'bus',
+            total: { $sum: '$amount' }
+          }
+        }
+      ]);
+
+      const busIncome = busTx.length > 0 ? busTx[0].total : 0;
+      incomeData.bySource.bus = busIncome;
+      incomeData.total += busIncome;
+
+      // Other income
+      const otherTx = await Transaction.aggregate([
+        {
+          $match: {
+            ...createdAtFilter,
+            'metadata.type': { $nin: ['tuition', 'fee', 'bus'] },
+            status: { $in: ['SUCCESS', 'success', 'PAID', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: 'other',
+            total: { $sum: '$amount' }
+          }
+        }
+      ]);
+
+      const otherIncome = otherTx.length > 0 ? otherTx[0].total : 0;
+      incomeData.bySource.other = otherIncome;
+      incomeData.total += otherIncome;
+    }
+
+    // === EXPENSES DATA ===
+    if (category === 'all' || category === 'expenses') {
+      // Payroll expenses
+      const payrollExp = await Payroll.aggregate([
+        {
+          $match: {
+            ...updatedAtFilter,
+            status: { $in: ['paid', 'PAID'] }
+          }
+        },
+        {
+          $group: {
+            _id: 'payroll',
+            total: { $sum: '$netPay' }
+          }
+        }
+      ]);
+
+      const payrollExpense = payrollExp.length > 0 ? payrollExp[0].total : 0;
+      expensesData.bySource.payroll = payrollExpense;
+      expensesData.total += payrollExpense;
+
+      // Bus operational expenses (placeholder for now)
+      expensesData.bySource.operations = 0;
+    }
+
+    // === PAYROLL DATA ===
+    if (category === 'all' || category === 'payroll') {
+      const payrollRecords = await Payroll.aggregate([
+        {
+          $match: {
+            ...updatedAtFilter,
+            status: { $in: ['paid', 'PAID'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$netPay' },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      if (payrollRecords.length > 0) {
+        payrollData.total = payrollRecords[0].total;
+        payrollData.count = payrollRecords[0].count;
+      }
+    }
+
+    // Calculate net balance
+    netBalance = incomeData.total - expensesData.total;
+
+    // Get previous period data for comparison (30 days before startDate)
+    let previousPeriodIncome = 0;
+    if (startDate) {
+      const start = new Date(startDate);
+      const prevStart = new Date(start);
+      prevStart.setDate(prevStart.getDate() - 30);
+      const prevFilter = { createdAt: { $gte: prevStart, $lt: start } };
+
+      const prevIncome = await Transaction.aggregate([
+        {
+          $match: {
+            ...prevFilter,
+            status: { $in: ['SUCCESS', 'success', 'PAID', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amount' }
+          }
+        }
+      ]);
+
+      previousPeriodIncome = prevIncome.length > 0 ? prevIncome[0].total : 0;
+    }
+
+    const incomeGrowth = previousPeriodIncome > 0
+      ? (((incomeData.total - previousPeriodIncome) / previousPeriodIncome) * 100).toFixed(1)
+      : 0;
+
+    res.json({
+      metrics: {
+        netBalance,
+        income: incomeData.total,
+        expenses: expensesData.total,
+        incomeGrowth: parseFloat(incomeGrowth)
+      },
+      details: {
+        income: incomeData,
+        expenses: expensesData,
+        payroll: payrollData
+      },
+      period: {
+        startDate: startDate || 'all-time',
+        endDate: endDate || 'all-time',
+        category,
+        department
+      }
+    });
+  } catch (err) {
+    console.error('getFinancialReports error', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get generated reports
+exports.getGeneratedReports = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const reports = await Report.find()
+      .sort({ createdAt: -1 })
+      .limit(10);
+    
+    res.json(reports);
+  } catch (err) {
+    console.error('getGeneratedReports error', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Create new report
+exports.generateReport = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const { name, type, category, department, startDate, endDate } = req.body;
+
+    const report = new Report({
+      name,
+      type: type || 'pdf',
+      category: category || 'all',
+      department: department || 'University Wide',
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      status: 'generated',
+      generatedBy: req.user?.name || 'System',
+      createdAt: new Date()
+    });
+
+    await report.save();
+    res.status(201).json({ message: 'Report generated', report });
+  } catch (err) {
+    console.error('generateReport error', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Delete report
+exports.deleteReport = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const { id } = req.params;
+    
+    await Report.findByIdAndDelete(id);
+    res.json({ message: 'Report deleted' });
+  } catch (err) {
+    console.error('deleteReport error', err);
+    res.status(500).json({ message: err.message });
+  }
+};

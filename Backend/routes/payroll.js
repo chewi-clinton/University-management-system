@@ -4,8 +4,8 @@ const payrollController = require('../controllers/payrollController');
 const auth = require('../middleware/auth');
 
 // Protected routes
-router.get('/', auth, payrollController.getAllPayroll);
-router.get('/stats', auth, payrollController.getPayrollStats);
+router.get('/', payrollController.getAllPayroll);
+router.get('/stats', payrollController.getPayrollStats);
 router.post('/', auth, payrollController.createPayroll);
 router.put('/:id', auth, payrollController.updatePayrollStatus);
 

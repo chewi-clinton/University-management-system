@@ -6,7 +6,7 @@ const payrollSchema = new mongoose.Schema({
   baseSalary: { type: Number, required: true },
   deductions: { type: Number, default: 0 },
   netPay: { type: Number, required: true },
-  status: { type: String, enum: ['draft', 'approved', 'paid'], default: 'draft' },
+  status: { type: String, enum: ['ready', 'flagged', 'approved', 'paid'], default: 'ready' },
   dueDate: { type: Date, required: true },
   paidDate: Date,
   createdAt: { type: Date, default: Date.now },

@@ -63,5 +63,32 @@ export const financeAPI = {
     if (opts.end) params.set('end', opts.end)
     const token = localStorage.getItem('token') || ''
     return { url: `${API}/finance/export?${params.toString()}`, headers: { Authorization: token ? `Bearer ${token}` : '' } }
-  }
+  },
+
+  // Financial Reports API
+  getFinancialReports: (category = 'all', startDate, endDate, department = 'all') => {
+    const params = new URLSearchParams()
+    params.set('category', category)
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+    if (department) params.set('department', department)
+    return authFetch(`/finance/reports?${params.toString()}`)
+  },
+
+  // Get generated reports from database
+  getGeneratedReports: () => authFetch('/finance/reports/generated'),
+
+  // Generate and save new report
+  generateReport: (name, type, category, department, startDate, endDate) =>
+    authFetch('/finance/reports/generate', 'POST', {
+      name,
+      type: type || 'pdf',
+      category: category || 'all',
+      department: department || 'University Wide',
+      startDate,
+      endDate
+    }),
+
+  // Delete report
+  deleteReport: (reportId) => authFetch(`/finance/reports/${reportId}`, 'DELETE')
 };
